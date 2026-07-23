@@ -173,6 +173,19 @@ def _edit_undo():
         return json.dumps({'ok': False, 'reason': 'empty'})
     _restore(HISTORY.pop())
     return _pack()
+
+
+def _reverse():
+    """反轉整條路線的方向：段的順序反過來，每段內部的節點與座標也反過來。"""
+    SEGS.reverse()
+    for seg in SEGS:
+        if seg.get('nodes'):
+            seg['nodes'] = list(reversed(seg['nodes']))
+        if seg.get('coords'):
+            seg['coords'] = list(reversed(seg['coords']))
+    # 段落順序變了，舊的復原快照會對到錯的段，直接清掉比留著安全
+    HISTORY.clear()
+    return _pack()
 `;
 
   function setProgress(fn) { onProgress = fn || (() => {}); }
@@ -316,6 +329,12 @@ _pack()
     return JSON.parse(await py.runPythonAsync(`_edit_undo()`));
   }
 
+  /* 反轉路線方向。回傳與 generate 相同格式（si 會重新編號，微調要重建節點圖層）。 */
+  async function reverseRoute() {
+    await boot();
+    return JSON.parse(await py.runPythonAsync(`_reverse()`));
+  }
+
   /* 產生 GPX（沿用桌面版的輸出格式） */
   function toGPX(segments) {
     const now = new Date().toISOString();
@@ -331,5 +350,5 @@ ${body}
 </gpx>`;
   }
 
-  return { boot, loadArea, generate, editDelete, editUndo, toGPX, setProgress };
+  return { boot, loadArea, generate, editDelete, editUndo, reverseRoute, toGPX, setProgress };
 })();

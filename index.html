@@ -73,7 +73,8 @@
     background:rgba(20,23,28,.88);backdrop-filter:blur(8px);border:1px solid #262b33;
     border-radius:999px;padding:6px 15px;font-size:13px;font-weight:500;
     transition:opacity .2s}
-  .pill.hide{opacity:0}
+  .pill.hide{opacity:0;pointer-events:none}
+  .pill.tap{background:#2563eb;border-color:#2563eb;cursor:pointer}
 
   /* ---- 結果面板 ---- */
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;
@@ -102,6 +103,32 @@
   .pace b{font-size:16px;font-weight:500;min-width:44px;text-align:center}
   .pace .unit{font-size:11.5px;color:#8b929c}
   .pace .hint{margin-left:auto;font-size:11.5px;color:#8b929c}
+  /* 次要動作：一排四顆，圖示在上文字在下 */
+  .tools{display:flex;gap:6px;margin-bottom:9px}
+  .tools button{flex:1;background:#171b21;border:1px solid #262b33;border-radius:11px;
+    color:#c9cdd3;font-size:11px;font-family:inherit;padding:9px 2px;
+    display:flex;flex-direction:column;align-items:center;gap:5px}
+  .tools svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .tools button:disabled{opacity:.32}
+
+  /* 匯出圖片的選項對話框 */
+  .modal{position:absolute;inset:0;z-index:900;background:rgba(6,8,11,.72);
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal[hidden]{display:none}
+  .mbox{width:100%;max-width:340px;background:#14171c;border:1px solid #262b33;
+    border-radius:16px;padding:16px}
+  .mtitle{font-size:15px;font-weight:500;margin-bottom:12px}
+  .sw{display:flex;align-items:center;gap:10px;background:#171b21;border-radius:11px;
+    padding:11px 12px;margin-bottom:8px}
+  .sw input{width:19px;height:19px;flex:none;accent-color:#2563eb;margin:0}
+  .sw span{font-size:13.5px;display:flex;flex-direction:column;gap:2px}
+  .sw i{font-style:normal;font-size:11.5px;color:#8b929c}
+  .mact{display:flex;gap:8px;margin-top:14px}
+  .mact button{flex:1;padding:11px;border-radius:11px;font-size:13.5px;font-family:inherit;
+    font-weight:500;border:1px solid #262b33;background:#171b21;color:#e8eaed}
+  .mact .pri{background:#2563eb;border-color:#2563eb}
+
   .acts{display:flex;gap:8px}
   .acts button{flex:1;padding:12px;border-radius:11px;font-size:13.5px;
     font-family:inherit;font-weight:500;border:1px solid #262b33;
@@ -222,9 +249,39 @@
     <button id="pUp" aria-label="配速調快">+</button>
     <span class="hint" id="pHint">慢跑</span>
   </div>
+  <div class="tools">
+    <button id="aEdit">
+      <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg>微調路徑
+    </button>
+    <button id="aRev">
+      <svg viewBox="0 0 24 24"><path d="M17 3l4 4-4 4"/><path d="M21 7H8a4 4 0 00-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13a4 4 0 004-4v-1"/></svg>反轉方向
+    </button>
+    <button id="aMod">
+      <svg viewBox="0 0 24 24"><path d="M11 4H5a2 2 0 00-2 2v13a2 2 0 002 2h13a2 2 0 002-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg>修改圖案
+    </button>
+    <button id="aNew">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>重新繪製
+    </button>
+  </div>
   <div class="acts">
-    <button id="aEdit"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg>微調路徑</button>
+    <button id="aPng"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>下載圖片</button>
     <button class="pri" id="aGpx"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>下載 GPX</button>
+  </div>
+</div>
+
+<div class="modal" id="pngModal" hidden>
+  <div class="mbox">
+    <div class="mtitle">匯出圖片</div>
+    <label class="sw"><input type="checkbox" id="pngRoute" checked>
+      <span>路線<i>生成出來的藍色與橘色線</i></span></label>
+    <label class="sw"><input type="checkbox" id="pngDraw">
+      <span>我畫的紅線<i>原始手繪圖案</i></span></label>
+    <label class="sw"><input type="checkbox" id="pngMarks" checked>
+      <span>起點與終點<i>紫色與粉紅色圓點</i></span></label>
+    <div class="mact">
+      <button id="pngCancel">取消</button>
+      <button class="pri" id="pngGo">產生圖片</button>
+    </div>
   </div>
 </div>
 
@@ -234,14 +291,14 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
-<script src="engine.js?v=20260723b"></script>
+<script src="engine.js?v=20260724a"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
 
 const S={mode:'pan',hasMap:false,strokes:[],cur:null,start:null,end:null,
          boxing:false,generated:false,sheetUp:false,step:1,bounds:null,warned:0,
-         editing:false,ebox:false,eDown:null,sel:new Set()};
+         editing:false,ebox:false,eDown:null,sel:new Set(),locked:false};
 const $=id=>document.getElementById(id);
 const el={guide:$('guide'),gn:$('gn'),gt:$('gt'),pill:$('pill'),sheet:$('sheet'),toast:$('toast')};
 let routeLayer=null,startMk=null,endMk=null,boxEl=null,boxA=null;
@@ -251,7 +308,7 @@ const STEPS={
  2:['畫出你想要的圖案','點下方 <b>畫圖</b>，在<b>藍色框線內</b>畫。畫錯可以按復原'],
  3:['設定起點與終點','點 <b>起點</b> 後在地圖上點一下，終點同理'],
  4:['準備好了','按 <b>生成路線</b>，把圖案對齊到真實道路'],
- 5:['完成','可以下載 GPX 匯入 Strava／Garmin 照著跑']
+ 5:['完成','可下載 GPX 或圖片。要改圖案請按 <b>修改圖案</b>']
 };
 function guide(){
   const s=STEPS[S.step];
@@ -278,6 +335,8 @@ function inArea(ll){return !S.bounds||S.bounds.contains(ll);}
 
 function setMode(m){
   if(m!=='pan'&&!S.hasMap) return;
+  // 生成後鎖住編輯，要先按「修改圖案」或「重新繪製」才能再動
+  if(m!=='pan'&&S.locked) return;
   S.mode=m;
   document.querySelectorAll('.m').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
   // 模式切換：只有「移動」模式能拖曳地圖
@@ -309,12 +368,25 @@ function boxEnd(e){
 function refresh(){
   if(S.editing) return;   // 微調模式有自己的一套按鈕與提示
   const n=S.strokes.length;
-  $('btnUndo').disabled=!n; $('btnClear').disabled=!n;
-  $('btnGo').disabled=!(n&&S.start&&S.end);
+  $('btnUndo').disabled=!n||S.locked; $('btnClear').disabled=!n||S.locked;
+  $('btnGo').disabled=!(n&&S.start&&S.end)||S.locked;
+  ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=!S.hasMap||S.locked);
+  if(S.locked&&S.mode!=='pan') setMode('pan');
   let d=0;
   for(const s of S.strokes) for(let i=1;i<s.pts.length;i++) d+=map.distance(s.pts[i-1],s.pts[i]);
-  if(n&&!S.sheetUp){el.pill.classList.remove('hide');el.pill.textContent=(d/1000).toFixed(2)+' km';}
-  else el.pill.classList.add('hide');
+  if(S.result&&!S.sheetUp){
+    // 生成後不能再畫圖，所以膠囊要能把結果面板叫回來，否則收起來就卡住了
+    el.pill.classList.remove('hide');
+    el.pill.textContent='▲ 路線 '+S.km.toFixed(2)+' km';
+    el.pill.classList.add('tap');
+  }else if(n&&!S.sheetUp){
+    el.pill.classList.remove('hide');
+    el.pill.textContent=(d/1000).toFixed(2)+' km';
+    el.pill.classList.remove('tap');
+  }else{
+    el.pill.classList.add('hide');
+    el.pill.classList.remove('tap');
+  }
   // 引導自動推進，不需要使用者點「下一步」
   let st=1;
   if(S.hasMap) st=2;
@@ -425,12 +497,19 @@ map.on('click',e=>{
 });
 
 $('btnUndo').onclick=()=>{const s=S.strokes.pop();if(s)s.line.remove();refresh();};
-$('btnClear').onclick=()=>{
+function clearAll(){
   S.strokes.forEach(s=>s.line.remove());S.strokes=[];
+  dropRoute();
+  refresh();
+}
+/* 丟掉生成結果，回到可編輯狀態（手繪線保留） */
+function dropRoute(){
   if(routeLayer){routeLayer.remove();routeLayer=null;}
   pvClear();S.path=null;S.result=null;
-  S.generated=false;S.sheetUp=false;el.sheet.classList.remove('up');refresh();
-};
+  S.generated=false;S.locked=false;
+  S.sheetUp=false;el.sheet.classList.remove('up');
+}
+$('btnClear').onclick=clearAll;
 
 /* ---------- 生成（原型：假資料） ---------- */
 /* ---------- 路線預覽（拉桿 + 方向） ---------- */
@@ -456,14 +535,32 @@ function pvBuild(res){
   for(let d=step;d<S.totalM;d+=step){
     const i=pvIndexAt(d);
     if(i<1) continue;
-    const a=S.path[i-1],b=S.path[i];
-    const ang=Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI;
-    arrows.push(L.marker(b,{interactive:false,icon:L.divIcon({className:'',
+    const dir=pvHeading(d);
+    if(dir===null) continue;
+    arrows.push(L.marker(S.path[i],{interactive:false,icon:L.divIcon({className:'',
       iconSize:[16,16],iconAnchor:[8,8],
-      html:'<div style="transform:rotate('+(90-ang)+'deg);color:#38bdf8;font-size:15px;line-height:16px;text-align:center;text-shadow:0 0 3px #000">&#10148;</div>'})}));
+      html:'<div style="transform:rotate('+dir+'deg);color:#38bdf8;font-size:15px;line-height:16px;text-align:center;text-shadow:0 0 3px #000">&#10148;</div>'})}));
   }
   pvArrows=L.layerGroup(arrows).addTo(map);
   $('pvSlider').value=0; pvSet(0);
+}
+/* 路線在「累積距離 d」處的行進方向，單位是「螢幕上順時針的角度」，0 = 向右。
+   ➤ 這個字元預設就指向右，所以算出來可以直接丟給 CSS rotate()。
+
+   兩個地方容易寫錯，都踩過：
+   1. 不能拿經緯度差去算 —— Mercator 橫向會被 1/cos(緯度) 拉伸，角度會歪。
+      要先 project 成平面座標（用固定 zoom，角度不隨縮放改變）。
+   2. atan2(dy,dx) 已經是螢幕角度（y 軸向下所以順時針為正），直接用即可；
+      寫成 90-角度 會得到沿正確方向的鏡像，看起來就是「箭頭沒有貼著路線」。 */
+const PV_PROJ_Z=18;
+function pvHeading(d){
+  if(!S.path||S.path.length<2) return null;
+  // 取前後各 20m 而不是相鄰兩點，短邊不會讓箭頭亂抖
+  const a=S.path[pvIndexAt(Math.max(0,d-20))];
+  const b=S.path[Math.min(pvIndexAt(Math.min(S.totalM,d+20)),S.path.length-1)];
+  if(!a||!b||(a[0]===b[0]&&a[1]===b[1])) return null;
+  const pa=map.project(a,PV_PROJ_Z),pb=map.project(b,PV_PROJ_Z);
+  return Math.atan2(pb.y-pa.y,pb.x-pa.x)*180/Math.PI;
 }
 function pvIndexAt(dist){
   let lo=0,hi=S.cum.length-1;
@@ -554,15 +651,52 @@ function pvClear(){
   [pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
   pvDone=pvHead=pvArrows=null;
 }
+/* 把視野拉到路線上，並讓開結果面板與頂端按鈕 */
+function fitRoute(){
+  if(!S.result) return;
+  const all=[];
+  S.result.segments.forEach(sg=>sg.pts.forEach(p=>all.push(p)));
+  if(all.length<2) return;
+  const sh=S.sheetUp?el.sheet.offsetHeight:0;
+  map.fitBounds(L.latLngBounds(all),
+    {paddingTopLeft:[24,64],paddingBottomRight:[24,sh+20]});
+}
 $('btnGo').onclick=()=>{
   const strokes=S.strokes.map(s=>s.pts.map(p=>[p.lat,p.lng]));
   Engine.generate(strokes,[S.start.lat,S.start.lng],[S.end.lat,S.end.lng])
     .then(res=>{
       applyResult(res);
       S.strokes.forEach(s=>s.line.setStyle({opacity:.25,weight:3}));
-      S.generated=true;S.sheetUp=true;el.sheet.classList.add('up');refresh();
+      S.generated=true;S.locked=true;
+      S.sheetUp=true;el.sheet.classList.add('up');
+      refresh();fitRoute();
     })
     .catch(err=>{busy('');toast('生成失敗：'+err.message,3000);});
+};
+
+/* ---------- 生成後的動作 ---------- */
+$('aMod').onclick=()=>{
+  dropRoute();
+  S.strokes.forEach(s=>s.line.setStyle({opacity:.95,weight:5}));
+  setMode('draw');refresh();
+  toast('可以繼續修改圖案，改完再按生成路線',2600);
+};
+$('aNew').onclick=()=>{
+  clearAll();setMode('draw');
+  toast('已清空，重新開始畫',2000);
+};
+$('aRev').onclick=()=>{
+  if(!S.result) return;
+  Engine.reverseRoute()
+    .then(res=>{
+      applyResult(res);
+      // 起終點對調：路線現在從原本的終點跑起
+      const s=S.start;S.start=S.end;S.end=s;
+      if(startMk&&S.start) startMk.setLatLng(S.start);
+      if(endMk&&S.end) endMk.setLatLng(S.end);
+      toast('已反轉方向',1600);
+    })
+    .catch(err=>{busy('');toast('反轉失敗：'+err.message,3000);});
 };
 
 /* ---------- 微調路徑 ---------- */
@@ -679,12 +813,214 @@ $('aGpx').onclick=()=>{
   const blob=new Blob([Engine.toGPX(S.result.segments)],{type:'application/gpx+xml'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='RunningArt_'+new Date().toISOString().slice(0,10)+'.gpx';
+  a.download='RunningArt_'+localDate()+'.gpx';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   toast('GPX 已下載');
 };
+/* ---------- 匯出圖片 ----------
+   把底圖 tile 自己抓下來畫進 canvas（CARTO 有回 Access-Control-Allow-Origin: *，
+   所以 canvas 不會被污染，可以 toBlob 下載）。不依賴任何額外函式庫。 */
+const TILE_HOSTS=['a','b','c','d'];
+const TILE_SIZE=256;          // 一個 tile 代表的「世界像素」
+const OUT_LONG_EDGE=1080;     // 地圖區最長邊
+const INFO_H=200;             // 底部資訊欄高度（以 1080 寬為基準）
+
+/* 本地日期。toISOString() 是 UTC，台灣 +8 在半夜會退成前一天，
+   檔名和圖上日期都會顯示昨天。 */
+function localDate(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
+         +'-'+String(d.getDate()).padStart(2,'0');
+}
+function lonToWorld(lon,z){return (lon+180)/360*TILE_SIZE*Math.pow(2,z);}
+function latToWorld(lat,z){
+  const r=lat*Math.PI/180;
+  return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*TILE_SIZE*Math.pow(2,z);
+}
+function loadTile(z,x,y,i){
+  return new Promise(res=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>res(img);
+    img.onerror=()=>res(null);   // 單一 tile 失敗就留深色底，不要整張圖失敗
+    img.src=`https://${TILE_HOSTS[i%TILE_HOSTS.length]}.basemaps.cartocdn.com/dark_all/${z}/${x}/${y}@2x.png`;
+  });
+}
+
+async function exportPNG(opt){
+  busy('產生圖片…');
+  try{
+    // 1) 要涵蓋的範圍
+    const pts=[];
+    if(opt.route) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
+    if(opt.draw)  S.strokes.forEach(s=>s.pts.forEach(p=>pts.push([p.lat,p.lng])));
+    if(!pts.length) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
+    if(opt.marks){
+      if(S.start) pts.push([S.start.lat,S.start.lng]);
+      if(S.end)   pts.push([S.end.lat,S.end.lng]);
+    }
+    const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
+
+    // 2) 一律在「世界像素」裡算，避免經緯度在 Mercator 上比例被拉伸
+    let x0=lonToWorld(Math.min(...lons),0), x1=lonToWorld(Math.max(...lons),0);
+    let y0=latToWorld(Math.max(...lats),0), y1=latToWorld(Math.min(...lats),0);
+    const mx=Math.max((x1-x0)*0.09,1e-6), my=Math.max((y1-y0)*0.09,1e-6);
+    x0-=mx;x1+=mx;y0-=my;y1+=my;
+
+    // 3) 比例夾在 0.62~1.62 之間：極端細長的圖案不要變成一條縫
+    let dx=x1-x0, dy=y1-y0;
+    const AR_MIN=0.62, AR_MAX=1.62;
+    if(dx/dy>AR_MAX){const need=dx/AR_MAX,c=(y0+y1)/2;y0=c-need/2;y1=c+need/2;}
+    else if(dx/dy<AR_MIN){const need=dy*AR_MIN,c=(x0+x1)/2;x0=c-need/2;x1=c+need/2;}
+    dx=x1-x0;dy=y1-y0;
+
+    // 4) 畫布尺寸：依路線形狀，最長邊 1080
+    const mapW=Math.round(dx>=dy?OUT_LONG_EDGE:OUT_LONG_EDGE*dx/dy);
+    const mapH=Math.round(dx>=dy?OUT_LONG_EDGE*dy/dx:OUT_LONG_EDGE);
+    const sc=mapW/1080;                       // 直式圖字要跟著縮
+    const infoH=Math.round(INFO_H*Math.max(sc,0.62));
+
+    // 5) 選 zoom。@2x 的 tile 影像是 512px 卻只代表 256 世界像素，
+    //    所以 K=2 時剛好 1:1 最清晰；向上取整讓 K<=2（縮小繪製不會糊）。
+    let z=Math.ceil(Math.log2(mapW/(2*dx)));
+    z=Math.max(1,Math.min(19,z));
+    const K=mapW/(dx*Math.pow(2,z));
+    const oX=x0*Math.pow(2,z), oY=y0*Math.pow(2,z);
+    const X=lon=>(lonToWorld(lon,z)-oX)*K;
+    const Y=lat=>(latToWorld(lat,z)-oY)*K;
+
+    const cv=document.createElement('canvas');
+    cv.width=mapW;cv.height=mapH+infoH;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#0d0f12';ctx.fillRect(0,0,cv.width,cv.height);
+
+    // 6) 底圖
+    const tx0=Math.floor(oX/TILE_SIZE), tx1=Math.floor((oX+mapW/K)/TILE_SIZE);
+    const ty0=Math.floor(oY/TILE_SIZE), ty1=Math.floor((oY+mapH/K)/TILE_SIZE);
+    const jobs=[];let i=0;
+    for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:i++});
+    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i)));
+    ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
+    const ts=TILE_SIZE*K;
+    jobs.forEach((j,n)=>{
+      if(!imgs[n]) return;
+      ctx.drawImage(imgs[n],(j.tx*TILE_SIZE-oX)*K,(j.ty*TILE_SIZE-oY)*K,ts+1,ts+1);
+    });
+
+    // 7) 手繪紅線。路線通常正好貼著它跑，所以紅線要畫得比路線寬、
+    //    當成路線底下透出來的光暈，否則會被藍線整條蓋掉、勾了也看不見。
+    ctx.lineJoin=ctx.lineCap='round';
+    if(opt.draw){
+      ctx.strokeStyle='#ef4444';
+      ctx.lineWidth=(opt.route?15:5)*sc;
+      // 別用半透明：混到深色底圖後會暗成醬紅色，肉眼幾乎看不出來
+      ctx.globalAlpha=.9;
+      S.strokes.forEach(s=>{
+        ctx.beginPath();
+        s.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+        ctx.stroke();
+      });
+      ctx.globalAlpha=1;
+    }
+    // 8) 路線：藍色是照著圖案跑的，橘色虛線是筆畫之間的移動
+    if(opt.route){
+      S.result.segments.forEach(sg=>{
+        const draw=sg.kind==='draw';
+        ctx.strokeStyle=draw?'#38bdf8':'#f59e0b';
+        ctx.lineWidth=(draw?7:4)*sc;
+        ctx.setLineDash(draw?[]:[10*sc,9*sc]);
+        ctx.beginPath();
+        sg.pts.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+    // 9) 起終點
+    if(opt.marks){
+      const dot=(ll,fill)=>{
+        if(!ll) return;
+        const x=X(ll.lng),y=Y(ll.lat),r=9*sc;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+        ctx.fillStyle=fill;ctx.fill();
+        ctx.lineWidth=2.5*sc;ctx.strokeStyle='#fff';ctx.stroke();
+      };
+      dot(S.start,'#a855f7');dot(S.end,'#ec4899');
+    }
+    ctx.restore();
+
+    // 10) 比例尺
+    const cLat=(Math.min(...lats)+Math.max(...lats))/2;
+    const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
+    const NICE=[10,20,50,100,200,500,1000,2000,5000];
+    let barM=NICE[0];
+    for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
+    const barPx=barM/mPerPx, bx=26*sc, by=mapH-26*sc, tick=6*sc;
+    ctx.strokeStyle='rgba(0,0,0,.75)';ctx.lineWidth=6*sc;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
+    ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
+    ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2.5*sc;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
+    ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
+    ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();
+    const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
+    ctx.font=`500 ${Math.round(23*sc)}px ${F}`;ctx.textBaseline='alphabetic';
+    const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
+    ctx.lineWidth=4*sc;ctx.strokeStyle='rgba(0,0,0,.75)';
+    ctx.strokeText(barTxt,bx,by-12*sc);
+    ctx.fillStyle='#fff';ctx.fillText(barTxt,bx,by-12*sc);
+
+    // 11) 資訊欄
+    ctx.fillStyle='#14171c';ctx.fillRect(0,mapH,mapW,infoH);
+    ctx.fillStyle='#262b33';ctx.fillRect(0,mapH,mapW,Math.max(1,sc));
+    const pad=30*sc, top=mapH;
+    ctx.textBaseline='middle';
+    ctx.fillStyle='#6b7280';ctx.font=`500 ${Math.round(24*sc)}px ${F}`;
+    ctx.textAlign='left';ctx.fillText('RUNNING ART',pad,top+infoH*0.22);
+    ctx.textAlign='right';
+    ctx.fillText(localDate(),mapW-pad,top+infoH*0.22);
+
+    const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
+    const cells=[['距離',$('sDist').textContent],
+                 ['配速',pm+':'+String(ps).padStart(2,'0')+' /km'],
+                 ['預估時間',$('sTime').textContent]];
+    const cw=(mapW-pad*2)/3;
+    ctx.textAlign='left';
+    cells.forEach((c,n)=>{
+      const cx=pad+cw*n;
+      ctx.fillStyle='#8b929c';ctx.font=`400 ${Math.round(21*sc)}px ${F}`;
+      ctx.fillText(c[0],cx,top+infoH*0.55);
+      ctx.fillStyle='#e8eaed';ctx.font=`500 ${Math.round(42*sc)}px ${F}`;
+      ctx.fillText(c[1],cx,top+infoH*0.79);
+    });
+
+    // 12) 下載
+    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+    if(!blob) throw new Error('產生圖片失敗');
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='RunningArt_'+localDate()+'.png';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast('圖片已下載（'+mapW+'×'+(mapH+infoH)+'）',2200);
+  }catch(err){
+    toast('產生圖片失敗：'+err.message,3200);
+  }finally{ busy(''); }
+}
+$('aPng').onclick=()=>{ if(S.result) $('pngModal').hidden=false; };
+$('pngCancel').onclick=()=>{ $('pngModal').hidden=true; };
+$('pngGo').onclick=()=>{
+  $('pngModal').hidden=true;
+  exportPNG({route:$('pngRoute').checked,draw:$('pngDraw').checked,
+             marks:$('pngMarks').checked});
+};
+
 el.sheet.querySelector('.grip').onclick=()=>{S.sheetUp=false;el.sheet.classList.remove('up');refresh();};
+el.pill.onclick=()=>{
+  if(!S.result||S.sheetUp||S.editing) return;
+  S.sheetUp=true;el.sheet.classList.add('up');refresh();fitRoute();
+};
 
 function busy(t){const b=$('busy');if(t){$('busyTxt').textContent=t;b.classList.add('on');}else b.classList.remove('on');}
 Engine.setProgress(busy);
