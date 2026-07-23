@@ -7,9 +7,15 @@ const Engine = (() => {
                  'graphprep.py', 'routing.py', 'export.py'];
   // 演算法版本：更新 gpsart/ 後要一起改，否則瀏覽器會沿用快取的舊演算法
   const VERSION = '20260723a';
+  // 多台公用 Overpass 鏡像。全部「同時」發請求，誰先回誰贏（見 fetchOverpass）。
+  // 公用伺服器隨時可能塞車，靠並行競速而不是逐台等逾時，是降低失敗率的關鍵。
+  // 沒給 CORS 或連不上的鏡像會在競速中自然落敗，不影響其他台。
   const OVERPASS = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter',
   ];
 
   let py = null;
@@ -217,45 +223,125 @@ await micropip.install("shapely")
     return readyPromise;
   }
 
+  // ===== 已下載範圍的本地快取（IndexedDB）=====
+  // 下載成功的整份 Overpass JSON 存起來，之後只要新範圍「被某個已存範圍涵蓋」
+  // 就直接重用、完全不連網。使用者反覆測試同一區時特別有用（也能離線）。
+  const CACHE_DB = 'runart-maps', CACHE_STORE = 'areas', CACHE_MAX = 12;
+
+  function openCache() {
+    return new Promise((res, rej) => {
+      let r;
+      try { r = indexedDB.open(CACHE_DB, 1); }
+      catch (e) { return rej(e); }
+      r.onupgradeneeded = () => r.result.createObjectStore(CACHE_STORE, { keyPath: 'key' });
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  // 找一個 bbox 完全涵蓋 [s,w,n,e] 的已存範圍，回傳它的原始 JSON 文字
+  async function cacheFind(s, w, n, e) {
+    let db;
+    try { db = await openCache(); } catch (_) { return null; }
+    return new Promise((res) => {
+      const out = { hit: null };
+      const cur = db.transaction(CACHE_STORE).objectStore(CACHE_STORE).openCursor();
+      cur.onsuccess = () => {
+        const c = cur.result;
+        if (!c) { db.close(); return res(out.hit); }
+        const a = c.value;
+        if (a.s <= s && a.w <= w && a.n >= n && a.e >= e) { out.hit = a.raw; db.close(); return res(a.raw); }
+        c.continue();
+      };
+      cur.onerror = () => { db.close(); res(null); };
+    });
+  }
+  async function cachePut(s, w, n, e, raw) {
+    let db;
+    try { db = await openCache(); } catch (_) { return; }
+    try {
+      const tx = db.transaction(CACHE_STORE, 'readwrite');
+      const st = tx.objectStore(CACHE_STORE);
+      st.put({ key: `${s},${w},${n},${e}`, s, w, n, e, raw, ts: Date.now() });
+      // 超過上限就把最舊的刪掉，避免無限長大
+      st.getAll().onsuccess = (ev) => {
+        const all = ev.target.result || [];
+        if (all.length > CACHE_MAX) {
+          all.sort((x, y) => x.ts - y.ts).slice(0, all.length - CACHE_MAX)
+            .forEach(o => st.delete(o.key));
+        }
+      };
+      await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
+    } catch (_) { /* 快取失敗不影響主流程 */ }
+    finally { db.close(); }
+  }
+
+  // 同時向所有 Overpass 鏡像發請求，誰先成功就用誰的，其餘取消。
+  function fetchOverpass(query) {
+    const ctrls = OVERPASS.map(() => new AbortController());
+    const attempt = (url, i) => {
+      const timer = setTimeout(() => ctrls[i].abort(), 30000);
+      return fetch(url, { method: 'POST', body: query, signal: ctrls[i].signal })
+        .then(res => {
+          if (res.status === 429 || res.status === 504) throw new Error('忙碌 ' + res.status);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(text => {
+          if (!text || text.length < 200) throw new Error('空白');
+          // Overpass 「軟逾時」會回 HTTP 200 但 elements 為空、只帶一段 remark。
+          // 這種要當成失敗，讓競速去試別台，而不是收下空資料害後面建圖崩掉。
+          if (/"remark"\s*:\s*"[^"]*(timed out|runtime error)/i.test(text)) throw new Error('伺服器逾時');
+          if (!text.includes('"type":"node"')) throw new Error('無資料');
+          return text;
+        })
+        .finally(() => clearTimeout(timer));
+    };
+    // Promise.any：任一成功即回傳；全部失敗才 reject
+    return Promise.any(OVERPASS.map((u, i) => attempt(u, i)))
+      .then(text => { ctrls.forEach(c => c.abort()); return text; })
+      .catch(() => { throw new Error('所有伺服器都無回應'); });
+  }
+
   /* 下載指定範圍的路網，並完成前處理 */
   async function loadArea(s, w, n, e) {
     await boot();
-    const query = `[out:json][timeout:60];(way["highway"](${s},${w},${n},${e});>;);out body;`;
-    let raw = null, lastErr = null;
-    // 每台伺服器都要有逾時，否則 Overpass 忙碌時 fetch 會一直卡住、使用者只能重整
-    for (let i = 0; i < OVERPASS.length; i++) {
-      const url = OVERPASS[i];
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 45000);
-      try {
-        onProgress(i === 0 ? '下載路網…' : `主伺服器忙碌，改用備援 (${i + 1}/${OVERPASS.length})…`);
-        const res = await fetch(url, { method: 'POST', body: query, signal: ctrl.signal });
-        if (res.status === 429 || res.status === 504) throw new Error('伺服器忙碌 (' + res.status + ')');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        raw = await res.text();
-        if (raw && raw.length > 200) break;
-        raw = null;
-        throw new Error('回傳空白資料');
-      } catch (err) {
-        lastErr = err.name === 'AbortError' ? new Error('連線逾時') : err;
-      } finally {
-        clearTimeout(timer);
+
+    // 1) 先看本地快取有沒有涵蓋這個範圍的，有就完全不連網
+    let raw = await cacheFind(s, w, n, e), fromNet = false;
+    if (raw) {
+      onProgress('使用已下載的地圖…');
+    } else {
+      // 25 秒是「伺服器端」逾時，讓塞住的機器早點放棄、把機會讓給別台
+      const query = `[out:json][timeout:25];(way["highway"](${s},${w},${n},${e});>;);out body qt;`;
+      // 公用伺服器 504 常是暫時的，整輪競速失敗就短暫等一下再試一輪
+      for (let round = 0; round < 2 && !raw; round++) {
+        onProgress(round === 0 ? '下載路網（同時向多台伺服器請求）…' : '伺服器忙碌，重試中…');
+        try { raw = await fetchOverpass(query); }
+        catch (_) { if (round === 0) await new Promise(r => setTimeout(r, 1500)); }
       }
-    }
-    if (!raw) {
-      throw new Error('地圖下載失敗（' + (lastErr ? lastErr.message : '未知') +
-                      '）。Overpass 是免費公用伺服器，短時間內下載太多次會被限流，請等一兩分鐘再試，或縮小範圍。');
+      if (!raw) {
+        throw new Error('地圖下載失敗：目前公用伺服器（Overpass）都很忙碌。' +
+                        '請縮小範圍、或等一兩分鐘再試。已下載過的範圍會被記住，可以離線重用。');
+      }
+      fromNet = true;
     }
 
     onProgress('建立路網…');
     py.globals.set('raw_json', raw);
-    const stats = await py.runPythonAsync(`
+    // G0 空的時候不要呼叫 prepare_graph（它的 max(connected_components) 會炸），
+    // 改成回報 0 節點，讓下面丟出乾淨的錯誤訊息。
+    const stats = JSON.parse(await py.runPythonAsync(`
 data = json.loads(raw_json)
-G = prepare_graph(graph_from_overpass_json(data))
+G0 = graph_from_overpass_json(data)
+G = prepare_graph(G0) if G0.number_of_nodes() else G0
 json.dumps({'nodes': G.number_of_nodes(), 'edges': G.number_of_edges()})
-`);
+`));
     onProgress('');
-    return JSON.parse(stats);
+    if (!stats.nodes) {
+      throw new Error('這個範圍抓不到可跑的道路（伺服器可能回了空資料）。請換個地點、把範圍放大一點或稍後再試。');
+    }
+    if (fromNet) await cachePut(s, w, n, e, raw);   // 只快取「成功且非空」的結果
+    return stats;
   }
 
   /* 把手繪筆畫對齊到真實道路 */

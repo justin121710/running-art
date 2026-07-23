@@ -184,9 +184,17 @@ python selftest_algorithms.py baseline
    桌面版每次重新裁切一份新圖所以沒事，瀏覽器版重複用同一份會被上次污染、結果逐次劣化。
    → `engine.js` 裡固定 `Gw = G.copy()`。
 
-2. **Overpass 一定要有逾時**
-   沒逾時的話被限流時 fetch 會永遠卡住，畫面停在「下載路網…」只能重整。
-   → 每台伺服器 45 秒逾時 + 備援伺服器 + 明確錯誤訊息。
+2. **Overpass 下載策略**（公用伺服器很常塞車，這是最大的失敗來源）
+   - **並行競速**：`fetchOverpass()` 同時對 5 台鏡像發請求（`Promise.any`），
+     誰先成功用誰的、其餘 abort。不再逐台等 45 秒逾時。
+   - **辨識軟逾時**：Overpass 塞住時會回 HTTP 200 但 `elements` 為空、只帶一段
+     `remark`。這種要當失敗換別台，否則後面 `prepare_graph` 會炸
+     （`max(connected_components)` 遇空圖）。
+   - **本地快取（IndexedDB）**：下載成功的整份 JSON 存起來，之後新範圍只要
+     被某個已存範圍**涵蓋**就直接重用、完全不連網（也能離線）。
+     只快取「成功且非空」的結果，空資料不存。
+   - 查詢用 `[out:json][timeout:25]`（伺服器端逾時），塞住的機器早點放棄。
+   - 整輪競速失敗會短暫等一下再試第二輪；仍失敗給乾淨的中文錯誤，不是 traceback。
 
 3. **更新 `gpsart/` 要同時改 `engine.js` 的 `VERSION`**
    否則瀏覽器會沿用快取的舊演算法（`fetch('gpsart/x.py?v=VERSION')`）。
