@@ -2327,7 +2327,7 @@ def check_continuity(segments):
         print("[Connectivity Check] PASSED: Chain is continuous.")
         return True
 
-def reorder_closed_strokes(strokes, user_pos):
+def reorder_closed_strokes(strokes, user_pos, close_tol_m=None):
     """
     [Phase 49+54] Upstream Optimization: Rotate closed loops.
     [Phase 54 Update] Use Sequential Reference:
@@ -2359,7 +2359,9 @@ def reorder_closed_strokes(strokes, user_pos):
         
         final_s = s
         
-        if d_close < 0.00000015: # Is Closed Loop
+        # 閉合判定門檻：預設約 30m；可傳入 close_tol_m 依整體圖形大小調整
+        _close_thr = 0.00000015 if close_tol_m is None else (close_tol_m / 111000.0) ** 2
+        if d_close < _close_thr: # Is Closed Loop
              best_i = 0
              best_d = float('inf')
              
@@ -2395,7 +2397,7 @@ def reorder_closed_strokes(strokes, user_pos):
              
     return new_strokes
 
-def stitch_nearby_strokes(strokes, metas=None):
+def stitch_nearby_strokes(strokes, metas=None, tolerance_m=None):
     """
     [Phase 51] Auto-Connect Red Lines (Geometry + Metadata).
     If Head-Head, Head-Tail, Tail-Tail dist < 50m, merge them.
@@ -2424,7 +2426,8 @@ def stitch_nearby_strokes(strokes, metas=None):
     while merged:
         merged = False
         best_pair = None
-        min_d = 0.00000025 # ~50m squared
+        # 縫合門檻：預設約 50m；可傳入 tolerance_m 依整體圖形大小調整
+        min_d = 0.00000025 if tolerance_m is None else (tolerance_m / 111000.0) ** 2
         
         # O(N^2) greedy merge
         for i in range(len(pool)):

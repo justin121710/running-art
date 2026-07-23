@@ -80,6 +80,14 @@
   .stat{flex:1;background:#171b21;border-radius:11px;padding:11px}
   .stat span{display:block;font-size:11.5px;color:#8b929c;margin-bottom:3px}
   .stat b{font-size:19px;font-weight:500}
+  .prev{background:#171b21;border-radius:11px;padding:9px 11px;margin-bottom:10px}
+  .prow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .prow .lbl{font-size:12.5px;color:#8b929c}
+  .prow b{font-size:15px;font-weight:500;margin-left:auto}
+  .prow .unit{font-size:11.5px;color:#8b929c;min-width:34px;text-align:right}
+  .prow button{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid #262b33;
+    background:#0f1216;color:#e8eaed;font-size:13px;font-family:inherit;line-height:1}
+  #pvSlider{width:100%;margin:0;accent-color:#38bdf8}
   .pace{display:flex;align-items:center;gap:8px;background:#171b21;border-radius:11px;
     padding:8px 11px;margin-bottom:10px}
   .pace .lbl{font-size:12.5px;color:#8b929c}
@@ -169,6 +177,15 @@
     <div class="stat"><span>路線距離</span><b id="sDist">–</b></div>
     <div class="stat"><span>與圖形吻合</span><b id="sFit">–</b></div>
     <div class="stat"><span>預估時間</span><b id="sTime">–</b></div>
+  </div>
+  <div class="prev">
+    <div class="prow">
+      <span class="lbl">路線預覽</span>
+      <b id="pvAt">0.00 km</b>
+      <span class="unit" id="pvPct">0%</span>
+      <button id="pvPlay" aria-label="播放路線">▶</button>
+    </div>
+    <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
   </div>
   <div class="pace">
     <span class="lbl">配速</span>
@@ -345,10 +362,81 @@ $('btnUndo').onclick=()=>{const s=S.strokes.pop();if(s)s.line.remove();refresh()
 $('btnClear').onclick=()=>{
   S.strokes.forEach(s=>s.line.remove());S.strokes=[];
   if(routeLayer){routeLayer.remove();routeLayer=null;}
+  pvStop();[pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
+  pvDone=pvHead=pvArrows=null;S.path=null;
   S.generated=false;S.sheetUp=false;el.sheet.classList.remove('up');refresh();
 };
 
 /* ---------- 生成（原型：假資料） ---------- */
+/* ---------- 路線預覽（拉桿 + 方向） ---------- */
+let pvDone=null,pvHead=null,pvArrows=null,pvTimer=null;
+function pvBuild(res){
+  // 把所有分段串成一條連續路徑，並累計距離
+  S.path=[];
+  res.segments.forEach(sg=>sg.pts.forEach(p=>{
+    const last=S.path.length?S.path[S.path.length-1]:null;
+    if(!last||last[0]!==p[0]||last[1]!==p[1]) S.path.push(p);
+  }));
+  S.cum=[0];
+  for(let i=1;i<S.path.length;i++)
+    S.cum.push(S.cum[i-1]+map.distance(S.path[i-1],S.path[i]));
+  S.totalM=S.cum[S.cum.length-1]||0;
+
+  [pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
+  pvDone=L.polyline([],{color:'#f59e0b',weight:7,opacity:.95}).addTo(map);
+  pvHead=L.circleMarker(S.path[0],{radius:8,color:'#fff',weight:2.5,
+          fillColor:'#f59e0b',fillOpacity:1}).addTo(map);
+  // 沿線每隔一段放一個方向箭頭
+  const arrows=[],step=Math.max(120,S.totalM/14);
+  for(let d=step;d<S.totalM;d+=step){
+    const i=pvIndexAt(d);
+    if(i<1) continue;
+    const a=S.path[i-1],b=S.path[i];
+    const ang=Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI;
+    arrows.push(L.marker(b,{interactive:false,icon:L.divIcon({className:'',
+      iconSize:[16,16],iconAnchor:[8,8],
+      html:'<div style="transform:rotate('+(90-ang)+'deg);color:#38bdf8;font-size:15px;line-height:16px;text-align:center;text-shadow:0 0 3px #000">&#10148;</div>'})}));
+  }
+  pvArrows=L.layerGroup(arrows).addTo(map);
+  $('pvSlider').value=0; pvSet(0);
+}
+function pvIndexAt(dist){
+  let lo=0,hi=S.cum.length-1;
+  while(lo<hi){const mid=(lo+hi)>>1; if(S.cum[mid]<dist) lo=mid+1; else hi=mid;}
+  return lo;
+}
+function pvSet(frac){
+  if(!S.path||!S.path.length) return;
+  const target=S.totalM*frac;
+  const i=pvIndexAt(target);
+  const shown=S.path.slice(0,Math.max(i+1,1));
+  // 在最後一段上做內插，讓拉桿移動是連續的
+  let head=S.path[Math.max(i,0)];
+  if(i>0){
+    const seg=S.cum[i]-S.cum[i-1];
+    const t=seg>0?(target-S.cum[i-1])/seg:0;
+    const a=S.path[i-1],b=S.path[i];
+    head=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t];
+    shown[shown.length-1]=head;
+  }
+  pvDone.setLatLngs(shown);
+  pvHead.setLatLng(head);
+  $('pvAt').textContent=(target/1000).toFixed(2)+' km';
+  $('pvPct').textContent=Math.round(frac*100)+'%';
+}
+$('pvSlider').oninput=e=>{pvStop();pvSet(+e.target.value/1000);};
+function pvStop(){if(pvTimer){clearInterval(pvTimer);pvTimer=null;$('pvPlay').textContent='▶';}}
+$('pvPlay').onclick=()=>{
+  if(pvTimer){pvStop();return;}
+  if(+$('pvSlider').value>=1000) $('pvSlider').value=0;
+  $('pvPlay').textContent='⏸';
+  pvTimer=setInterval(()=>{
+    let v=+$('pvSlider').value+8;
+    if(v>=1000){v=1000;pvStop();}
+    $('pvSlider').value=v;pvSet(v/1000);
+  },40);
+};
+
 /* ---------- 配速（可調，會記住） ---------- */
 S.pace=parseFloat(localStorage.getItem('runart_pace'))||6;   // 分鐘/公里
 S.km=0;
@@ -396,6 +484,7 @@ $('btnGo').onclick=()=>{
       $('sDist').textContent=S.km.toFixed(2)+' km';
       $('sFit').textContent=Math.round(res.fit)+'%';
       paceUI();
+      pvBuild(res);
       S.generated=true;S.sheetUp=true;el.sheet.classList.add('up');refresh();
     })
     .catch(err=>{busy('');toast('生成失敗：'+err.message,3000);});

@@ -5,6 +5,8 @@
 const Engine = (() => {
   const FILES = ['__init__.py', 'config.py', 'geometry.py', 'graphutil.py',
                  'graphprep.py', 'routing.py', 'export.py'];
+  // 演算法版本：更新 gpsart/ 後要一起改，否則瀏覽器會沿用快取的舊演算法
+  const VERSION = '20260723a';
   const OVERPASS = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
@@ -32,7 +34,7 @@ await micropip.install("shapely")
       onProgress('載入演算法…');
       py.FS.mkdir('/gpsart');
       for (const f of FILES) {
-        const r = await fetch('gpsart/' + f);
+        const r = await fetch('gpsart/' + f + '?v=' + VERSION);
         if (!r.ok) throw new Error('讀不到 gpsart/' + f);
         py.FS.writeFile('/gpsart/' + f, new Uint8Array(await r.arrayBuffer()));
       }
@@ -41,7 +43,7 @@ import sys
 sys.path.insert(0, '/')
 import json, math
 from gpsart.graphprep import graph_from_overpass_json, prepare_graph
-from gpsart.routing import solve_route
+from gpsart.routing import solve_route, stitch_nearby_strokes, reorder_closed_strokes
 from gpsart.geometry import road_polyline_from_nodes, haversine
 from gpsart.graphutil import nearest_node
 G = None
@@ -105,6 +107,23 @@ strokes = json.loads(strokes_json)
 start = tuple(json.loads(start_json))
 end = tuple(json.loads(end_json))
 strokes = [[tuple(p) for p in s] for s in strokes if len(s) > 1]
+metas = [{'type': 'raw'} for _ in strokes]
+
+# 依「整體圖形大小」決定容許誤差：小圖用小門檻、大圖用大門檻，
+# 才不會小圖被亂縫、大圖又縫不起來。取整體對角線的 4%，夾在 15~120m。
+_all = [p for s in strokes for p in s]
+if _all:
+    _lat = [p[0] for p in _all]; _lon = [p[1] for p in _all]
+    _diag = haversine(min(_lat), min(_lon), max(_lat), max(_lon))
+    TOL = max(15.0, min(120.0, _diag * 0.04))
+else:
+    TOL = 50.0
+
+# 1) 把「畫斷掉但很近」「交錯但很近」的筆畫視為同一筆接起來
+strokes, metas = stitch_nearby_strokes(strokes, metas=metas, tolerance_m=TOL)
+# 2) 閉合圖形（例如圓）旋轉起點，讓它從「離使用者起點最近的地方」開始畫，
+#    而不是從當初下筆的那個隨機位置開始
+strokes = reorder_closed_strokes(strokes, start, close_tol_m=TOL)
 metas = [{'type': 'raw'} for _ in strokes]
 
 # 重要：route_in_corridor 會永久調高走過的邊的 travel_weight（避免重複走）。
