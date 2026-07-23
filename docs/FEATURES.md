@@ -102,6 +102,15 @@
 **解法**：單次捷徑最多只能跳過整條路徑的 1/4（`span_cap`）。
 截彎取直是要修掉局部繞路，不該把使用者畫的形狀本身抹掉。
 
+**這個修正一度沒有測試守護**（2026-07-23 補上）。原本的 `advanced_shortcut` 指標
+餵的是兩點間的最短路徑，本來就沒有彎可截，輸入輸出都是 54 ——
+`span_cap` 改壞了也看不出來。新增的 `ring_shortcut` 才測得到，
+而且**半徑要選對**：崩塌只在「路徑長度和 `lookahead` 相當」時發生。
+
+> 實測（fixture 路網，`lookahead=50`，與 `solve_route` 內部一致）：
+> 220m 的圓接成 50 節點 → **無 `span_cap` 被抄成 1 個，有 `span_cap` 完整保留 50**。
+> 380m 的圓是 110 節點，兩版都輸出 85 —— 太長，`span_cap` 咬不到，測不出差別。
+
 ### 3.6 起終點會跑去接筆畫的頭尾
 
 **成因**：瀏覽器版接引擎時，漏掉了桌面版原本就有的兩個前處理。
@@ -163,19 +172,10 @@ Tkinter。功能完整但介面傳統，將被瀏覽器版取代。
 | PWA（加到主畫面） | 未做 |
 | 路口節點合併 | **停用中**（`CONSOLIDATE_TOLERANCE_M = 0`），詳見 ARCHITECTURE.md |
 | Overpass 限流 | 免費公用伺服器，短時間多次下載會被限流（已加逾時與備援） |
-| 桌面版 GUI | 仍是單一 3500 行檔案，未模組化 |
-| **根目錄 `gpsart/` 落後** | ⚠️ 見下方 |
+| 桌面版 GUI | 仍是單一 3500 行檔案，未模組化（已不再維護，見下） |
 
-### ⚠️ 根目錄 `gpsart/routing.py` 沒有 3.5 的修正
+### 專注網頁版（2026-07-23 起）
 
-`web_prototype/gpsart/` 與 `deploy/gpsart/` 兩份一致，但**根目錄那份落後**，少了：
-
-- `advanced_shortcut_optimizer` 的 `span_cap`（3.5 閉合圖形被整圈抄掉的修正）
-- `stitch_nearby_strokes` / `reorder_closed_strokes` 的 `tolerance_m` / `close_tol_m` 參數（3.6）
-
-也就是**桌面版目前仍帶著「畫圓被縮成 1 個節點」的 bug**，
-而且 `selftest_algorithms.py` 跑的是根目錄那份，所以現在的 `baseline.json`
-是在**未修正**的版本上建立的。
-
-補的時候要留意：把 span_cap 補進根目錄會**刻意改變行為**，
-基準測試會報不同，確認新結果正確後要跑 `python selftest_algorithms.py baseline` 更新基準。
+桌面版 `GPS_ART_vFINAL.py` **不再維護**，開發集中在網頁版。
+`gpsart/` 三份副本已對齊成同一份（根目錄那份原本落後，缺 3.5 的 `span_cap`
+與 3.6 的容差參數），所以基準測試守護的就是線上版實際在跑的程式碼。

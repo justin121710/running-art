@@ -41,11 +41,17 @@ config ← geometry ← graphutil ← graphprep ← routing
 python selftest_algorithms.py compare
 ```
 
-會用固定路網跑 **28 項指標**（幾何、前處理、每個清理演算法、走廊尋路、
+會用固定路網跑 **30 項指標**（幾何、前處理、每個清理演算法、走廊尋路、
 端對端 `solve_route`、GPX 點數）與基準值比對。輸出「行為未改變」才算安全。
 
 **這是必要的安全網**——這個專案曾經因為沒有測試而發生兩次回歸
 （一次路徑覆蓋率掉到 1/3，一次路線連到地圖邊界外）。
+
+⚠️ **但要記得安全網也會有洞**：`advanced_shortcut` 這一項餵的是最短路徑，
+本來就沒有彎可截（輸入輸出都是 54），所以它其實**測不到**截彎取直的行為。
+閉合圖形崩塌那個最嚴重的 bug 因此一度完全沒有守護，
+後來補上 `ring_shortcut` 才測得到（見 FEATURES.md 3.5）。
+加新指標時值得問一句：**這個輸入真的會觸發我想守護的那段邏輯嗎？**
 
 若是**刻意**要改變行為，確認新結果正確後再更新基準：
 ```bash
@@ -209,6 +215,10 @@ cd deploy && git add -A && git commit -m "更新" && git push
 ---
 
 ## 八、開發流程建議
+
+**桌面版 `GPS_ART_vFINAL.py` 已不再維護**（2026-07-23 起專注網頁版）。
+`gpsart/` 三份副本現在完全一致，所以基準測試守護的就是線上版實際在跑的程式碼——
+這是刻意維持的，別讓它們再度分岔。
 
 1. 改 `gpsart/` → 跑 `python selftest_algorithms.py compare`
 2. 同步到兩個位置：`web_prototype/gpsart/` 與 `deploy/gpsart/`
