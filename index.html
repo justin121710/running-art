@@ -12,6 +12,8 @@
     background:#0d0f12;color:#e8eaed}
   #map{position:absolute;inset:0;background:#0d0f12}
   .leaflet-container{background:#0d0f12}
+  /* CARTO dark_all 的道路偏暗，提亮讓街道看得清楚 */
+  .leaflet-tile-pane{filter:brightness(1.5) contrast(1.04)}
 
   /* ---- 頂部 ---- */
   .top{position:absolute;top:0;left:0;right:0;z-index:500;padding:10px 12px;
@@ -124,6 +126,14 @@
   .sw input{width:19px;height:19px;flex:none;accent-color:#2563eb;margin:0}
   .sw span{font-size:13.5px;display:flex;flex-direction:column;gap:2px}
   .sw i{font-style:normal;font-size:11.5px;color:#8b929c}
+  .rlabel{font-size:11.5px;color:#8b929c;margin:2px 2px 6px}
+  .ratios{display:flex;gap:6px;margin-bottom:12px}
+  .rt{flex:1;background:#171b21;border:1px solid #262b33;border-radius:11px;
+    color:#c9cdd3;font-size:14px;font-weight:500;font-family:inherit;padding:9px 2px;
+    display:flex;flex-direction:column;align-items:center;gap:3px}
+  .rt i{font-style:normal;font-size:10.5px;color:#8b929c;font-weight:400}
+  .rt.on{background:#2563eb;border-color:#2563eb;color:#fff}
+  .rt.on i{color:rgba(255,255,255,.82)}
   .mact{display:flex;gap:8px;margin-top:14px}
   .mact button{flex:1;padding:11px;border-radius:11px;font-size:13.5px;font-family:inherit;
     font-weight:500;border:1px solid #262b33;background:#171b21;color:#e8eaed}
@@ -272,8 +282,17 @@
 <div class="modal" id="pngModal" hidden>
   <div class="mbox">
     <div class="mtitle">匯出圖片</div>
+    <div class="rlabel">比例</div>
+    <div class="ratios">
+      <button class="rt on" data-ratio="1:1">1:1<i>正方形</i></button>
+      <button class="rt" data-ratio="4:5">4:5<i>直式貼文</i></button>
+      <button class="rt" data-ratio="9:16">9:16<i>限時動態</i></button>
+    </div>
+    <div class="rlabel">圖層</div>
     <label class="sw"><input type="checkbox" id="pngRoute" checked>
       <span>路線<i>生成出來的藍色與橘色線</i></span></label>
+    <label class="sw"><input type="checkbox" id="pngArrows" checked>
+      <span>方向箭頭<i>沿路線標示前進方向</i></span></label>
     <label class="sw"><input type="checkbox" id="pngDraw">
       <span>我畫的紅線<i>原始手繪圖案</i></span></label>
     <label class="sw"><input type="checkbox" id="pngMarks" checked>
@@ -539,7 +558,7 @@ function pvBuild(res){
     if(dir===null) continue;
     arrows.push(L.marker(S.path[i],{interactive:false,icon:L.divIcon({className:'',
       iconSize:[16,16],iconAnchor:[8,8],
-      html:'<div style="transform:rotate('+dir+'deg);color:#38bdf8;font-size:15px;line-height:16px;text-align:center;text-shadow:0 0 3px #000">&#10148;</div>'})}));
+      html:'<div style="transform:rotate('+dir+'deg);color:#fde047;font-size:17px;line-height:16px;text-align:center;text-shadow:0 0 2px #000,0 0 4px #000">&#10148;</div>'})}));
   }
   pvArrows=L.layerGroup(arrows).addTo(map);
   $('pvSlider').value=0; pvSet(0);
@@ -823,8 +842,9 @@ $('aGpx').onclick=()=>{
    所以 canvas 不會被污染，可以 toBlob 下載）。不依賴任何額外函式庫。 */
 const TILE_HOSTS=['a','b','c','d'];
 const TILE_SIZE=256;          // 一個 tile 代表的「世界像素」
-const OUT_LONG_EDGE=1080;     // 地圖區最長邊
-const INFO_H=200;             // 底部資訊欄高度（以 1080 寬為基準）
+const INFO_H=200;             // 底部資訊欄高度（寬固定 1080）
+// 社群媒體常見比例。寬一律 1080，資訊欄固定在最底部，地圖區 = 寬 × (高−資訊欄)。
+const PNG_RATIOS={'1:1':[1080,1080],'4:5':[1080,1350],'9:16':[1080,1920]};
 
 /* 本地日期。toISOString() 是 UTC，台灣 +8 在半夜會退成前一天，
    檔名和圖上日期都會顯示昨天。 */
@@ -851,7 +871,12 @@ function loadTile(z,x,y,i){
 async function exportPNG(opt){
   busy('產生圖片…');
   try{
-    // 1) 要涵蓋的範圍
+    const [W,H]=PNG_RATIOS[opt.ratio]||PNG_RATIOS['1:1'];
+    const sc=W/1080;                   // 寬固定 1080，sc=1；保留以便日後改寬
+    const infoH=INFO_H;
+    const mapW=W, mapH=H-infoH;        // 地圖區；資訊欄固定在最底部
+
+    // 1) 要涵蓋的地理範圍
     const pts=[];
     if(opt.route) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
     if(opt.draw)  S.strokes.forEach(s=>s.pts.forEach(p=>pts.push([p.lat,p.lng])));
@@ -862,68 +887,56 @@ async function exportPNG(opt){
     }
     const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
 
-    // 2) 一律在「世界像素」裡算，避免經緯度在 Mercator 上比例被拉伸
-    let x0=lonToWorld(Math.min(...lons),0), x1=lonToWorld(Math.max(...lons),0);
-    let y0=latToWorld(Math.max(...lats),0), y1=latToWorld(Math.min(...lats),0);
-    const mx=Math.max((x1-x0)*0.09,1e-6), my=Math.max((y1-y0)*0.09,1e-6);
-    x0-=mx;x1+=mx;y0-=my;y1+=my;
+    // 2) 在「世界像素(z0)」裡算，避免經緯度在 Mercator 上被拉伸
+    const wx0=lonToWorld(Math.min(...lons),0), wx1=lonToWorld(Math.max(...lons),0);
+    const wy0=latToWorld(Math.max(...lats),0), wy1=latToWorld(Math.min(...lats),0);
+    const cx=(wx0+wx1)/2, cy=(wy0+wy1)/2;
+    const dx=Math.max(wx1-wx0,1e-9)*1.16, dy=Math.max(wy1-wy0,1e-9)*1.16;  // 8% 邊界
 
-    // 3) 比例夾在 0.62~1.62 之間：極端細長的圖案不要變成一條縫
-    let dx=x1-x0, dy=y1-y0;
-    const AR_MIN=0.62, AR_MAX=1.62;
-    if(dx/dy>AR_MAX){const need=dx/AR_MAX,c=(y0+y1)/2;y0=c-need/2;y1=c+need/2;}
-    else if(dx/dy<AR_MIN){const need=dy*AR_MIN,c=(x0+x1)/2;x0=c-need/2;x1=c+need/2;}
-    dx=x1-x0;dy=y1-y0;
-
-    // 4) 畫布尺寸：依路線形狀，最長邊 1080
-    const mapW=Math.round(dx>=dy?OUT_LONG_EDGE:OUT_LONG_EDGE*dx/dy);
-    const mapH=Math.round(dx>=dy?OUT_LONG_EDGE*dy/dx:OUT_LONG_EDGE);
-    const sc=mapW/1080;                       // 直式圖字要跟著縮
-    const infoH=Math.round(INFO_H*Math.max(sc,0.62));
-
-    // 5) 選 zoom。@2x 的 tile 影像是 512px 卻只代表 256 世界像素，
-    //    所以 K=2 時剛好 1:1 最清晰；向上取整讓 K<=2（縮小繪製不會糊）。
-    let z=Math.ceil(Math.log2(mapW/(2*dx)));
-    z=Math.max(1,Math.min(19,z));
-    const K=mapW/(dx*Math.pow(2,z));
-    const oX=x0*Math.pow(2,z), oY=y0*Math.pow(2,z);
-    const X=lon=>(lonToWorld(lon,z)-oX)*K;
-    const Y=lat=>(latToWorld(lat,z)-oY)*K;
+    // 3) 把路線「置中」塞進地圖區：保留路線真實比例，四周由底圖填滿。
+    //    比例是固定的（1:1／4:5／9:16），所以路線不會被壓扁，只是留白多寡不同。
+    const s=Math.min(mapW/dx, mapH/dy)*0.9;    // canvas px / z0世界px；0.9 留邊
+    const z=Math.max(1,Math.min(19,Math.floor(Math.log2(s))));
+    const K=s/Math.pow(2,z);                    // 落在 [1,2)，@2x tile 縮小繪製最清晰
+    const cxZ=cx*Math.pow(2,z), cyZ=cy*Math.pow(2,z);
+    const X=lon=>mapW/2+(lonToWorld(lon,z)-cxZ)*K;
+    const Y=lat=>mapH/2+(latToWorld(lat,z)-cyZ)*K;
 
     const cv=document.createElement('canvas');
-    cv.width=mapW;cv.height=mapH+infoH;
+    cv.width=W;cv.height=H;
     const ctx=cv.getContext('2d');
-    ctx.fillStyle='#0d0f12';ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle='#0d0f12';ctx.fillRect(0,0,W,H);
 
-    // 6) 底圖
-    const tx0=Math.floor(oX/TILE_SIZE), tx1=Math.floor((oX+mapW/K)/TILE_SIZE);
-    const ty0=Math.floor(oY/TILE_SIZE), ty1=Math.floor((oY+mapH/K)/TILE_SIZE);
-    const jobs=[];let i=0;
-    for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:i++});
-    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i)));
+    // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）
     ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
+    const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
+    const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
+    const jobs=[];let ji=0;
+    for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:ji++});
+    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i)));
     const ts=TILE_SIZE*K;
+    ctx.filter='brightness(1.5) contrast(1.04)';
     jobs.forEach((j,n)=>{
       if(!imgs[n]) return;
-      ctx.drawImage(imgs[n],(j.tx*TILE_SIZE-oX)*K,(j.ty*TILE_SIZE-oY)*K,ts+1,ts+1);
+      ctx.drawImage(imgs[n], mapW/2+(j.tx*TILE_SIZE-cxZ)*K, mapH/2+(j.ty*TILE_SIZE-cyZ)*K, ts+1, ts+1);
     });
+    ctx.filter='none';
 
-    // 7) 手繪紅線。路線通常正好貼著它跑，所以紅線要畫得比路線寬、
+    // 5) 手繪紅線。路線通常正好貼著它跑，所以紅線要畫得比路線寬、
     //    當成路線底下透出來的光暈，否則會被藍線整條蓋掉、勾了也看不見。
     ctx.lineJoin=ctx.lineCap='round';
     if(opt.draw){
       ctx.strokeStyle='#ef4444';
       ctx.lineWidth=(opt.route?15:5)*sc;
-      // 別用半透明：混到深色底圖後會暗成醬紅色，肉眼幾乎看不出來
-      ctx.globalAlpha=.9;
-      S.strokes.forEach(s=>{
+      ctx.globalAlpha=.9;   // 別用半透明會暗成醬紅色，這裡只是壓一點點
+      S.strokes.forEach(st=>{
         ctx.beginPath();
-        s.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+        st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
         ctx.stroke();
       });
       ctx.globalAlpha=1;
     }
-    // 8) 路線：藍色是照著圖案跑的，橘色虛線是筆畫之間的移動
+    // 6) 路線：藍色是照著圖案跑的，橘色虛線是筆畫之間的移動
     if(opt.route){
       S.result.segments.forEach(sg=>{
         const draw=sg.kind==='draw';
@@ -936,7 +949,40 @@ async function exportPNG(opt){
       });
       ctx.setLineDash([]);
     }
-    // 9) 起終點
+    // 7) 方向箭頭：沿整條路線（含筆畫間的連接虛線）標示前進方向，可由選項關閉。
+    //    角度直接用 canvas 座標算（已是螢幕座標，不必再處理 Mercator）。
+    if(opt.arrows){
+      const path=[];
+      S.result.segments.forEach(sg=>sg.pts.forEach(p=>{
+        const last=path.length?path[path.length-1]:null;
+        if(!last||last[0]!==p[0]||last[1]!==p[1]) path.push(p);
+      }));
+      if(path.length>=2){
+        const cum=[0];
+        for(let i=1;i<path.length;i++) cum.push(cum[i-1]+map.distance(path[i-1],path[i]));
+        const total=cum[cum.length-1]||0;
+        const idxAt=dd=>{let lo=0,hi=cum.length-1;while(lo<hi){const m=(lo+hi)>>1;cum[m]<dd?lo=m+1:hi=m;}return lo;};
+        const at=dd=>{const i=idxAt(dd);if(i<1)return path[0];
+          const seg=cum[i]-cum[i-1],t=seg>0?(dd-cum[i-1])/seg:0,a=path[i-1],b=path[i];
+          return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];};
+        const step=Math.max(80,total/16);
+        const asz=15*sc;
+        for(let d=step;d<total;d+=step){
+          const c=at(d), a=at(Math.max(0,d-14)), b=at(Math.min(total,d+14));
+          const ax=X(a[1]),ay=Y(a[0]),bx=X(b[1]),by=Y(b[0]);
+          if(ax===bx&&ay===by) continue;
+          ctx.save();
+          ctx.translate(X(c[1]),Y(c[0]));ctx.rotate(Math.atan2(by-ay,bx-ax));
+          ctx.beginPath();
+          ctx.moveTo(-asz*0.5,-asz*0.72);ctx.lineTo(asz*0.72,0);ctx.lineTo(-asz*0.5,asz*0.72);
+          ctx.closePath();
+          ctx.lineJoin='round';ctx.strokeStyle='rgba(8,8,8,.9)';ctx.lineWidth=3.5*sc;ctx.stroke();
+          ctx.fillStyle='#fde047';ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+    // 8) 起終點
     if(opt.marks){
       const dot=(ll,fill)=>{
         if(!ll) return;
@@ -949,7 +995,7 @@ async function exportPNG(opt){
     }
     ctx.restore();
 
-    // 10) 比例尺
+    // 9) 比例尺
     const cLat=(Math.min(...lats)+Math.max(...lats))/2;
     const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
     const NICE=[10,20,50,100,200,500,1000,2000,5000];
@@ -1008,12 +1054,17 @@ async function exportPNG(opt){
     toast('產生圖片失敗：'+err.message,3200);
   }finally{ busy(''); }
 }
+let pngRatio='1:1';
+document.querySelectorAll('.rt').forEach(b=>b.onclick=()=>{
+  pngRatio=b.dataset.ratio;
+  document.querySelectorAll('.rt').forEach(x=>x.classList.toggle('on',x===b));
+});
 $('aPng').onclick=()=>{ if(S.result) $('pngModal').hidden=false; };
 $('pngCancel').onclick=()=>{ $('pngModal').hidden=true; };
 $('pngGo').onclick=()=>{
   $('pngModal').hidden=true;
-  exportPNG({route:$('pngRoute').checked,draw:$('pngDraw').checked,
-             marks:$('pngMarks').checked});
+  exportPNG({ratio:pngRatio,route:$('pngRoute').checked,arrows:$('pngArrows').checked,
+             draw:$('pngDraw').checked,marks:$('pngMarks').checked});
 };
 
 el.sheet.querySelector('.grip').onclick=()=>{S.sheetUp=false;el.sheet.classList.remove('up');refresh();};
