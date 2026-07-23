@@ -102,6 +102,13 @@
     padding:15px 20px;font-size:13.5px;text-align:center;opacity:0;
     transition:opacity .2s;pointer-events:none}
   .toast.show{opacity:1}
+  .busy{position:absolute;top:0;left:0;right:0;z-index:800;display:none;
+    align-items:center;gap:9px;justify-content:center;padding:10px;
+    background:rgba(13,15,18,.94);border-bottom:1px solid #262b33;font-size:13px}
+  .busy.on{display:flex}
+  .spin{width:14px;height:14px;border:2px solid #2563eb;border-top-color:transparent;
+    border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
   .box{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.14);
     z-index:450;pointer-events:none;border-radius:4px}
 </style>
@@ -177,8 +184,11 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="busy" id="busy"><div class="spin"></div><span id="busyTxt"></span></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="engine.js"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
@@ -297,14 +307,16 @@ mc.addEventListener('pointerup',e=>{
       S.boxing=false;$('btnDl').classList.remove('on');
       const km=(map.distance(bounds.getNorthWest(),bounds.getNorthEast())/1000)
              *(map.distance(bounds.getNorthWest(),bounds.getSouthWest())/1000);
-      toast('下載中… 約 '+Math.round(7+3.5*km)+' 秒',1200);
-      setTimeout(()=>{
-        S.hasMap=true;S.bounds=bounds;
-        showArea(bounds);
-        $('dlLabel').textContent=km.toFixed(1)+' km²';
-        ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=false);
-        toast('地圖已載入，只能在框內畫圖');setMode('draw');refresh();
-      },1200);
+      $('dlLabel').textContent='下載中…';
+      Engine.loadArea(bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast())
+        .then(st=>{
+          S.hasMap=true;S.bounds=bounds;
+          showArea(bounds);
+          $('dlLabel').textContent=km.toFixed(1)+' km²';
+          ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=false);
+          toast('路網已載入（'+st.nodes+' 個路口）');setMode('draw');refresh();
+        })
+        .catch(err=>{busy('');$('dlLabel').textContent='下載地圖';toast(err.message,3000);});
     }
     return;
   }
@@ -337,25 +349,6 @@ $('btnClear').onclick=()=>{
 };
 
 /* ---------- 生成（原型：假資料） ---------- */
-$('btnGo').onclick=()=>{
-  toast('計算中…',900);
-  setTimeout(()=>{
-    if(routeLayer) routeLayer.remove();
-    const segs=S.strokes.map(s=>s.pts.map((p,i)=>{
-      const j=(i%5)/5*0.00012;   // 假裝吸附到道路，微微偏移
-      return [p.lat+j,p.lng-j];
-    }));
-    routeLayer=L.layerGroup(segs.map(p=>L.polyline(p,{color:'#38bdf8',weight:6,opacity:.95}))).addTo(map);
-    S.strokes.forEach(s=>s.line.setStyle({opacity:.28,weight:3}));
-    let d=0;for(const s of S.strokes)for(let i=1;i<s.pts.length;i++)d+=map.distance(s.pts[i-1],s.pts[i]);
-    d*=1.18;
-    S.km=d/1000;
-    $('sDist').textContent=S.km.toFixed(2)+' km';
-    $('sFit').textContent='92%';
-    paceUI();
-    S.generated=true;S.sheetUp=true;el.sheet.classList.add('up');refresh();
-  },900);
-};
 /* ---------- 配速（可調，會記住） ---------- */
 S.pace=parseFloat(localStorage.getItem('runart_pace'))||6;   // 分鐘/公里
 S.km=0;
@@ -366,10 +359,10 @@ function paceName(p){
   return '快走';
 }
 function paceUI(){
-  const m=Math.floor(S.pace), s=Math.round((S.pace-m)*60);
-  $('pVal').textContent=m+':'+String(s).padStart(2,'0');
+  const m=Math.floor(S.pace), sec=Math.round((S.pace-m)*60);
+  $('pVal').textContent=m+':'+String(sec).padStart(2,'0');
   $('pHint').textContent=paceName(S.pace);
-  const t=S.km*S.pace;                       // 分鐘
+  const t=S.km*S.pace;
   let txt='–';
   if(S.km){
     if(t<60) txt=Math.round(t)+' 分';
@@ -385,9 +378,44 @@ $('pDn').onclick=()=>{S.pace=Math.min(15,+(S.pace+0.5).toFixed(1));paceUI();};
 $('pUp').onclick=()=>{S.pace=Math.max(3,+(S.pace-0.5).toFixed(1));paceUI();};
 paceUI();
 
-$('aGpx').onclick=()=>toast('已下載 Run_0722.gpx');
+/* ---------- 生成（真實運算） ---------- */
+$('btnGo').onclick=()=>{
+  const strokes=S.strokes.map(s=>s.pts.map(p=>[p.lat,p.lng]));
+  Engine.generate(strokes,[S.start.lat,S.start.lng],[S.end.lat,S.end.lng])
+    .then(res=>{
+      if(routeLayer) routeLayer.remove();
+      routeLayer=L.layerGroup(res.segments.map(sg=>L.polyline(sg.pts,{
+        color: sg.kind==='draw' ? '#38bdf8' : '#9aa4b2',
+        weight: sg.kind==='draw' ? 6 : 3,
+        opacity:.95,
+        dashArray: sg.kind==='draw' ? null : '6 6'
+      }))).addTo(map);
+      S.strokes.forEach(s=>s.line.setStyle({opacity:.25,weight:3}));
+      S.result=res;
+      S.km=res.total_m/1000;
+      $('sDist').textContent=S.km.toFixed(2)+' km';
+      $('sFit').textContent=Math.round(res.fit)+'%';
+      paceUI();
+      S.generated=true;S.sheetUp=true;el.sheet.classList.add('up');refresh();
+    })
+    .catch(err=>{busy('');toast('生成失敗：'+err.message,3000);});
+};
+$('aGpx').onclick=()=>{
+  if(!S.result) return;
+  const blob=new Blob([Engine.toGPX(S.result.segments)],{type:'application/gpx+xml'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='RunningArt_'+new Date().toISOString().slice(0,10)+'.gpx';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('GPX 已下載');
+};
 $('aEdit').onclick=()=>toast('開啟路徑微調（尚未實作）');
 el.sheet.querySelector('.grip').onclick=()=>{S.sheetUp=false;el.sheet.classList.remove('up');refresh();};
+
+function busy(t){const b=$('busy');if(t){$('busyTxt').textContent=t;b.classList.add('on');}else b.classList.remove('on');}
+Engine.setProgress(busy);
+Engine.boot().then(()=>toast('運算引擎已就緒')).catch(e=>toast('引擎載入失敗：'+e.message,3000));
 
 setMode('pan');guide();refresh();
 </script>
