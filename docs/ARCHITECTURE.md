@@ -185,11 +185,18 @@ python selftest_algorithms.py baseline
    → `engine.js` 裡固定 `Gw = G.copy()`。
 
 2. **Overpass 下載策略**（公用伺服器很常塞車，這是最大的失敗來源）
-   - **並行競速**：`fetchOverpass()` 同時對 5 台鏡像發請求（`Promise.any`），
+   - **並行競速**：`fetchOverpass()` 同時對 6 台鏡像發請求（`Promise.any`），
      誰先成功用誰的、其餘 abort。不再逐台等 45 秒逾時。
-   - **辨識軟逾時**：Overpass 塞住時會回 HTTP 200 但 `elements` 為空、只帶一段
+     實測能用的鏡像：`z.overpass-api.de`、`maps.mail.ru`、`kumi`、主 `overpass-api.de`、
+     `lz4.overpass-api.de`、`private.coffee`。
+     ⚠️ **`overpass.osm.ch` 是瑞士專用站**，台灣會回 200 但空資料，別加。
+   - **辨識軟逾時／空回應**：Overpass 塞住時會回 HTTP 200 但 `elements` 為空、只帶一段
      `remark`。這種要當失敗換別台，否則後面 `prepare_graph` 會炸
      （`max(connected_components)` 遇空圖）。
+   - ⚠️ **驗證回應要容許空白**：Overpass JSON 是排版過的，冒號後有空格
+     （`"type": "node"`）。驗證若寫成 `includes('"type":"node"')`（無空格）
+     會把**每一筆真實回應**都誤判成空、導致所有下載失敗（踩過一次）。用
+     `/"type"\s*:\s*"(node|way)"/`。
    - **本地快取（IndexedDB）**：下載成功的整份 JSON 存起來，之後新範圍只要
      被某個已存範圍**涵蓋**就直接重用、完全不連網（也能離線）。
      只快取「成功且非空」的結果，空資料不存。

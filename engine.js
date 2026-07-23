@@ -12,11 +12,13 @@ const Engine = (() => {
   // 沒給 CORS 或連不上的鏡像會在競速中自然落敗，不影響其他台。
   const OVERPASS = [
     'https://overpass-api.de/api/interpreter',
+    'https://z.overpass-api.de/api/interpreter',    // de 叢集另一個節點，常常這台通、主台塞
+    'https://lz4.overpass-api.de/api/interpreter',   // de 叢集第三個節點
     'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',  // 實測穩定、有全球資料
     'https://overpass.private.coffee/api/interpreter',
-    'https://overpass.osm.ch/api/interpreter',
-    'https://overpass.openstreetmap.ru/api/interpreter',
   ];
+  // 註：overpass.osm.ch 是瑞士專用站，台灣會回空資料，別加。
 
   let py = null;
   let readyPromise = null;
@@ -291,7 +293,10 @@ await micropip.install("shapely")
           // Overpass 「軟逾時」會回 HTTP 200 但 elements 為空、只帶一段 remark。
           // 這種要當成失敗，讓競速去試別台，而不是收下空資料害後面建圖崩掉。
           if (/"remark"\s*:\s*"[^"]*(timed out|runtime error)/i.test(text)) throw new Error('伺服器逾時');
-          if (!text.includes('"type":"node"')) throw new Error('無資料');
+          // ⚠️ Overpass JSON 是「排版過的」，冒號後面有空格（"type": "node"）。
+          //    千萬不能寫成 includes('"type":"node"')，那會把每一筆真實回應都誤判成空、
+          //    導致所有下載都失敗（前一版就踩了這個雷）。用容許空白的 regex。
+          if (!/"type"\s*:\s*"(node|way)"/.test(text)) throw new Error('無資料');
           return text;
         })
         .finally(() => clearTimeout(timer));

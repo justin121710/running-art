@@ -310,7 +310,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
-<script src="engine.js?v=20260724b"></script>
+<script src="engine.js?v=20260724c"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
@@ -842,9 +842,34 @@ $('aGpx').onclick=()=>{
    所以 canvas 不會被污染，可以 toBlob 下載）。不依賴任何額外函式庫。 */
 const TILE_HOSTS=['a','b','c','d'];
 const TILE_SIZE=256;          // 一個 tile 代表的「世界像素」
-const INFO_H=200;             // 底部資訊欄高度（寬固定 1080）
+const INFO_H=250;             // 底部資訊欄高度（寬固定 1080）
 // 社群媒體常見比例。寬一律 1080，資訊欄固定在最底部，地圖區 = 寬 × (高−資訊欄)。
 const PNG_RATIOS={'1:1':[1080,1080],'4:5':[1080,1350],'9:16':[1080,1920]};
+
+/* 反向地理編碼：把座標變成「中山區, 台北市」。用 OSM 的 Nominatim（有 CORS）。
+   結果快取在記憶體，失敗就回空字串、不影響出圖。 */
+const _placeCache={};
+async function getPlaceName(lat,lon){
+  const key=lat.toFixed(3)+','+lon.toFixed(3);
+  if(key in _placeCache) return _placeCache[key];
+  try{
+    const ctrl=new AbortController();const tm=setTimeout(()=>ctrl.abort(),7000);
+    const u='https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14'+
+            '&accept-language=zh-TW&lat='+lat+'&lon='+lon;
+    const r=await fetch(u,{signal:ctrl.signal});clearTimeout(tm);
+    if(!r.ok) throw 0;
+    const a=(await r.json()).address||{};
+    const district=a.city_district||a.suburb||a.borough||a.district||a.town||a.city_block||a.quarter||a.village||a.neighbourhood||'';
+    const city=a.city||a.county||a.state||a.province||'';
+    const parts=[];
+    if(district) parts.push(district);
+    if(city&&city!==district) parts.push(city);
+    // 臺→台：Nominatim 回「臺北市」，一般習慣寫「台北市」
+    const name=parts.join(', ').replace(/臺/g,'台');
+    _placeCache[key]=name;
+    return name;
+  }catch(_){ _placeCache[key]=''; return ''; }
+}
 
 /* 本地日期。toISOString() 是 UTC，台灣 +8 在半夜會退成前一天，
    檔名和圖上日期都會顯示昨天。 */
@@ -1011,22 +1036,36 @@ async function exportPNG(opt){
     ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
     ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();
     const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
-    ctx.font=`500 ${Math.round(23*sc)}px ${F}`;ctx.textBaseline='alphabetic';
+    ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='left';
     const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
-    ctx.lineWidth=4*sc;ctx.strokeStyle='rgba(0,0,0,.75)';
-    ctx.strokeText(barTxt,bx,by-12*sc);
-    ctx.fillStyle='#fff';ctx.fillText(barTxt,bx,by-12*sc);
+    ctx.lineWidth=5*sc;ctx.strokeStyle='rgba(0,0,0,.75)';
+    ctx.strokeText(barTxt,bx,by-14*sc);
+    ctx.fillStyle='#fff';ctx.fillText(barTxt,bx,by-14*sc);
 
-    // 11) 資訊欄
+    // 品牌浮水印（地圖區右下角，不搶焦點）
+    ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
+    ctx.lineWidth=4*sc;ctx.strokeStyle='rgba(0,0,0,.7)';
+    ctx.strokeText('RUNNING ART',mapW-26*sc,mapH-24*sc);
+    ctx.globalAlpha=.92;ctx.fillStyle='#fff';ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
+    ctx.globalAlpha=1;
+
+    // 10) 地點名稱（中山區, 台北市）—— 反向地理編碼，失敗就留空
+    const cLon=(Math.min(...lons)+Math.max(...lons))/2;
+    busy('查詢地點…');
+    const place=await getPlaceName(cLat,cLon);
+
+    // 11) 資訊欄：地點 + 日期一列，距離／配速／時間一列，字放大
     ctx.fillStyle='#14171c';ctx.fillRect(0,mapH,mapW,infoH);
-    ctx.fillStyle='#262b33';ctx.fillRect(0,mapH,mapW,Math.max(1,sc));
-    const pad=30*sc, top=mapH;
+    ctx.fillStyle='#2b313b';ctx.fillRect(0,mapH,mapW,Math.max(2,2*sc));
+    const pad=36*sc, top=mapH;
     ctx.textBaseline='middle';
-    ctx.fillStyle='#6b7280';ctx.font=`500 ${Math.round(24*sc)}px ${F}`;
-    ctx.textAlign='left';ctx.fillText('RUNNING ART',pad,top+infoH*0.22);
-    ctx.textAlign='right';
-    ctx.fillText(localDate(),mapW-pad,top+infoH*0.22);
+    // 上排：地點（左，大）＋ 日期（右）
+    ctx.textAlign='left';ctx.fillStyle='#e8eaed';ctx.font=`600 ${Math.round(38*sc)}px ${F}`;
+    if(place) ctx.fillText(place,pad,top+infoH*0.24);
+    ctx.textAlign='right';ctx.fillStyle='#8b929c';ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
+    ctx.fillText(localDate(),mapW-pad,top+infoH*0.24);
 
+    // 下排：三個數據
     const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
     const cells=[['距離',$('sDist').textContent],
                  ['配速',pm+':'+String(ps).padStart(2,'0')+' /km'],
@@ -1035,10 +1074,10 @@ async function exportPNG(opt){
     ctx.textAlign='left';
     cells.forEach((c,n)=>{
       const cx=pad+cw*n;
-      ctx.fillStyle='#8b929c';ctx.font=`400 ${Math.round(21*sc)}px ${F}`;
-      ctx.fillText(c[0],cx,top+infoH*0.55);
-      ctx.fillStyle='#e8eaed';ctx.font=`500 ${Math.round(42*sc)}px ${F}`;
-      ctx.fillText(c[1],cx,top+infoH*0.79);
+      ctx.fillStyle='#8b929c';ctx.font=`400 ${Math.round(27*sc)}px ${F}`;
+      ctx.fillText(c[0],cx,top+infoH*0.56);
+      ctx.fillStyle='#f4f6f8';ctx.font=`600 ${Math.round(56*sc)}px ${F}`;
+      ctx.fillText(c[1],cx,top+infoH*0.81);
     });
 
     // 12) 下載
