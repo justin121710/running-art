@@ -135,8 +135,32 @@ python selftest_algorithms.py baseline
 | `Engine.boot()` | 載入 Pyodide、套件、gpsart（約 3 秒，之後有快取） |
 | `Engine.loadArea(s,w,n,e)` | 下載該範圍路網並前處理 |
 | `Engine.generate(strokes,start,end)` | 對齊道路，回傳分段、總長、吻合度 |
+| `Engine.editDelete(picks)` | 微調：刪除選取的節點並沿道路重接 |
+| `Engine.editUndo()` | 微調：復原上一步 |
 | `Engine.toGPX(segments)` | 產生 GPX 字串 |
 | `Engine.setProgress(fn)` | 設定進度回呼 |
+
+### 微調路徑（`engine.js` 的 `PY_SETUP`）
+
+膠水程式**刻意放在 `engine.js` 而不是 `gpsart/`**：它只是把既有的
+`bridge_node_path_gaps()` 接給前端用，不是共用演算法的一部分。
+放這裡就不必跑基準測試、也不必同步三份副本。
+
+| 函式 | 作用 |
+|---|---|
+| `_pack()` | 把 `SEGS` 轉成前端格式（座標、長度、吻合度、可編輯節點） |
+| `_edit_delete(picks)` | 刪節點 → 加入 banned → 繞過它們重接 → 檢查斷線 |
+| `_edit_undo()` | 從 `HISTORY` 還原 |
+
+**兩個容易踩的地方**：
+
+1. 回傳的 `si` 是「在 `SEGS` 裡的索引」，不是回傳陣列的索引 ——
+   太短的段會被跳過，兩者對不起來。前端刪節點一定要用 `si`。
+2. `nodes` 陣列裡查不到的節點放 `None` 佔位，
+   這樣索引才會和 `seg['nodes']` 一一對應（前端就是靠索引指定要刪哪個）。
+
+失敗時回傳 `{ok:false, reason}`，且 Python 端**已自動復原**，前端不必善後：
+`none` = 這段剩下的點太少、`break` = 繞不過去會留下斷線、`empty` = 沒有可復原的步驟。
 
 ### 實測效能（線上版）
 | 項目 | 時間 |
@@ -160,6 +184,10 @@ python selftest_algorithms.py baseline
 
 3. **更新 `gpsart/` 要同時改 `engine.js` 的 `VERSION`**
    否則瀏覽器會沿用快取的舊演算法（`fetch('gpsart/x.py?v=VERSION')`）。
+
+   同樣的道理也適用於 `engine.js` 自己：`index.html` 用
+   `<script src="engine.js?v=…">` 引用它，**改了 `engine.js` 就把這個 `v` 一起改掉**，
+   否則瀏覽器會沿用快取的舊引擎。
 
 ---
 

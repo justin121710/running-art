@@ -61,6 +61,12 @@
   .go{flex:1;justify-content:center;background:#16a34a;border-color:#16a34a;
     color:#fff;font-weight:500;font-size:14px}
   .go:disabled{background:#171b21;border-color:#262b33;color:#8b929c}
+  /* 微調路徑工具列 */
+  .dock[hidden]{display:none}
+  #editDock .sm{flex:1;justify-content:center}
+  .sm.on{background:#2563eb;border-color:#2563eb;color:#fff}
+  .sm.danger{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:500}
+  .sm.danger:disabled{background:#171b21;border-color:#262b33;color:#8b929c}
 
   /* ---- 距離膠囊 ---- */
   .pill{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:500;
@@ -139,7 +145,7 @@
   <p id="gt"></p>
 </div>
 
-<div class="dock">
+<div class="dock" id="mainDock">
   <div class="modes">
     <button class="m on" data-mode="pan" id="mPan">
       <svg viewBox="0 0 24 24"><path d="M8 13V5a1.5 1.5 0 013 0v6m0-1V4a1.5 1.5 0 013 0v6m0 0V6a1.5 1.5 0 013 0v7m0-2a1.5 1.5 0 013 0v4a7 7 0 01-7 7h-1a7 7 0 01-7-7v-1a1.5 1.5 0 013-1"/></svg>
@@ -167,6 +173,28 @@
     </button>
     <button class="sm go" id="btnGo" disabled>
       <svg viewBox="0 0 24 24"><path d="M13 4l-1.5 4.5L15 11l-4 2 1 7-6-8 3-1-2-3 6-4z"/></svg>生成路線
+    </button>
+  </div>
+</div>
+
+<div class="dock" id="editDock" hidden>
+  <div class="row2">
+    <button class="sm" id="eBox">
+      <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>框選
+    </button>
+    <button class="sm" id="eNone" disabled>
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>取消選取
+    </button>
+    <button class="sm" id="eUndo" disabled>
+      <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-4"/></svg>復原
+    </button>
+  </div>
+  <div class="row2">
+    <button class="sm danger" id="eDel" disabled>
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>刪除選取
+    </button>
+    <button class="sm go" id="eDone">
+      <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>完成
     </button>
   </div>
 </div>
@@ -205,13 +233,15 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
-<script src="engine.js"></script>
+<!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
+<script src="engine.js?v=20260723b"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
 
 const S={mode:'pan',hasMap:false,strokes:[],cur:null,start:null,end:null,
-         boxing:false,generated:false,sheetUp:false,step:1,bounds:null,warned:0};
+         boxing:false,generated:false,sheetUp:false,step:1,bounds:null,warned:0,
+         editing:false,ebox:false,eDown:null,sel:new Set()};
 const $=id=>document.getElementById(id);
 const el={guide:$('guide'),gn:$('gn'),gt:$('gt'),pill:$('pill'),sheet:$('sheet'),toast:$('toast')};
 let routeLayer=null,startMk=null,endMk=null,boxEl=null,boxA=null;
@@ -256,7 +286,28 @@ function setMode(m){
 }
 document.querySelectorAll('.m').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
 
+/* 拖曳畫框（下載範圍與微調框選共用） */
+function boxBegin(e){
+  boxA=[e.clientX,e.clientY];
+  boxEl=document.createElement('div');boxEl.className='box';document.body.appendChild(boxEl);
+}
+function boxDrag(e){
+  if(!boxA||!boxEl) return;
+  const x=Math.min(boxA[0],e.clientX),y=Math.min(boxA[1],e.clientY);
+  boxEl.style.cssText+=`;left:${x}px;top:${y}px;width:${Math.abs(e.clientX-boxA[0])}px;height:${Math.abs(e.clientY-boxA[1])}px`;
+}
+/* 收框，回傳 {x0,y0,x1,y1}（相對地圖容器）；沒在畫框就回傳 null */
+function boxEnd(e){
+  if(!boxA) return null;
+  const a=boxA;boxA=null;
+  if(boxEl){boxEl.remove();boxEl=null;}
+  const r=mc.getBoundingClientRect();
+  return {x0:Math.min(a[0],e.clientX)-r.left, y0:Math.min(a[1],e.clientY)-r.top,
+          x1:Math.max(a[0],e.clientX)-r.left, y1:Math.max(a[1],e.clientY)-r.top};
+}
+
 function refresh(){
+  if(S.editing) return;   // 微調模式有自己的一套按鈕與提示
   const n=S.strokes.length;
   $('btnUndo').disabled=!n; $('btnClear').disabled=!n;
   $('btnGo').disabled=!(n&&S.start&&S.end);
@@ -283,9 +334,13 @@ $('btnDl').onclick=()=>{
 };
 const mc=map.getContainer();
 mc.addEventListener('pointerdown',e=>{
+  if(S.editing){
+    S.eDown=[e.clientX,e.clientY];
+    if(S.ebox) boxBegin(e);
+    return;
+  }
   if(S.boxing){
-    boxA=[e.clientX,e.clientY];
-    boxEl=document.createElement('div');boxEl.className='box';document.body.appendChild(boxEl);
+    boxBegin(e);
     return;
   }
   if(S.mode==='draw'&&S.hasMap){
@@ -296,9 +351,12 @@ mc.addEventListener('pointerdown',e=>{
   }
 });
 mc.addEventListener('pointermove',e=>{
-  if(S.boxing&&boxA&&boxEl){
-    const x=Math.min(boxA[0],e.clientX),y=Math.min(boxA[1],e.clientY);
-    boxEl.style.cssText+=`;left:${x}px;top:${y}px;width:${Math.abs(e.clientX-boxA[0])}px;height:${Math.abs(e.clientY-boxA[1])}px`;
+  if(S.editing){
+    if(S.ebox) boxDrag(e);
+    return;
+  }
+  if(S.boxing){
+    boxDrag(e);
     return;
   }
   if(S.mode==='draw'&&S.cur){
@@ -311,15 +369,22 @@ mc.addEventListener('pointermove',e=>{
   }
 });
 mc.addEventListener('pointerup',e=>{
+  if(S.editing){
+    const d=S.eDown;S.eDown=null;
+    if(S.ebox){
+      const r=boxEnd(e);
+      if(r) editBoxSelect(r);
+      return;
+    }
+    // 移動超過 8px 視為在拖曳地圖，不當成點選節點
+    if(d&&Math.hypot(e.clientX-d[0],e.clientY-d[1])<=8) editPick(map.mouseEventToLatLng(e));
+    return;
+  }
   if(S.boxing&&boxA){
-    const [a0,a1]=boxA;
-    const w=Math.abs(e.clientX-a0),h=Math.abs(e.clientY-a1);
-    if(boxEl){boxEl.remove();boxEl=null;}
-    boxA=null;
-    if(w>30&&h>30){
-      const r=mc.getBoundingClientRect();
-      const p1=map.containerPointToLatLng([Math.min(a0,e.clientX)-r.left,Math.min(a1,e.clientY)-r.top]);
-      const p2=map.containerPointToLatLng([Math.max(a0,e.clientX)-r.left,Math.max(a1,e.clientY)-r.top]);
+    const r=boxEnd(e);
+    if(r&&r.x1-r.x0>30&&r.y1-r.y0>30){
+      const p1=map.containerPointToLatLng([r.x0,r.y0]);
+      const p2=map.containerPointToLatLng([r.x1,r.y1]);
       const bounds=L.latLngBounds(p1,p2);
       S.boxing=false;$('btnDl').classList.remove('on');
       const km=(map.distance(bounds.getNorthWest(),bounds.getNorthEast())/1000)
@@ -344,6 +409,7 @@ mc.addEventListener('pointerup',e=>{
   }
 });
 map.on('click',e=>{
+  if(S.editing) return;   // 微調模式的點選由 pointerup 處理
   if((S.mode==='start'||S.mode==='end')&&!inArea(e.latlng)){
     toast('起點／終點要在藍色框線內');return;
   }
@@ -362,8 +428,7 @@ $('btnUndo').onclick=()=>{const s=S.strokes.pop();if(s)s.line.remove();refresh()
 $('btnClear').onclick=()=>{
   S.strokes.forEach(s=>s.line.remove());S.strokes=[];
   if(routeLayer){routeLayer.remove();routeLayer=null;}
-  pvStop();[pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
-  pvDone=pvHead=pvArrows=null;S.path=null;
+  pvClear();S.path=null;S.result=null;
   S.generated=false;S.sheetUp=false;el.sheet.classList.remove('up');refresh();
 };
 
@@ -467,27 +532,147 @@ $('pUp').onclick=()=>{S.pace=Math.max(3,+(S.pace-0.5).toFixed(1));paceUI();};
 paceUI();
 
 /* ---------- 生成（真實運算） ---------- */
+/* 套用一份運算結果（生成與微調共用）。微調時不重建預覽，
+   否則預覽圖層會蓋住要點選的節點。 */
+function applyResult(res,withPreview=true){
+  S.result=res;
+  if(routeLayer) routeLayer.remove();
+  routeLayer=L.layerGroup(res.segments.map(sg=>L.polyline(sg.pts,{
+    color: sg.kind==='draw' ? '#38bdf8' : '#9aa4b2',
+    weight: sg.kind==='draw' ? 6 : 3,
+    opacity:.95,
+    dashArray: sg.kind==='draw' ? null : '6 6'
+  }))).addTo(map);
+  S.km=res.total_m/1000;
+  $('sDist').textContent=S.km.toFixed(2)+' km';
+  $('sFit').textContent=Math.round(res.fit)+'%';
+  paceUI();
+  if(withPreview) pvBuild(res);
+}
+function pvClear(){
+  pvStop();
+  [pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
+  pvDone=pvHead=pvArrows=null;
+}
 $('btnGo').onclick=()=>{
   const strokes=S.strokes.map(s=>s.pts.map(p=>[p.lat,p.lng]));
   Engine.generate(strokes,[S.start.lat,S.start.lng],[S.end.lat,S.end.lng])
     .then(res=>{
-      if(routeLayer) routeLayer.remove();
-      routeLayer=L.layerGroup(res.segments.map(sg=>L.polyline(sg.pts,{
-        color: sg.kind==='draw' ? '#38bdf8' : '#9aa4b2',
-        weight: sg.kind==='draw' ? 6 : 3,
-        opacity:.95,
-        dashArray: sg.kind==='draw' ? null : '6 6'
-      }))).addTo(map);
+      applyResult(res);
       S.strokes.forEach(s=>s.line.setStyle({opacity:.25,weight:3}));
-      S.result=res;
-      S.km=res.total_m/1000;
-      $('sDist').textContent=S.km.toFixed(2)+' km';
-      $('sFit').textContent=Math.round(res.fit)+'%';
-      paceUI();
-      pvBuild(res);
       S.generated=true;S.sheetUp=true;el.sheet.classList.add('up');refresh();
     })
     .catch(err=>{busy('');toast('生成失敗：'+err.message,3000);});
+};
+
+/* ---------- 微調路徑 ---------- */
+/* 節點畫在 canvas 上（幾百個 SVG 圓在手機上會很鈍），
+   點選則自己算最近節點，不靠 marker 的點擊事件 —— 手指才好按。 */
+const nodeRenderer=L.canvas({padding:.3});
+const NODE_R=5, NODE_SEL_R=8, PICK_TOL_PX=24;
+let nodeLayer=null, nodeMks=[];
+
+function editBuild(){
+  if(nodeLayer) nodeLayer.remove();
+  nodeMks=[];S.sel.clear();
+  const marks=[];
+  for(const sg of S.result.segments){
+    (sg.nodes||[]).forEach((ll,n)=>{
+      if(!ll) return;   // null 佔位：這個節點不在路網裡，不能編輯
+      const mk=L.circleMarker(ll,{renderer:nodeRenderer,interactive:false,
+        radius:NODE_R,color:'#facc15',weight:1,fillColor:'#facc15',fillOpacity:.9});
+      nodeMks.push({si:sg.si,n,ll,mk});
+      marks.push(mk);
+    });
+  }
+  nodeLayer=L.layerGroup(marks).addTo(map);
+  editUI();
+}
+function editMark(i,on){
+  nodeMks[i].mk.setStyle({radius:on?NODE_SEL_R:NODE_R,
+    color:on?'#ef4444':'#facc15',fillColor:on?'#ef4444':'#facc15'});
+}
+function editUI(){
+  const n=S.sel.size;
+  $('eDel').disabled=!n;$('eNone').disabled=!n;
+  $('eUndo').disabled=!(S.result&&S.result.undo);
+  el.pill.classList.remove('hide');
+  el.pill.textContent=n?('已選 '+n+' 個節點'):(nodeMks.length+' 個可調整的節點');
+}
+function editPick(ll){
+  const p0=map.latLngToContainerPoint(ll);
+  let best=-1,bd=1e9;
+  nodeMks.forEach((d,i)=>{
+    const p=map.latLngToContainerPoint(d.ll);
+    const dist=Math.hypot(p.x-p0.x,p.y-p0.y);
+    if(dist<bd){bd=dist;best=i;}
+  });
+  if(best<0||bd>PICK_TOL_PX) return;
+  if(S.sel.has(best)) S.sel.delete(best); else S.sel.add(best);
+  editMark(best,S.sel.has(best));editUI();
+}
+function editBoxSelect(r){
+  if(r.x1-r.x0<6&&r.y1-r.y0<6) return;
+  nodeMks.forEach((d,i)=>{
+    if(S.sel.has(i)) return;
+    const p=map.latLngToContainerPoint(d.ll);
+    if(p.x>=r.x0&&p.x<=r.x1&&p.y>=r.y0&&p.y<=r.y1){S.sel.add(i);editMark(i,true);}
+  });
+  editUI();
+}
+$('aEdit').onclick=()=>{
+  if(!S.result) return;
+  S.editing=true;S.ebox=false;$('eBox').classList.remove('on');
+  S.sheetUp=false;el.sheet.classList.remove('up');
+  pvClear();
+  $('mainDock').hidden=true;$('editDock').hidden=false;
+  setMode('pan');map.dragging.enable();
+  editBuild();
+  toast('點一下節點選取，或用「框選」一次選多個',2600);
+};
+$('eBox').onclick=()=>{
+  S.ebox=!S.ebox;
+  $('eBox').classList.toggle('on',S.ebox);
+  map.dragging[S.ebox?'disable':'enable']();
+  toast(S.ebox?'拖曳框住要刪除的節點':'改回點擊選取，可拖曳地圖',1600);
+};
+$('eNone').onclick=()=>{
+  S.sel.forEach(i=>editMark(i,false));S.sel.clear();editUI();
+};
+$('eDel').onclick=()=>{
+  if(!S.sel.size) return;
+  const picks=[...S.sel].map(i=>({si:nodeMks[i].si,n:nodeMks[i].n}));
+  Engine.editDelete(picks)
+    .then(res=>{
+      if(!res.ok){
+        toast(res.reason==='break'
+          ? '刪掉這些節點後找不到別條路可以繞過去，已自動復原。試著把整段繞路一起框選刪除。'
+          : '無法刪除：這一段剩下的點太少了。',3400);
+        return;
+      }
+      applyResult(res,false);editBuild();
+      toast('已重新沿道路接好',1400);
+    })
+    .catch(err=>{busy('');toast('刪除失敗：'+err.message,3000);});
+};
+$('eUndo').onclick=()=>{
+  Engine.editUndo()
+    .then(res=>{
+      if(!res.ok){toast('沒有可復原的步驟');return;}
+      applyResult(res,false);editBuild();
+    })
+    .catch(err=>toast('復原失敗：'+err.message,3000));
+};
+$('eDone').onclick=()=>{
+  S.editing=false;S.ebox=false;$('eBox').classList.remove('on');
+  map.dragging.enable();
+  if(nodeLayer){nodeLayer.remove();nodeLayer=null;}
+  nodeMks=[];S.sel.clear();
+  $('mainDock').hidden=false;$('editDock').hidden=true;
+  pvBuild(S.result);
+  S.sheetUp=true;el.sheet.classList.add('up');
+  el.pill.classList.add('hide');
+  refresh();
 };
 $('aGpx').onclick=()=>{
   if(!S.result) return;
@@ -499,7 +684,6 @@ $('aGpx').onclick=()=>{
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   toast('GPX 已下載');
 };
-$('aEdit').onclick=()=>toast('開啟路徑微調（尚未實作）');
 el.sheet.querySelector('.grip').onclick=()=>{S.sheetUp=false;el.sheet.classList.remove('up');refresh();};
 
 function busy(t){const b=$('busy');if(t){$('busyTxt').textContent=t;b.classList.add('on');}else b.classList.remove('on');}
