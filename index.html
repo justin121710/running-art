@@ -402,8 +402,10 @@ function setTheme(light,save=true){
   document.body.classList.toggle('light',light);
   if(save) localStorage.setItem('runart_theme',light?'light':'dark');
   applyBaseLayer();
-  // 小人的外框顏色跟主題（亮黑深白），重繪目前的姿勢
-  if(typeof pvHead!=='undefined'&&pvHead) pvPose(!!S.pvActive);
+  // 小人外框跟主題（亮黑深白）重繪。try 包住：初始化時本函式會在 pvHead（let）
+  // 宣告前被呼叫，落在暫時死區（TDZ）—— 連 typeof 都會拋 ReferenceError、
+  // 中斷整個 script。那時還沒有小人，跳過即可。
+  try{ if(pvHead) pvPose(!!S.pvActive); }catch(_){}
 }
 // 初始主題：記住的優先，否則跟隨系統設定
 (function(){
