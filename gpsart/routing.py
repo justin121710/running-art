@@ -2118,25 +2118,6 @@ def solve_route(G, red_strokes, user_start, user_end, is_loop, full_G=None, G_dr
     # 3. Phase 2: Generating Segments (Mandatory Separation)
     # ---------------------------------------------------------
     
-    # [Dynamic Routing] Init G_routing for Path Reuse
-    G_routing = None
-    if solver_G:
-        G_routing = solver_G.copy()
-        # Init weights
-        for u, v, k, d in G_routing.edges(keys=True, data=True):
-             d['routing_weight'] = d.get('length', 10.0)
-        
-        # [Pre-discount] Encourage following Blue Lines (Attraction Factor 0.7)
-        for stroke in blue_pool:
-            if stroke.get('nodes'):
-                s_nodes = stroke['nodes']
-                for k_idx in range(len(s_nodes)-1):
-                    u, v = s_nodes[k_idx], s_nodes[k_idx+1]
-                    if G_routing.has_edge(u, v):
-                        # Discount all parallel edges between u, v
-                        for key in G_routing[u][v]:
-                            G_routing[u][v][key]['routing_weight'] *= 0.7
-
     current_node = None
     if user_start and solver_G:
          try: current_node = nearest_node(solver_G, user_start[1], user_start[0])
@@ -2170,11 +2151,15 @@ def solve_route(G, red_strokes, user_start, user_end, is_loop, full_G=None, G_dr
         bridged = False
         
         # Only bridge if we have a current node (from prev stroke or user start)
-        if current_node and target_start_node and G_routing:
-            # [Dynamic] Use routing_weight to prefer existing corridors
+        if current_node and target_start_node and solver_G:
+            # [2026-07-24 使用者決定] 連接段一律純最短路徑 (weight='length')，
+            # 與原路線重疊沒關係。舊行為在打過折的 G_routing 上找路
+            # （藍線邊 ×0.7 的 Pre-discount、走過的連接段再 ×0.7 的 Bundling），
+            # 折扣後便宜 ≠ 實際距離短：實測中山區閉合環 718/2211 個起點會因此
+            # 多走真實距離（最嚴重 828m vs 純最短 673m, +23%）。
             # [Fix 切西瓜] robust_shortest_path 會在有向路徑失敗時改用無向視角，
             # 避免因單行道/剪枝找不到路而退回直線。
-            path = robust_shortest_path(G_routing, current_node, target_start_node, weight='routing_weight')
+            path = robust_shortest_path(solver_G, current_node, target_start_node, weight='length')
             if path and len(path) > 1:
                 # Geometry from solver_G (Physical graph)
                 coords = get_path_geometry(solver_G, path)
@@ -2186,13 +2171,6 @@ def solve_route(G, red_strokes, user_start, user_end, is_loop, full_G=None, G_dr
                     'coords': coords
                 })
                 bridged = True
-
-                # [Live Update] Discount this path to attract future gray lines (Bundling)
-                for k_idx in range(len(path)-1):
-                    u, v = path[k_idx], path[k_idx+1]
-                    if G_routing.has_edge(u, v):
-                        for key in G_routing[u][v]:
-                            G_routing[u][v][key]['routing_weight'] *= 0.7
 
         # Fallback for Beeline or Failed Route
         if not bridged and current_geo and target_start_geo:
@@ -2243,7 +2221,7 @@ def solve_route(G, red_strokes, user_start, user_end, is_loop, full_G=None, G_dr
     # ---------------------------------------------------------
     # 4. Phase 3: Departure to User End
     # ---------------------------------------------------------
-    if user_end and current_node and G_routing:
+    if user_end and current_node and solver_G:
         end_node = None
         try: end_node = nearest_node(solver_G, user_end[1], user_end[0])
         except Exception: pass
