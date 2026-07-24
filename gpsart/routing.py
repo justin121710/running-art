@@ -2323,6 +2323,32 @@ def reorder_closed_strokes(strokes, user_pos, close_tol_m=None):
         
         # 閉合判定門檻：預設約 30m；可傳入 close_tol_m 依整體圖形大小調整
         _close_thr = 0.00000015 if close_tol_m is None else (close_tol_m / 111000.0) ** 2
+
+        # [2026-07-24 交錯閉合] 頭尾「交錯」的圖形：最後一段畫過了頭、跟開頭
+        # 疊到，頭尾端點反而差了一小段（超過門檻）→ 被誤判成開放線條、
+        # 旋轉保護失效，連接段全都跑去下筆處。
+        # 修法：在頭 20% × 尾 20% 的窗口裡找最近的點對，距離在門檻內就
+        # 剪掉交錯多出來的頭尾、視為閉合，之後走既有的旋轉邏輯。
+        if d_close >= _close_thr and len(s) >= 8:
+            win = max(3, len(s) // 5)
+            best = None
+            for i in range(win):
+                for j in range(len(s) - win, len(s)):
+                    if j - i < len(s) // 2:   # 至少保留一半的筆畫
+                        continue
+                    d = (s[i][0]-s[j][0])**2 + (s[i][1]-s[j][1])**2
+                    if d < _close_thr and (best is None or d < best[0]):
+                        best = (d, i, j)
+            if best:
+                _, bi, bj = best
+                trimmed = s[bi:bj+1]
+                if len(trimmed) >= 3:
+                    tail_cut = len(s) - 1 - bj
+                    s = trimmed + [trimmed[0]]
+                    final_s = s
+                    d_close = 0.0
+                    debug_log(f"  [交錯閉合] 剪掉頭 {bi} 點/尾 {tail_cut} 點後視為閉合")
+
         if d_close < _close_thr: # Is Closed Loop
              best_i = 0
              best_d = float('inf')
