@@ -417,7 +417,7 @@ const TOASTS_EN={
  '可以繼續修改圖案，改完再按生成路線':'Edit your shape, then tap Generate again',
  '已清空，重新開始畫':'Cleared — start drawing again',
  '已反轉方向':'Direction reversed',
- '點一下節點選取，或用「框選」一次選多個':'Tap a node to select, or use Box Select for many',
+ '橘色大點是轉彎處。點一下節點選取，或用「框選」一次選多個':'Orange dots are turns. Tap a node to select, or use Box Select for many',
  '拖曳框住要刪除的節點':'Drag a box over the nodes to delete',
  '改回點擊選取，可拖曳地圖':'Back to tap-select; you can pan the map',
  '刪掉這些節點後找不到別條路可以繞過去，已自動復原。試著把整段繞路一起框選刪除。':'No alternative road to detour around — auto-reverted. Try box-selecting the whole detour.',
@@ -701,7 +701,21 @@ $('btnClear').onclick=clearAll;
 
 /* ---------- 生成（原型：假資料） ---------- */
 /* ---------- 路線預覽（拉桿 + 方向） ---------- */
-let pvDone=null,pvHead=null,pvArrows=null,pvTimer=null;
+let pvDone=null,pvHead=null,pvArrows=null,pvTimer=null,poseT=null;
+/* 預覽的「跑者」圖示：靜止＝站立、拖曳／播放中＝雙手舉高。SVG 自己畫，深淺底圖都清楚。 */
+function personSVG(active){
+  const arms = active
+    ? '<path d="M13 12.5 L6.5 6.5"/><path d="M13 12.5 L19.5 6.5"/>'   // 雙手舉高
+    : '<path d="M13 12.5 L8 18"/><path d="M13 12.5 L18 18"/>';        // 自然垂下
+  return '<svg width="28" height="32" viewBox="0 0 26 30" style="filter:drop-shadow(0 0 2px rgba(0,0,0,.9))">'
+    +'<g fill="#f97316" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'
+    +'<circle cx="13" cy="5.4" r="3.8"/><path d="M13 8.8 L13 19"/>'+arms
+    +'<path d="M13 19 L9 27"/><path d="M13 19 L17 27"/></g></svg>';
+}
+function personIcon(active){
+  return L.divIcon({className:'',iconSize:[28,32],iconAnchor:[14,29],html:personSVG(active)});
+}
+function pvPose(active){ if(pvHead) pvHead.setIcon(personIcon(active)); }
 function pvBuild(res){
   // 把所有分段串成一條連續路徑，並累計距離
   S.path=[];
@@ -716,8 +730,7 @@ function pvBuild(res){
 
   [pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
   pvDone=L.polyline([],{color:'#f59e0b',weight:7,opacity:.95}).addTo(map);
-  pvHead=L.circleMarker(S.path[0],{radius:8,color:'#fff',weight:2.5,
-          fillColor:'#f59e0b',fillOpacity:1}).addTo(map);
+  pvHead=L.marker(S.path[0],{icon:personIcon(false),interactive:false,zIndexOffset:1000}).addTo(map);
   // 沿線每隔一段放一個方向箭頭
   const arrows=[],step=Math.max(120,S.totalM/14);
   for(let d=step;d<S.totalM;d+=step){
@@ -774,12 +787,17 @@ function pvSet(frac){
   $('pvAt').textContent=(target/1000).toFixed(2)+' km';
   $('pvPct').textContent=Math.round(frac*100)+'%';
 }
-$('pvSlider').oninput=e=>{pvStop();pvSet(+e.target.value/1000);};
-function pvStop(){if(pvTimer){clearInterval(pvTimer);pvTimer=null;$('pvPlay').textContent='▶';}}
+$('pvSlider').oninput=e=>{
+  pvStop();pvSet(+e.target.value/1000);
+  // 拖曳中＝雙手舉高，放開一下子後回到站立
+  pvPose(true); clearTimeout(poseT); poseT=setTimeout(()=>pvPose(false),320);
+};
+function pvStop(){if(pvTimer){clearInterval(pvTimer);pvTimer=null;$('pvPlay').textContent='▶';} pvPose(false);}
 $('pvPlay').onclick=()=>{
   if(pvTimer){pvStop();return;}
   if(+$('pvSlider').value>=1000) $('pvSlider').value=0;
   $('pvPlay').textContent='⏸';
+  pvPose(true);   // 播放中＝奔跑（雙手舉高）
   pvTimer=setInterval(()=>{
     let v=+$('pvSlider').value+8;
     if(v>=1000){v=1000;pvStop();}
@@ -860,7 +878,7 @@ async function updateElevation(){
   const samp=[];
   for(let i=0;i<N;i++) samp.push(path[Math.round(i*(path.length-1)/(N-1))]);
   const seq=++elevSeq;
-  $('sElev').textContent='計算中…';
+  $('sElev').textContent=tx('計算中…','Calculating…');
   try{
     const lat=samp.map(p=>p[0].toFixed(5)).join(',');
     const lon=samp.map(p=>p[1].toFixed(5)).join(',');
@@ -933,19 +951,42 @@ $('aRev').onclick=()=>{
 /* 節點畫在 canvas 上（幾百個 SVG 圓在手機上會很鈍），
    點選則自己算最近節點，不靠 marker 的點擊事件 —— 手指才好按。 */
 const nodeRenderer=L.canvas({padding:.3});
-const NODE_R=5, NODE_SEL_R=8, PICK_TOL_PX=24;
+const NODE_R=4, NODE_SEL_R=9, NODE_TURN_R=7.5, PICK_TOL_PX=24;
+const TURN_DEG=28;   // 轉多少度才算「轉彎點」
 let nodeLayer=null, nodeMks=[];
 
+/* 找出一串節點裡哪些是「轉彎點」：用投影後的平面角度，避免 Mercator 拉伸。
+   回傳與 latlngs 等長的布林陣列。 */
+function turnFlags(latlngs){
+  const f=new Array(latlngs.length).fill(false);
+  const pr=ll=>map.project(ll,18);
+  for(let i=1;i<latlngs.length-1;i++){
+    const a=latlngs[i-1],b=latlngs[i],c=latlngs[i+1];
+    if(!a||!b||!c) continue;
+    const pa=pr(a),pb=pr(b),pc=pr(c);
+    let d=Math.abs(Math.atan2(pc.y-pb.y,pc.x-pb.x)-Math.atan2(pb.y-pa.y,pb.x-pa.x))*180/Math.PI;
+    if(d>180) d=360-d;
+    if(d>=TURN_DEG) f[i]=true;
+  }
+  return f;
+}
+// 一個節點沒被選取時該有的樣式（轉彎點醒目、其餘小而淡）
+function nodeStyle(turn){
+  return turn
+    ? {radius:NODE_TURN_R,color:'#fff',weight:2,fillColor:'#fb923c',fillOpacity:1}
+    : {radius:NODE_R,color:'#facc15',weight:1,fillColor:'#facc15',fillOpacity:.5};
+}
 function editBuild(){
   if(nodeLayer) nodeLayer.remove();
   nodeMks=[];S.sel.clear();
   const marks=[];
   for(const sg of S.result.segments){
+    const flags=turnFlags(sg.nodes||[]);   // 依你選的：只把轉彎點標出來
     (sg.nodes||[]).forEach((ll,n)=>{
       if(!ll) return;   // null 佔位：這個節點不在路網裡，不能編輯
-      const mk=L.circleMarker(ll,{renderer:nodeRenderer,interactive:false,
-        radius:NODE_R,color:'#facc15',weight:1,fillColor:'#facc15',fillOpacity:.9});
-      nodeMks.push({si:sg.si,n,ll,mk});
+      const turn=!!flags[n];
+      const mk=L.circleMarker(ll,{renderer:nodeRenderer,interactive:false,...nodeStyle(turn)});
+      nodeMks.push({si:sg.si,n,ll,mk,turn});
       marks.push(mk);
     });
   }
@@ -953,8 +994,9 @@ function editBuild(){
   editUI();
 }
 function editMark(i,on){
-  nodeMks[i].mk.setStyle({radius:on?NODE_SEL_R:NODE_R,
-    color:on?'#ef4444':'#facc15',fillColor:on?'#ef4444':'#facc15'});
+  const d=nodeMks[i];
+  if(on) d.mk.setStyle({radius:NODE_SEL_R,color:'#ef4444',weight:1,fillColor:'#ef4444',fillOpacity:1});
+  else d.mk.setStyle(nodeStyle(d.turn));
 }
 function editUI(){
   const n=S.sel.size;
@@ -992,7 +1034,7 @@ $('aEdit').onclick=()=>{
   $('mainDock').hidden=true;$('editDock').hidden=false;
   setMode('pan');map.dragging.enable();
   editBuild();
-  toast('點一下節點選取，或用「框選」一次選多個',2600);
+  toast('橘色大點是轉彎處。點一下節點選取，或用「框選」一次選多個',2800);
 };
 $('eBox').onclick=()=>{
   S.ebox=!S.ebox;
