@@ -48,7 +48,11 @@
     padding:9px 13px;font-size:13px;font-weight:500}
   .btn-dl.push{margin-left:auto}
   .btn-dl.on{background:#2563eb;border-color:#2563eb;color:#fff}
-  .icon-btn{flex:none;width:38px;justify-content:center;padding:9px 0}
+  /* 圖示按鈕鎖死 38×38，內容置中：不管裝 SVG 或「EN」/「中」文字，大小都一致
+     （拉丁字母與 CJK 行高不同，不鎖高度會讓語言按鈕看起來忽大忽小） */
+  .icon-btn{flex:none;width:38px;height:38px;padding:0;justify-content:center;line-height:1}
+  /* 載入地圖是主要入口，給強調色邊框凸顯 */
+  #btnDl{border:1.6px solid #2563eb}
   .icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
 
@@ -120,7 +124,15 @@
   .prow .unit{font-size:11.5px;color:var(--dim);min-width:34px;text-align:right}
   .prow button{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:13px;font-family:inherit;line-height:1}
-  #pvSlider{width:100%;margin:0;accent-color:#38bdf8}
+  /* 拉桿：左側＝走過（橘 #f59e0b，和小人走過的橘線同色）、右側＝未走過（藍，路線原色）。
+     漸層分界由 JS 隨拉桿位置更新（見 pvSet）。 */
+  #pvSlider{width:100%;margin:8px 0;-webkit-appearance:none;appearance:none;height:6px;
+    border-radius:3px;background:linear-gradient(to right,#f59e0b 0%,#38bdf8 0%);outline:none}
+  #pvSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;
+    border-radius:50%;background:#f59e0b;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
+    cursor:pointer;margin-top:-6px}
+  #pvSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#f59e0b;
+    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer}
   .pace{display:flex;align-items:center;gap:8px;background:var(--panel2);border-radius:11px;
     padding:8px 11px;margin-bottom:10px}
   .pace .lbl{font-size:12.5px;color:var(--dim)}
@@ -158,6 +170,15 @@
   .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
   .rt.on{background:#2563eb;border-color:#2563eb;color:#fff}
   .rt.on i{color:rgba(255,255,255,.82)}
+  /* 匯出即時預覽小框 + 進度拉桿 */
+  .mprev{display:block;width:100%;background:var(--panel3);border:1px solid var(--border);
+    border-radius:11px;margin-bottom:12px}
+  .mprog{width:100%;margin:2px 0 12px;-webkit-appearance:none;appearance:none;height:6px;
+    border-radius:3px;background:linear-gradient(to right,#f59e0b 0%,#38bdf8 0%);outline:none}
+  .mprog::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
+    border-radius:50%;background:#f59e0b;border:2px solid #fff;cursor:pointer;margin-top:-5px}
+  .mprog::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#f59e0b;
+    border:2px solid #fff;cursor:pointer}
   .mact{display:flex;gap:8px;margin-top:14px}
   .mact button{flex:1;padding:11px;border-radius:11px;font-size:13.5px;font-family:inherit;
     font-weight:500;border:1px solid var(--border);background:var(--panel2);color:var(--text)}
@@ -328,6 +349,7 @@
 <div class="modal" id="pngModal" hidden>
   <div class="mbox">
     <div class="mtitle" data-en="Export image">匯出圖片</div>
+    <canvas id="pngPrev" class="mprev" width="300" height="300"></canvas>
     <div class="rlabel" data-en="Ratio">比例</div>
     <div class="ratios">
       <button class="rt on" data-ratio="1:1">1:1<i data-en="Square">正方形</i></button>
@@ -342,7 +364,9 @@
     <label class="sw"><input type="checkbox" id="pngDraw">
       <span><span class="t" data-en="My drawing">我畫的紅線</span><i data-en="Original hand-drawn shape">原始手繪圖案</i></span></label>
     <label class="sw"><input type="checkbox" id="pngMarks" checked>
-      <span><span class="t" data-en="Start & finish">起點與終點</span><i data-en="Purple & pink dots">紫色與粉紅色圓點</i></span></label>
+      <span><span class="t" data-en="Start & finish">起點與終點</span><i data-en="Green start, red finish">綠色起點、紅色終點</i></span></label>
+    <div class="rlabel"><span data-en="Runner progress">跑者進度</span> · <span id="pngProgTxt">100%</span></div>
+    <input type="range" id="pngProg" class="mprog" min="0" max="1000" value="1000" step="1">
     <div class="mact">
       <button id="pngCancel" data-en="Cancel">取消</button>
       <button class="pri" id="pngGo" data-en="Create image">產生圖片</button>
@@ -371,11 +395,15 @@ function applyBaseLayer(){
   baseLayer.bringToBack();
   // 已下載範圍的遮罩顏色也要隨主題（淺色用淺灰遮罩、深色用近黑）
   if(areaMask) areaMask.setStyle({fillColor:isLight()?'#8a96a6':'#05070a'});
+  // 範圍框虛線：亮色底圖用黑、深色底圖用白
+  if(areaRect) areaRect.setStyle({color:isLight()?'#000':'#fff'});
 }
 function setTheme(light,save=true){
   document.body.classList.toggle('light',light);
   if(save) localStorage.setItem('runart_theme',light?'light':'dark');
   applyBaseLayer();
+  // 小人的外框顏色跟主題（亮黑深白），重繪目前的姿勢
+  if(typeof pvHead!=='undefined'&&pvHead) pvPose(!!S.pvActive);
 }
 // 初始主題：記住的優先，否則跟隨系統設定
 (function(){
@@ -512,7 +540,7 @@ function showArea(b){
   if(areaRect) areaRect.remove();
   areaMask=L.polygon([W,hole],{stroke:false,fillColor:isLight()?'#8a96a6':'#05070a',
     fillOpacity:.55,interactive:false}).addTo(map);
-  areaRect=L.rectangle(b,{color:'#38bdf8',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map);
+  areaRect=L.rectangle(b,{color:isLight()?'#000':'#fff',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map);
   map.fitBounds(b,{padding:[26,26]});
 }
 function inArea(ll){return !S.bounds||S.bounds.contains(ll);}
@@ -664,6 +692,17 @@ mc.addEventListener('pointerup',e=>{
     S.cur=null;S.curLine=null;refresh();
   }
 });
+// 起終點標記：綠圈內 ▶＝起點、紅圈內 ■＝終點（比兩個不同色的圓點好辨識）。
+// 地圖與匯出圖片用同一套語意（綠=start、紅=stop）。
+function seIcon(isStart){
+  const bg=isStart?'#16a34a':'#dc2626';
+  const glyph=isStart
+    ? '<path d="M9.5 7 L17 12 L9.5 17 Z" fill="#fff"/>'
+    : '<rect x="8.3" y="8.3" width="7.4" height="7.4" rx="1.2" fill="#fff"/>';
+  return L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,14],
+    html:'<svg width="28" height="28" viewBox="0 0 24 24" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">'
+      +'<circle cx="12" cy="12" r="10.4" fill="'+bg+'" stroke="#fff" stroke-width="2.4"/>'+glyph+'</svg>'});
+}
 map.on('click',e=>{
   if(S.editing) return;   // 微調模式的點選由 pointerup 處理
   if((S.mode==='start'||S.mode==='end')&&!inArea(e.latlng)){
@@ -671,11 +710,11 @@ map.on('click',e=>{
   }
   if(S.mode==='start'){
     if(startMk) startMk.remove();
-    startMk=L.circleMarker(e.latlng,{radius:9,color:'#fff',weight:2.5,fillColor:'#a855f7',fillOpacity:1}).addTo(map);
+    startMk=L.marker(e.latlng,{icon:seIcon(true),interactive:false,zIndexOffset:900}).addTo(map);
     S.start=e.latlng;toast('起點已設定');refresh();
   }else if(S.mode==='end'){
     if(endMk) endMk.remove();
-    endMk=L.circleMarker(e.latlng,{radius:9,color:'#fff',weight:2.5,fillColor:'#ec4899',fillOpacity:1}).addTo(map);
+    endMk=L.marker(e.latlng,{icon:seIcon(false),interactive:false,zIndexOffset:900}).addTo(map);
     S.end=e.latlng;toast('終點已設定');refresh();
   }
 });
@@ -707,15 +746,20 @@ function personSVG(active){
   const arms = active
     ? '<path d="M13 12.5 L6.5 6.5"/><path d="M13 12.5 L19.5 6.5"/>'   // 雙手舉高
     : '<path d="M13 12.5 L8 18"/><path d="M13 12.5 L18 18"/>';        // 自然垂下
-  return '<svg width="28" height="32" viewBox="0 0 26 30" style="filter:drop-shadow(0 0 2px rgba(0,0,0,.9))">'
-    +'<g fill="#f97316" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'
-    +'<circle cx="13" cy="5.4" r="3.8"/><path d="M13 8.8 L13 19"/>'+arms
-    +'<path d="M13 19 L9 27"/><path d="M13 19 L17 27"/></g></svg>';
+  // 頭縮小（r 3.8→3）。兩層疊畫：先用主題色（亮黑深白）粗描一圈外框，
+  // 再畫橘色本體，這樣深淺底圖上小人邊緣都清楚。
+  const body='<circle cx="13" cy="5.2" r="3"/><path d="M13 8 L13 19"/>'+arms
+            +'<path d="M13 19 L9 27"/><path d="M13 19 L17 27"/>';
+  const oc=isLight()?'#000':'#fff';
+  return '<svg width="28" height="32" viewBox="0 0 26 30" style="filter:drop-shadow(0 0 1.5px rgba(0,0,0,.45))">'
+    +'<g fill="none" stroke="'+oc+'" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round">'+body+'</g>'
+    +'<g fill="#f97316" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'+body+'</g>'
+    +'</svg>';
 }
 function personIcon(active){
   return L.divIcon({className:'',iconSize:[28,32],iconAnchor:[14,29],html:personSVG(active)});
 }
-function pvPose(active){ if(pvHead) pvHead.setIcon(personIcon(active)); }
+function pvPose(active){ S.pvActive=active; if(pvHead) pvHead.setIcon(personIcon(active)); }
 function pvBuild(res){
   // 把所有分段串成一條連續路徑，並累計距離
   S.path=[];
@@ -786,6 +830,10 @@ function pvSet(frac){
   pvHead.setLatLng(head);
   $('pvAt').textContent=(target/1000).toFixed(2)+' km';
   $('pvPct').textContent=Math.round(frac*100)+'%';
+  // 拉桿左側染成「走過」的橘、右側「未走過」的藍，分界跟著小人位置
+  const pct=(frac*100).toFixed(1);
+  $('pvSlider').style.background=
+    `linear-gradient(to right,#f59e0b 0%,#f59e0b ${pct}%,#38bdf8 ${pct}%,#38bdf8 100%)`;
 }
 $('pvSlider').oninput=e=>{
   pvStop();pvSet(+e.target.value/1000);
@@ -1158,6 +1206,26 @@ function drawPin(ctx,cx,tipY,h,color){
   ctx.restore();
 }
 
+// 匯出圖上的小人（canvas 版，對應地圖上的 personSVG）：橘色本體＋主題色外框，
+// footY 是腳底、對準路線上的當前位置。
+function drawRunnerCanvas(ctx,x,footY,u,light){
+  const oc=light?'#000':'#fff';
+  const headY=footY-24*u, hipY=footY-12*u, hr=3.4*u;
+  const limbs=()=>{ctx.beginPath();
+    ctx.moveTo(x,headY+hr);ctx.lineTo(x,hipY);              // 身體
+    ctx.moveTo(x,hipY-5*u);ctx.lineTo(x-5*u,hipY+u);        // 左手
+    ctx.moveTo(x,hipY-5*u);ctx.lineTo(x+5*u,hipY+u);        // 右手
+    ctx.moveTo(x,hipY);ctx.lineTo(x-4*u,footY);             // 左腿
+    ctx.moveTo(x,hipY);ctx.lineTo(x+4*u,footY);ctx.stroke();// 右腿
+  };
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
+  ctx.strokeStyle=oc;ctx.lineWidth=5.6*u;limbs();
+  ctx.beginPath();ctx.arc(x,headY,hr+1.2*u,0,Math.PI*2);ctx.fillStyle=oc;ctx.fill();  // 頭外框
+  ctx.strokeStyle='#f97316';ctx.lineWidth=3*u;limbs();
+  ctx.beginPath();ctx.arc(x,headY,hr,0,Math.PI*2);ctx.fillStyle='#f97316';ctx.fill(); // 橘頭
+  ctx.restore();
+}
+
 async function exportPNG(opt){
   busy('產生圖片…');
   try{
@@ -1238,7 +1306,10 @@ async function exportPNG(opt){
       });
       ctx.globalAlpha=1;
     }
-    // 6) 路線：藍色是照著圖案跑的，橘色虛線是筆畫之間的移動
+    // 6) 路線：先畫完整路線當「未走過」底層（draw 藍實線、連接段橘虛線），
+    //    再把「走過」的部分（到拉桿位置 frac）蓋成橘實線，並記住小人位置，
+    //    和地圖上的預覽一模一樣（小人走到哪、橘線就到哪）。
+    let runnerHead=null;
     if(opt.route){
       S.result.segments.forEach(sg=>{
         const draw=sg.kind==='draw';
@@ -1250,6 +1321,25 @@ async function exportPNG(opt){
         ctx.stroke();
       });
       ctx.setLineDash([]);
+      const frac=(opt.frac!=null)?opt.frac:1;
+      if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
+        const target=S.totalM*frac;
+        let lo=0,hi=S.cum.length-1;while(lo<hi){const m=(lo+hi)>>1;S.cum[m]<target?lo=m+1:hi=m;}
+        const idx=lo;
+        const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
+        let head=S.path[Math.max(idx,0)];
+        if(idx>0){
+          const seg=S.cum[idx]-S.cum[idx-1],t=seg>0?(target-S.cum[idx-1])/seg:0;
+          const a=S.path[idx-1],b=S.path[idx];
+          head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+          shown[shown.length-1]=head;
+        }
+        ctx.strokeStyle='#f59e0b';ctx.lineWidth=7*sc;ctx.setLineDash([]);
+        ctx.beginPath();
+        shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+        ctx.stroke();
+        if(frac<1) runnerHead=head;   // 跑完(100%)就不畫小人，避免杵在終點
+      }
     }
     // 7) 方向箭頭：沿整條路線（含筆畫間的連接虛線）標示前進方向，可由選項關閉。
     //    角度直接用 canvas 座標算（已是螢幕座標，不必再處理 Mercator）。
@@ -1285,16 +1375,28 @@ async function exportPNG(opt){
         }
       }
     }
-    // 8) 起終點
+    // 8) 起終點：綠圈▶＝起點、紅圈■＝終點（與地圖上同一套）
     if(opt.marks){
-      const dot=(ll,fill)=>{
+      const mark=(ll,isStart)=>{
         if(!ll) return;
-        const x=X(ll.lng),y=Y(ll.lat),r=9*sc;
+        const x=X(ll.lng),y=Y(ll.lat),r=15*sc;
         ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-        ctx.fillStyle=fill;ctx.fill();
-        ctx.lineWidth=2.5*sc;ctx.strokeStyle='#fff';ctx.stroke();
+        ctx.fillStyle=isStart?'#16a34a':'#dc2626';ctx.fill();
+        ctx.lineWidth=3*sc;ctx.strokeStyle='#fff';ctx.stroke();
+        ctx.fillStyle='#fff';
+        if(isStart){
+          ctx.beginPath();
+          ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);
+          ctx.closePath();ctx.fill();
+        }else{
+          const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);
+        }
       };
-      dot(S.start,'#a855f7');dot(S.end,'#ec4899');
+      mark(S.start,true);mark(S.end,false);
+    }
+    // 小人畫在走過/未走過的分界（最上層，仍在地圖 clip 內）
+    if(runnerHead){
+      drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light);
     }
     ctx.restore();
 
@@ -1387,16 +1489,106 @@ async function exportPNG(opt){
   }finally{ busy(''); }
 }
 let pngRatio='1:1';
+// 匯出對話框的即時預覽：不抓底圖 tile（純色底示意），只即時反映勾選的圖層、
+// 比例與跑者進度。真實高畫質底圖在按「產生圖片」時才抓（exportPNG）。
+function pngCollectPts(opt){
+  const pts=[];
+  if(opt.route&&S.result) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
+  if(opt.draw) S.strokes.forEach(s=>s.pts.forEach(p=>pts.push([p.lat,p.lng])));
+  if(!pts.length&&S.result) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
+  if(opt.marks){ if(S.start)pts.push([S.start.lat,S.start.lng]); if(S.end)pts.push([S.end.lat,S.end.lng]); }
+  return pts;
+}
+function renderPreview(){
+  const cv=$('pngPrev'); if(!cv||!S.result) return;
+  const opt={route:$('pngRoute').checked,arrows:$('pngArrows').checked,
+             draw:$('pngDraw').checked,marks:$('pngMarks').checked};
+  const frac=+$('pngProg').value/1000;
+  const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
+  const W=cv.width, scale=W/RW, H=Math.round(RH*scale); cv.height=H;
+  const infoH=INFO_H*scale, mapW=W, mapH=H-infoH, lw=W/1080, light=isLight();
+  const TH=light?{mapBg:'#e8ecf1',info:'#ffffff',line:'#dfe4ea',dim:'#cfd4db'}
+               :{mapBg:'#0d0f12',info:'#14171c',line:'#2b313b',dim:'#3a4048'};
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,mapH);
+  const pts=pngCollectPts(opt);
+  if(pts.length){
+    const lats=pts.map(p=>p[0]),lons=pts.map(p=>p[1]);
+    const wx0=lonToWorld(Math.min(...lons),0),wx1=lonToWorld(Math.max(...lons),0);
+    const wy0=latToWorld(Math.max(...lats),0),wy1=latToWorld(Math.min(...lats),0);
+    const cx=(wx0+wx1)/2,cy=(wy0+wy1)/2;
+    const dx=Math.max(wx1-wx0,1e-9),dy=Math.max(wy1-wy0,1e-9);
+    const s=Math.min(mapW/dx,mapH/dy)*0.82;
+    const X=lon=>mapW/2+(lonToWorld(lon,0)-cx)*s, Y=lat=>mapH/2+(latToWorld(lat,0)-cy)*s;
+    ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
+    ctx.lineCap=ctx.lineJoin='round';
+    if(opt.draw){
+      ctx.strokeStyle='#ef4444';ctx.lineWidth=(opt.route?15:5)*lw;ctx.globalAlpha=.9;
+      S.strokes.forEach(st=>{ctx.beginPath();st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
+      ctx.globalAlpha=1;
+    }
+    let head=null;
+    if(opt.route){
+      S.result.segments.forEach(sg=>{const draw=sg.kind==='draw';
+        ctx.strokeStyle=draw?'#38bdf8':'#f59e0b';ctx.lineWidth=(draw?7:4)*lw;
+        ctx.setLineDash(draw?[]:[10*lw,9*lw]);ctx.beginPath();
+        sg.pts.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
+      ctx.setLineDash([]);
+      if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
+        const target=S.totalM*frac;let lo=0,hi=S.cum.length-1;
+        while(lo<hi){const m=(lo+hi)>>1;S.cum[m]<target?lo=m+1:hi=m;}
+        const idx=lo;const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
+        head=S.path[Math.max(idx,0)];
+        if(idx>0){const seg=S.cum[idx]-S.cum[idx-1],t=seg>0?(target-S.cum[idx-1])/seg:0,a=S.path[idx-1],b=S.path[idx];
+          head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];shown[shown.length-1]=head;}
+        ctx.strokeStyle='#f59e0b';ctx.lineWidth=7*lw;ctx.beginPath();
+        shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
+        if(frac>=1) head=null;
+      }
+    }
+    if(opt.marks){
+      const mk=(ll,isStart)=>{if(!ll)return;const x=X(ll.lng),y=Y(ll.lat),r=15*lw;
+        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=isStart?'#16a34a':'#dc2626';ctx.fill();
+        ctx.lineWidth=3*lw;ctx.strokeStyle='#fff';ctx.stroke();ctx.fillStyle='#fff';
+        if(isStart){ctx.beginPath();ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);ctx.closePath();ctx.fill();}
+        else{const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);}};
+      mk(S.start,true);mk(S.end,false);
+    }
+    if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
+    ctx.restore();
+  }
+  // 資訊欄佈局示意（地點條＋四個數據塊）
+  ctx.fillStyle=TH.info;ctx.fillRect(0,mapH,W,infoH);
+  ctx.fillStyle=TH.line;ctx.fillRect(0,mapH,W,Math.max(1,infoH*0.012));
+  ctx.fillStyle=TH.dim;const pd=infoH*0.16;
+  ctx.fillRect(pd,mapH+infoH*0.26,W*0.42,infoH*0.11);
+  for(let i=0;i<4;i++) ctx.fillRect(pd+i*(W-pd*2)/4,mapH+infoH*0.62,(W-pd*2)/4-pd*0.4,infoH*0.16);
+}
 document.querySelectorAll('.rt').forEach(b=>b.onclick=()=>{
   pngRatio=b.dataset.ratio;
   document.querySelectorAll('.rt').forEach(x=>x.classList.toggle('on',x===b));
+  renderPreview();
 });
-$('aPng').onclick=()=>{ if(S.result) $('pngModal').hidden=false; };
+['pngRoute','pngArrows','pngDraw','pngMarks'].forEach(id=>$(id).addEventListener('change',renderPreview));
+$('pngProg').oninput=()=>{
+  const pct=+$('pngProg').value/10;
+  $('pngProgTxt').textContent=Math.round(pct)+'%';
+  $('pngProg').style.background=`linear-gradient(to right,#f59e0b 0%,#f59e0b ${pct}%,#38bdf8 ${pct}%,#38bdf8 100%)`;
+  renderPreview();
+};
+$('aPng').onclick=()=>{
+  if(!S.result) return;
+  $('pngModal').hidden=false;
+  // 進度預設跟隨結果面板當前的拉桿位置
+  $('pngProg').value=(typeof S.totalM==='number'&&S.totalM>0)?(+$('pvSlider').value||1000):1000;
+  $('pngProg').dispatchEvent(new Event('input'));   // 更新百分比文字、拉桿底色、預覽
+};
 $('pngCancel').onclick=()=>{ $('pngModal').hidden=true; };
 $('pngGo').onclick=()=>{
   $('pngModal').hidden=true;
   exportPNG({ratio:pngRatio,route:$('pngRoute').checked,arrows:$('pngArrows').checked,
-             draw:$('pngDraw').checked,marks:$('pngMarks').checked});
+             draw:$('pngDraw').checked,marks:$('pngMarks').checked,frac:+$('pngProg').value/1000});
 };
 
 el.sheet.querySelector('.grip').onclick=()=>{S.sheetUp=false;el.sheet.classList.remove('up');refresh();};
