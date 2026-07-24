@@ -6,7 +6,7 @@ const Engine = (() => {
   const FILES = ['__init__.py', 'config.py', 'geometry.py', 'graphutil.py',
                  'graphprep.py', 'routing.py', 'export.py'];
   // 演算法版本：更新 gpsart/ 後要一起改，否則瀏覽器會沿用快取的舊演算法
-  const VERSION = '20260723a';
+  const VERSION = '20260724a';
   // 多台公用 Overpass 鏡像。全部「同時」發請求，誰先回誰贏（見 fetchOverpass）。
   // 公用伺服器隨時可能塞車，靠並行競速而不是逐台等逾時，是降低失敗率的關鍵。
   // 沒給 CORS 或連不上的鏡像會在競速中自然落敗，不影響其他台。

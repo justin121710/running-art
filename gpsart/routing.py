@@ -2250,31 +2250,15 @@ def solve_route(G, red_strokes, user_start, user_end, is_loop, full_G=None, G_dr
         
         if end_node:
             try:
-
-                # [Hard-Stop] Use physical graph (solver_G) but PENALIZE retracing Blue Lines
-                # User Requirement: "If already walked blue line... CANNOT walk on blue path" (unless new red line target)
-                # Since this is the Final Leg, we strictly avoid Blue Lines.
-                
-                # 1. Identify Used Blue Edges
-                used_blue_edges = set()
-                for seg in final_segments:
-                    if seg.get('kind') == 'draw' and seg.get('type') == 'road' and seg.get('nodes'):
-                        path_nodes = seg['nodes']
-                        for k in range(len(path_nodes)-1):
-                            u, v = path_nodes[k], path_nodes[k+1]
-                            used_blue_edges.add(tuple(sorted((u, v))))
-
-                # 2. Define Custom Weight Function
-                def final_leg_weight(u, v, d):
-                    base_len = d.get('length', 1)
-                    if tuple(sorted((u, v))) in used_blue_edges:
-                        return base_len * 1000.0 # Huge penalty for retracing
-                    return base_len
-
-                # 3. Path Finding
-                path = nx.shortest_path(solver_G, current_node, end_node, weight=final_leg_weight)
-                coords = get_path_geometry(solver_G, path)
-                final_segments.append({'type': 'road', 'kind': 'travel', 'nodes': path, 'coords': coords})
+                # [2026-07-24 使用者決定] 回終點的最後一段改走「純最短路徑」。
+                # 舊行為是把已跑過的藍線邊 ×1000 罰到等於禁走（"不能重踩藍線"），
+                # 實測會為了避開藍線硬鑽進巷弄繞一大圈，巷弄路網有缺口時
+                # 還會畫出斜線切西瓜（實例：台北長春路/松江路156巷）。
+                # 使用者明確要求：最短路徑回終點，與原路線重疊沒關係。
+                path = robust_shortest_path(solver_G, current_node, end_node, weight='length')
+                if path and len(path) > 1:
+                    coords = get_path_geometry(solver_G, path)
+                    final_segments.append({'type': 'road', 'kind': 'travel', 'nodes': path, 'coords': coords})
             except Exception: pass
             
     # [Phase 75] Global Spur Pruning
