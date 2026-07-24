@@ -203,6 +203,19 @@ python selftest_algorithms.py baseline
    - 查詢用 `[out:json][timeout:25]`（伺服器端逾時），塞住的機器早點放棄。
    - 整輪競速失敗會短暫等一下再試第二輪；仍失敗給乾淨的中文錯誤，不是 traceback。
 
+   另外兩個瀏覽器版用到的外部服務（都有 CORS、失敗都不影響主流程）：
+   - **Nominatim**（`nominatim.openstreetmap.org/reverse`）：反向地理編碼出地點名稱，
+     匯出圖片用。
+   - **Open-Meteo Elevation**（`api.open-meteo.com/v1/elevation`）：查高程算爬升／下降，
+     一次最多 100 點，前端會等距抽樣。
+
+### 深／淺色主題
+
+CSS 用 `:root` 變數，`body.light` 覆寫；`setTheme(light)` 切換 class、
+換底圖圖層（`dark_all`↔`light_all`）、重染已下載範圍遮罩，並存 localStorage。
+匯出圖片讀 `isLight()` 選一組配色（底圖樣式、`brightness` 濾鏡、資訊欄顏色）。
+`@media (min-width:900px)` 是桌面版排版：操作列移左側、結果改右下浮空卡片。
+
 3. **更新 `gpsart/` 要同時改 `engine.js` 的 `VERSION`**
    否則瀏覽器會沿用快取的舊演算法（`fetch('gpsart/x.py?v=VERSION')`）。
 

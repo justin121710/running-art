@@ -6,162 +6,199 @@
 <title>Running Art</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
+  /* 深色（預設）與淺色主題都用這組變數，只有 body.light 覆寫。
+     強調色（藍/綠/紅）兩種主題共用，不放進來。 */
+  :root{
+    --bg:#0d0f12; --panel:#14171c; --panel2:#171b21; --panel3:#0f1216;
+    --border:#262b33; --border2:#3a4048;
+    --text:#e8eaed; --text2:#c9cdd3; --dim:#8b929c;
+    --glass:rgba(20,23,28,.9); --scrim:rgba(6,8,11,.72);
+    /* CARTO dark_all 的道路偏暗，提亮讓街道看得清楚 */
+    --tile-filter:brightness(1.5) contrast(1.04);
+  }
+  body.light{
+    --bg:#eef1f5; --panel:#ffffff; --panel2:#eef1f6; --panel3:#e6eaf0;
+    --border:#d3d9e2; --border2:#c2cad6;
+    --text:#1a1d22; --text2:#3a4048; --dim:#6b727d;
+    --glass:rgba(255,255,255,.9); --scrim:rgba(30,40,55,.45);
+    --tile-filter:none;   /* light_all 底圖本來就亮，不用再提 */
+  }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;overflow:hidden;
     font-family:system-ui,-apple-system,"Microsoft JhengHei",sans-serif;
-    background:#0d0f12;color:#e8eaed}
-  #map{position:absolute;inset:0;background:#0d0f12}
-  .leaflet-container{background:#0d0f12}
-  /* CARTO dark_all 的道路偏暗，提亮讓街道看得清楚 */
-  .leaflet-tile-pane{filter:brightness(1.5) contrast(1.04)}
+    background:var(--bg);color:var(--text)}
+  #map{position:absolute;inset:0;background:var(--bg)}
+  .leaflet-container{background:var(--bg)}
+  .leaflet-tile-pane{filter:var(--tile-filter)}
 
   /* ---- 頂部 ---- */
   .top{position:absolute;top:0;left:0;right:0;z-index:500;padding:10px 12px;
     display:flex;gap:8px;align-items:center;pointer-events:none}
   .top>*{pointer-events:auto}
   .brand{font-size:15px;font-weight:500;letter-spacing:.5px;
-    background:rgba(20,23,28,.82);backdrop-filter:blur(8px);
-    border:1px solid #262b33;border-radius:10px;padding:8px 12px}
-  .btn-dl{margin-left:auto;display:flex;align-items:center;gap:6px;
-    background:rgba(20,23,28,.82);backdrop-filter:blur(8px);
-    border:1px solid #262b33;color:#e8eaed;border-radius:10px;
+    background:var(--glass);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+  .btn-dl{display:flex;align-items:center;gap:6px;
+    background:var(--glass);backdrop-filter:blur(8px);
+    border:1px solid var(--border);color:var(--text);border-radius:10px;
     padding:9px 13px;font-size:13px;font-weight:500}
-  .btn-dl.on{background:#2563eb;border-color:#2563eb}
+  .btn-dl.push{margin-left:auto}
+  .btn-dl.on{background:#2563eb;border-color:#2563eb;color:#fff}
+  .icon-btn{flex:none;width:38px;justify-content:center;padding:9px 0}
+  .icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
 
   /* ---- 引導條 ---- */
   .guide{position:absolute;left:12px;right:12px;bottom:150px;z-index:500;
-    background:rgba(20,23,28,.9);backdrop-filter:blur(8px);
-    border:1px solid #262b33;border-left:3px solid #2563eb;border-radius:10px;
+    background:var(--glass);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-left:3px solid #2563eb;border-radius:10px;
     padding:11px 13px;display:flex;gap:10px;align-items:center;
     transition:opacity .25s,transform .25s}
   .guide.hide{opacity:0;transform:translateY(6px);pointer-events:none}
   .guide .n{width:21px;height:21px;flex:none;border-radius:50%;background:#2563eb;
     color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
-  .guide p{margin:0;font-size:13px;line-height:1.45;color:#c9cdd3}
-  .guide b{color:#fff;font-weight:500}
+  .guide p{margin:0;font-size:13px;line-height:1.45;color:var(--text2)}
+  .guide b{color:var(--text);font-weight:500}
 
   /* ---- 底部工具列 ---- */
   .dock{position:absolute;left:12px;right:12px;bottom:12px;z-index:500;
-    background:rgba(20,23,28,.92);backdrop-filter:blur(12px);
-    border:1px solid #262b33;border-radius:16px;padding:8px;
+    background:var(--glass);backdrop-filter:blur(12px);
+    border:1px solid var(--border);border-radius:16px;padding:8px;
     display:flex;flex-direction:column;gap:8px}
   .modes{display:flex;gap:6px}
   .m{flex:1;background:transparent;border:0;border-radius:11px;padding:9px 4px;
-    color:#8b929c;font-size:11px;font-family:inherit;
+    color:var(--dim);font-size:11px;font-family:inherit;
     display:flex;flex-direction:column;align-items:center;gap:4px}
   .m svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
   .m.on{background:#2563eb;color:#fff}
   .m:disabled{opacity:.32}
   .row2{display:flex;gap:6px}
-  .sm{background:#171b21;border:1px solid #262b33;border-radius:11px;
-    color:#c9cdd3;font-size:12.5px;font-family:inherit;padding:10px 12px;
+  .sm{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
+    color:var(--text2);font-size:12.5px;font-family:inherit;padding:10px 12px;
     display:flex;align-items:center;gap:5px}
   .sm svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
   .sm:disabled{opacity:.32}
   .go{flex:1;justify-content:center;background:#16a34a;border-color:#16a34a;
     color:#fff;font-weight:500;font-size:14px}
-  .go:disabled{background:#171b21;border-color:#262b33;color:#8b929c}
+  .go:disabled{background:var(--panel2);border-color:var(--border);color:var(--dim)}
   /* 微調路徑工具列 */
   .dock[hidden]{display:none}
   #editDock .sm{flex:1;justify-content:center}
   .sm.on{background:#2563eb;border-color:#2563eb;color:#fff}
   .sm.danger{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:500}
-  .sm.danger:disabled{background:#171b21;border-color:#262b33;color:#8b929c}
+  .sm.danger:disabled{background:var(--panel2);border-color:var(--border);color:var(--dim)}
 
   /* ---- 距離膠囊 ---- */
   .pill{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:500;
-    background:rgba(20,23,28,.88);backdrop-filter:blur(8px);border:1px solid #262b33;
+    background:var(--glass);backdrop-filter:blur(8px);border:1px solid var(--border);
     border-radius:999px;padding:6px 15px;font-size:13px;font-weight:500;
     transition:opacity .2s}
   .pill.hide{opacity:0;pointer-events:none}
-  .pill.tap{background:#2563eb;border-color:#2563eb;cursor:pointer}
+  .pill.tap{background:#2563eb;border-color:#2563eb;color:#fff;cursor:pointer}
 
   /* ---- 結果面板 ---- */
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;
-    background:#14171c;border-top:1px solid #262b33;
+    background:var(--panel);border-top:1px solid var(--border);
     border-radius:18px 18px 0 0;padding:8px 16px 18px;
     transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
   .sheet.up{transform:translateY(0)}
-  .grip{width:34px;height:4px;background:#3a4048;border-radius:2px;margin:0 auto 14px}
-  .stats{display:flex;gap:10px;margin-bottom:14px}
-  .stat{flex:1;background:#171b21;border-radius:11px;padding:11px}
-  .stat span{display:block;font-size:11.5px;color:#8b929c;margin-bottom:3px}
+  .grip{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+  .stat{background:var(--panel2);border-radius:11px;padding:10px 11px}
+  .stat span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:3px}
   .stat b{font-size:19px;font-weight:500}
-  .prev{background:#171b21;border-radius:11px;padding:9px 11px;margin-bottom:10px}
+  .prev{background:var(--panel2);border-radius:11px;padding:9px 11px;margin-bottom:10px}
   .prow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .prow .lbl{font-size:12.5px;color:#8b929c}
+  .prow .lbl{font-size:12.5px;color:var(--dim)}
   .prow b{font-size:15px;font-weight:500;margin-left:auto}
-  .prow .unit{font-size:11.5px;color:#8b929c;min-width:34px;text-align:right}
-  .prow button{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid #262b33;
-    background:#0f1216;color:#e8eaed;font-size:13px;font-family:inherit;line-height:1}
+  .prow .unit{font-size:11.5px;color:var(--dim);min-width:34px;text-align:right}
+  .prow button{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid var(--border);
+    background:var(--panel3);color:var(--text);font-size:13px;font-family:inherit;line-height:1}
   #pvSlider{width:100%;margin:0;accent-color:#38bdf8}
-  .pace{display:flex;align-items:center;gap:8px;background:#171b21;border-radius:11px;
+  .pace{display:flex;align-items:center;gap:8px;background:var(--panel2);border-radius:11px;
     padding:8px 11px;margin-bottom:10px}
-  .pace .lbl{font-size:12.5px;color:#8b929c}
-  .pace button{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid #262b33;
-    background:#0f1216;color:#e8eaed;font-size:17px;font-family:inherit;line-height:1}
+  .pace .lbl{font-size:12.5px;color:var(--dim)}
+  .pace button{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid var(--border);
+    background:var(--panel3);color:var(--text);font-size:17px;font-family:inherit;line-height:1}
   .pace b{font-size:16px;font-weight:500;min-width:44px;text-align:center}
-  .pace .unit{font-size:11.5px;color:#8b929c}
-  .pace .hint{margin-left:auto;font-size:11.5px;color:#8b929c}
+  .pace .unit{font-size:11.5px;color:var(--dim)}
+  .pace .hint{margin-left:auto;font-size:11.5px;color:var(--dim)}
   /* 次要動作：一排四顆，圖示在上文字在下 */
   .tools{display:flex;gap:6px;margin-bottom:9px}
-  .tools button{flex:1;background:#171b21;border:1px solid #262b33;border-radius:11px;
-    color:#c9cdd3;font-size:11px;font-family:inherit;padding:9px 2px;
+  .tools button{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:11px;
+    color:var(--text2);font-size:11px;font-family:inherit;padding:9px 2px;
     display:flex;flex-direction:column;align-items:center;gap:5px}
   .tools svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
   .tools button:disabled{opacity:.32}
 
   /* 匯出圖片的選項對話框 */
-  .modal{position:absolute;inset:0;z-index:900;background:rgba(6,8,11,.72);
+  .modal{position:absolute;inset:0;z-index:900;background:var(--scrim);
     display:flex;align-items:center;justify-content:center;padding:20px}
   .modal[hidden]{display:none}
-  .mbox{width:100%;max-width:340px;background:#14171c;border:1px solid #262b33;
+  .mbox{width:100%;max-width:340px;background:var(--panel);border:1px solid var(--border);
     border-radius:16px;padding:16px}
   .mtitle{font-size:15px;font-weight:500;margin-bottom:12px}
-  .sw{display:flex;align-items:center;gap:10px;background:#171b21;border-radius:11px;
+  .sw{display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:11px;
     padding:11px 12px;margin-bottom:8px}
   .sw input{width:19px;height:19px;flex:none;accent-color:#2563eb;margin:0}
   .sw span{font-size:13.5px;display:flex;flex-direction:column;gap:2px}
-  .sw i{font-style:normal;font-size:11.5px;color:#8b929c}
-  .rlabel{font-size:11.5px;color:#8b929c;margin:2px 2px 6px}
+  .sw i{font-style:normal;font-size:11.5px;color:var(--dim)}
+  .rlabel{font-size:11.5px;color:var(--dim);margin:2px 2px 6px}
   .ratios{display:flex;gap:6px;margin-bottom:12px}
-  .rt{flex:1;background:#171b21;border:1px solid #262b33;border-radius:11px;
-    color:#c9cdd3;font-size:14px;font-weight:500;font-family:inherit;padding:9px 2px;
+  .rt{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:11px;
+    color:var(--text2);font-size:14px;font-weight:500;font-family:inherit;padding:9px 2px;
     display:flex;flex-direction:column;align-items:center;gap:3px}
-  .rt i{font-style:normal;font-size:10.5px;color:#8b929c;font-weight:400}
+  .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
   .rt.on{background:#2563eb;border-color:#2563eb;color:#fff}
   .rt.on i{color:rgba(255,255,255,.82)}
   .mact{display:flex;gap:8px;margin-top:14px}
   .mact button{flex:1;padding:11px;border-radius:11px;font-size:13.5px;font-family:inherit;
-    font-weight:500;border:1px solid #262b33;background:#171b21;color:#e8eaed}
-  .mact .pri{background:#2563eb;border-color:#2563eb}
+    font-weight:500;border:1px solid var(--border);background:var(--panel2);color:var(--text)}
+  .mact .pri{background:#2563eb;border-color:#2563eb;color:#fff}
 
   .acts{display:flex;gap:8px}
   .acts button{flex:1;padding:12px;border-radius:11px;font-size:13.5px;
-    font-family:inherit;font-weight:500;border:1px solid #262b33;
-    background:#171b21;color:#e8eaed;display:flex;align-items:center;
+    font-family:inherit;font-weight:500;border:1px solid var(--border);
+    background:var(--panel2);color:var(--text);display:flex;align-items:center;
     justify-content:center;gap:6px}
-  .acts .pri{background:#2563eb;border-color:#2563eb}
+  .acts .pri{background:#2563eb;border-color:#2563eb;color:#fff}
   .acts svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
 
   .toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:900;
-    background:rgba(20,23,28,.95);border:1px solid #262b33;border-radius:12px;
+    background:var(--glass);border:1px solid var(--border);border-radius:12px;color:var(--text);
     padding:15px 20px;font-size:13.5px;text-align:center;opacity:0;
     transition:opacity .2s;pointer-events:none}
   .toast.show{opacity:1}
   .busy{position:absolute;top:0;left:0;right:0;z-index:800;display:none;
-    align-items:center;gap:9px;justify-content:center;padding:10px;
-    background:rgba(13,15,18,.94);border-bottom:1px solid #262b33;font-size:13px}
+    align-items:center;gap:9px;justify-content:center;padding:10px;color:var(--text);
+    background:var(--glass);border-bottom:1px solid var(--border);font-size:13px}
   .busy.on{display:flex}
   .spin{width:14px;height:14px;border:2px solid #2563eb;border-top-color:transparent;
     border-radius:50%;animation:sp .7s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
   .box{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.14);
     z-index:450;pointer-events:none;border-radius:4px}
+
+  /* ==== 桌面版：操作按鈕移到左側直排，結果改成右下角浮空卡片 ==== */
+  @media (min-width:900px){
+    .dock{left:14px;top:72px;right:auto;bottom:auto;width:200px}
+    .dock .modes,.dock .row2{flex-direction:column}
+    #mainDock .m{flex-direction:row;justify-content:flex-start;gap:11px;
+      padding:11px 13px;font-size:13px}
+    #mainDock .m svg{width:19px;height:19px}
+    #mainDock .sm{justify-content:flex-start}
+    .sheet{left:auto;right:20px;bottom:20px;width:410px;
+      border:1px solid var(--border);border-radius:16px;
+      max-height:calc(100vh - 40px);overflow:auto}
+    .grip{display:none}
+    .guide{left:230px;right:auto;max-width:460px;bottom:26px}
+    .pill{left:auto;right:20px;transform:none}
+    .pill.tap{transform:none}
+  }
 </style>
 </head>
 <body>
@@ -169,6 +206,9 @@
 
 <div class="top">
   <div class="brand">Running Art</div>
+  <button class="btn-dl icon-btn push" id="btnTheme" aria-label="切換深淺色主題">
+    <svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
+  </button>
   <button class="btn-dl" id="btnDl">
     <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
     <span id="dlLabel">下載地圖</span>
@@ -242,6 +282,7 @@
     <div class="stat"><span>路線距離</span><b id="sDist">–</b></div>
     <div class="stat"><span>與圖形吻合</span><b id="sFit">–</b></div>
     <div class="stat"><span>預估時間</span><b id="sTime">–</b></div>
+    <div class="stat"><span>爬升 / 下降</span><b id="sElev">–</b></div>
   </div>
   <div class="prev">
     <div class="prow">
@@ -313,7 +354,31 @@
 <script src="engine.js?v=20260724c"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+
+/* ---------- 深／淺色主題 ---------- */
+// 底圖跟著換：深色用 CARTO dark_all，淺色用 light_all。
+const TILE_URL=t=>`https://{s}.basemaps.cartocdn.com/${t?'light_all':'dark_all'}/{z}/{x}/{y}{r}.png`;
+let baseLayer=null, areaMask=null, areaRect=null;
+function isLight(){return document.body.classList.contains('light');}
+function applyBaseLayer(){
+  if(baseLayer) baseLayer.remove();
+  baseLayer=L.tileLayer(TILE_URL(isLight()),{maxZoom:19}).addTo(map);
+  baseLayer.bringToBack();
+  // 已下載範圍的遮罩顏色也要隨主題（淺色用淺灰遮罩、深色用近黑）
+  if(areaMask) areaMask.setStyle({fillColor:isLight()?'#8a96a6':'#05070a'});
+}
+function setTheme(light,save=true){
+  document.body.classList.toggle('light',light);
+  if(save) localStorage.setItem('runart_theme',light?'light':'dark');
+  applyBaseLayer();
+}
+// 初始主題：記住的優先，否則跟隨系統設定
+(function(){
+  const saved=localStorage.getItem('runart_theme');
+  const light=saved?saved==='light':window.matchMedia('(prefers-color-scheme: light)').matches;
+  setTheme(light,false);
+})();
+document.getElementById('btnTheme').onclick=()=>setTheme(!isLight());
 
 const S={mode:'pan',hasMap:false,strokes:[],cur:null,start:null,end:null,
          boxing:false,generated:false,sheetUp:false,step:1,bounds:null,warned:0,
@@ -346,8 +411,11 @@ function toast(t,ms=1500){
 function showArea(b){
   const W=[[90,-180],[90,180],[-90,180],[-90,-180]];
   const hole=[b.getNorthWest(),b.getNorthEast(),b.getSouthEast(),b.getSouthWest()];
-  L.polygon([W,hole],{stroke:false,fillColor:'#05070a',fillOpacity:.55,interactive:false}).addTo(map);
-  L.rectangle(b,{color:'#38bdf8',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map);
+  if(areaMask) areaMask.remove();
+  if(areaRect) areaRect.remove();
+  areaMask=L.polygon([W,hole],{stroke:false,fillColor:isLight()?'#8a96a6':'#05070a',
+    fillOpacity:.55,interactive:false}).addTo(map);
+  areaRect=L.rectangle(b,{color:'#38bdf8',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map);
   map.fitBounds(b,{padding:[26,26]});
 }
 function inArea(ll){return !S.bounds||S.bounds.contains(ll);}
@@ -525,6 +593,7 @@ function clearAll(){
 function dropRoute(){
   if(routeLayer){routeLayer.remove();routeLayer=null;}
   pvClear();S.path=null;S.result=null;
+  S.elevGain=null;S.elevLoss=null;$('sElev').textContent='–';
   S.generated=false;S.locked=false;
   S.sheetUp=false;el.sheet.classList.remove('up');
 }
@@ -653,12 +722,18 @@ paceUI();
 function applyResult(res,withPreview=true){
   S.result=res;
   if(routeLayer) routeLayer.remove();
-  routeLayer=L.layerGroup(res.segments.map(sg=>L.polyline(sg.pts,{
-    color: sg.kind==='draw' ? '#38bdf8' : '#9aa4b2',
-    weight: sg.kind==='draw' ? 6 : 3,
-    opacity:.95,
-    dashArray: sg.kind==='draw' ? null : '6 6'
-  }))).addTo(map);
+  const layers=[];
+  res.segments.forEach(sg=>{
+    if(sg.kind==='draw'){
+      layers.push(L.polyline(sg.pts,{color:'#38bdf8',weight:6,opacity:.95}));
+    }else{
+      // 連接段（起點→路線、路線→終點、筆畫之間）：橘色虛線 + 深色描邊墊底，
+      // 這樣在深色和淺色底圖上都看得清楚（之前灰色在提亮的底圖上會糊掉）。
+      layers.push(L.polyline(sg.pts,{color:'rgba(0,0,0,.55)',weight:7,opacity:.9}));
+      layers.push(L.polyline(sg.pts,{color:'#f59e0b',weight:4,opacity:1,dashArray:'9 7'}));
+    }
+  });
+  routeLayer=L.layerGroup(layers).addTo(map);
   S.km=res.total_m/1000;
   $('sDist').textContent=S.km.toFixed(2)+' km';
   $('sFit').textContent=Math.round(res.fit)+'%';
@@ -669,6 +744,41 @@ function pvClear(){
   pvStop();
   [pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
   pvDone=pvHead=pvArrows=null;
+}
+/* ---------- 預估爬升／下降 ----------
+   用 Open-Meteo 免費高程 API（有 CORS，一次最多 100 點）查整條路線的高度，
+   加總正的落差＝爬升、負的＝下降。DEM 解析度較粗，城市路線通常起伏不大屬正常。 */
+let elevSeq=0;
+async function updateElevation(){
+  if(!S.result){return;}
+  const path=[];
+  S.result.segments.forEach(sg=>sg.pts.forEach(p=>{
+    const last=path.length?path[path.length-1]:null;
+    if(!last||last[0]!==p[0]||last[1]!==p[1]) path.push(p);
+  }));
+  if(path.length<2){$('sElev').textContent='–';return;}
+  // 等距抽樣到最多 100 點
+  const N=Math.min(100,path.length);
+  const samp=[];
+  for(let i=0;i<N;i++) samp.push(path[Math.round(i*(path.length-1)/(N-1))]);
+  const seq=++elevSeq;
+  $('sElev').textContent='計算中…';
+  try{
+    const lat=samp.map(p=>p[0].toFixed(5)).join(',');
+    const lon=samp.map(p=>p[1].toFixed(5)).join(',');
+    const ctrl=new AbortController();const tm=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat+'&longitude='+lon,{signal:ctrl.signal});
+    clearTimeout(tm);
+    const e=(await r.json()).elevation;
+    if(seq!==elevSeq) return;   // 期間又生成／編輯了，這次結果作廢
+    if(!e||!e.length) throw 0;
+    let up=0,down=0;
+    for(let i=1;i<e.length;i++){const d=e[i]-e[i-1]; if(d>0)up+=d; else down-=d;}
+    S.elevGain=Math.round(up); S.elevLoss=Math.round(down);
+    $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
+  }catch(_){
+    if(seq===elevSeq){ S.elevGain=null;S.elevLoss=null; $('sElev').textContent='–'; }
+  }
 }
 /* 把視野拉到路線上，並讓開結果面板與頂端按鈕 */
 function fitRoute(){
@@ -688,7 +798,7 @@ $('btnGo').onclick=()=>{
       S.strokes.forEach(s=>s.line.setStyle({opacity:.25,weight:3}));
       S.generated=true;S.locked=true;
       S.sheetUp=true;el.sheet.classList.add('up');
-      refresh();fitRoute();
+      refresh();fitRoute();updateElevation();
     })
     .catch(err=>{busy('');toast('生成失敗：'+err.message,3000);});
 };
@@ -713,6 +823,9 @@ $('aRev').onclick=()=>{
       const s=S.start;S.start=S.end;S.end=s;
       if(startMk&&S.start) startMk.setLatLng(S.start);
       if(endMk&&S.end) endMk.setLatLng(S.end);
+      // 方向反轉＝爬升與下降互換，不必再打一次 API
+      const g=S.elevGain;S.elevGain=S.elevLoss;S.elevLoss=g;
+      if(S.elevGain!=null) $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
       toast('已反轉方向',1600);
     })
     .catch(err=>{busy('');toast('反轉失敗：'+err.message,3000);});
@@ -825,7 +938,7 @@ $('eDone').onclick=()=>{
   pvBuild(S.result);
   S.sheetUp=true;el.sheet.classList.add('up');
   el.pill.classList.add('hide');
-  refresh();
+  refresh();updateElevation();   // 路徑被改過，重新估爬升下降
 };
 $('aGpx').onclick=()=>{
   if(!S.result) return;
@@ -883,14 +996,26 @@ function latToWorld(lat,z){
   const r=lat*Math.PI/180;
   return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*TILE_SIZE*Math.pow(2,z);
 }
-function loadTile(z,x,y,i){
+function loadTile(z,x,y,i,style){
   return new Promise(res=>{
     const img=new Image();
     img.crossOrigin='anonymous';
     img.onload=()=>res(img);
-    img.onerror=()=>res(null);   // 單一 tile 失敗就留深色底，不要整張圖失敗
-    img.src=`https://${TILE_HOSTS[i%TILE_HOSTS.length]}.basemaps.cartocdn.com/dark_all/${z}/${x}/${y}@2x.png`;
+    img.onerror=()=>res(null);   // 單一 tile 失敗就留底色，不要整張圖失敗
+    img.src=`https://${TILE_HOSTS[i%TILE_HOSTS.length]}.basemaps.cartocdn.com/${style}/${z}/${x}/${y}@2x.png`;
   });
+}
+// 匯出圖片的地圖大頭針（畫在資訊欄地點名稱左邊）
+function drawPin(ctx,cx,tipY,h,color){
+  const r=h*0.34, cy=tipY-h+r;
+  ctx.save();
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx-r*0.72,cy+r*0.52);ctx.lineTo(cx+r*0.72,cy+r*0.52);ctx.lineTo(cx,tipY);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,r*0.42,0,Math.PI*2);ctx.fill();
+  ctx.restore();
 }
 
 async function exportPNG(opt){
@@ -900,6 +1025,18 @@ async function exportPNG(opt){
     const sc=W/1080;                   // 寬固定 1080，sc=1；保留以便日後改寬
     const infoH=INFO_H;
     const mapW=W, mapH=H-infoH;        // 地圖區；資訊欄固定在最底部
+
+    // 圖片跟著 App 的深／淺色主題走
+    const light=isLight();
+    const TH=light?{
+      tile:'light_all', tileFilter:'none', mapBg:'#e8ecf1',
+      infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
+      overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
+    }:{
+      tile:'dark_all', tileFilter:'brightness(1.5) contrast(1.04)', mapBg:'#0d0f12',
+      infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
+      overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
+    };
 
     // 1) 要涵蓋的地理範圍
     const pts=[];
@@ -930,7 +1067,7 @@ async function exportPNG(opt){
     const cv=document.createElement('canvas');
     cv.width=W;cv.height=H;
     const ctx=cv.getContext('2d');
-    ctx.fillStyle='#0d0f12';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,H);
 
     // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）
     ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
@@ -938,9 +1075,9 @@ async function exportPNG(opt){
     const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
     const jobs=[];let ji=0;
     for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:ji++});
-    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i)));
+    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i,TH.tile)));
     const ts=TILE_SIZE*K;
-    ctx.filter='brightness(1.5) contrast(1.04)';
+    ctx.filter=TH.tileFilter;
     jobs.forEach((j,n)=>{
       if(!imgs[n]) return;
       ctx.drawImage(imgs[n], mapW/2+(j.tx*TILE_SIZE-cxZ)*K, mapH/2+(j.ty*TILE_SIZE-cyZ)*K, ts+1, ts+1);
@@ -1027,26 +1164,23 @@ async function exportPNG(opt){
     let barM=NICE[0];
     for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
     const barPx=barM/mPerPx, bx=26*sc, by=mapH-26*sc, tick=6*sc;
-    ctx.strokeStyle='rgba(0,0,0,.75)';ctx.lineWidth=6*sc;
-    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
-    ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
-    ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();
-    ctx.strokeStyle='#fff';ctx.lineWidth=2.5*sc;
-    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
-    ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
-    ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();
+    const drawBar=()=>{ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
+      ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
+      ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();};
+    ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
+    ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
     const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
     ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='left';
     const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
-    ctx.lineWidth=5*sc;ctx.strokeStyle='rgba(0,0,0,.75)';
+    ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
     ctx.strokeText(barTxt,bx,by-14*sc);
-    ctx.fillStyle='#fff';ctx.fillText(barTxt,bx,by-14*sc);
+    ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,bx,by-14*sc);
 
     // 品牌浮水印（地圖區右下角，不搶焦點）
     ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
-    ctx.lineWidth=4*sc;ctx.strokeStyle='rgba(0,0,0,.7)';
+    ctx.lineWidth=4*sc;ctx.strokeStyle=TH.overlayStroke;
     ctx.strokeText('RUNNING ART',mapW-26*sc,mapH-24*sc);
-    ctx.globalAlpha=.92;ctx.fillStyle='#fff';ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
+    ctx.globalAlpha=.92;ctx.fillStyle=TH.overlay;ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
     ctx.globalAlpha=1;
 
     // 10) 地點名稱（中山區, 台北市）—— 反向地理編碼，失敗就留空
@@ -1054,29 +1188,45 @@ async function exportPNG(opt){
     busy('查詢地點…');
     const place=await getPlaceName(cLat,cLon);
 
-    // 11) 資訊欄：地點 + 日期一列，距離／配速／時間一列，字放大
-    ctx.fillStyle='#14171c';ctx.fillRect(0,mapH,mapW,infoH);
-    ctx.fillStyle='#2b313b';ctx.fillRect(0,mapH,mapW,Math.max(2,2*sc));
-    const pad=36*sc, top=mapH;
+    // 11) 資訊欄：地點（含大頭針）＋日期一列，四個數據一列
+    ctx.fillStyle=TH.infoBg;ctx.fillRect(0,mapH,mapW,infoH);
+    ctx.fillStyle=TH.infoLine;ctx.fillRect(0,mapH,mapW,Math.max(2,2*sc));
+    const pad=36*sc, top=mapH, rowY=top+infoH*0.23;
     ctx.textBaseline='middle';
-    // 上排：地點（左，大）＋ 日期（右）
-    ctx.textAlign='left';ctx.fillStyle='#e8eaed';ctx.font=`600 ${Math.round(38*sc)}px ${F}`;
-    if(place) ctx.fillText(place,pad,top+infoH*0.24);
-    ctx.textAlign='right';ctx.fillStyle='#8b929c';ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
-    ctx.fillText(localDate(),mapW-pad,top+infoH*0.24);
+    // 上排：大頭針 + 地點（左）＋ 日期（右）
+    let placeX=pad;
+    if(place){
+      const ph=34*sc;
+      drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,'#ef4444');
+      placeX=pad+ph*0.9;
+      ctx.textAlign='left';ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(37*sc)}px ${F}`;
+      ctx.fillText(place,placeX,rowY);
+    }
+    ctx.textAlign='right';ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
+    ctx.fillText(localDate(),mapW-pad,rowY);
 
-    // 下排：三個數據
+    // 下排：四個數據（含爬升／下降）
     const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
+    const elevTxt=(S.elevGain!=null)?('↑'+S.elevGain+' ↓'+S.elevLoss+' m'):'–';
     const cells=[['距離',$('sDist').textContent],
                  ['配速',pm+':'+String(ps).padStart(2,'0')+' /km'],
-                 ['預估時間',$('sTime').textContent]];
-    const cw=(mapW-pad*2)/3;
+                 ['預估時間',$('sTime').textContent],
+                 ['爬升／下降',elevTxt]];
+    const cw=(mapW-pad*2)/4;
     ctx.textAlign='left';
     cells.forEach((c,n)=>{
       const cx=pad+cw*n;
-      ctx.fillStyle='#8b929c';ctx.font=`400 ${Math.round(27*sc)}px ${F}`;
-      ctx.fillText(c[0],cx,top+infoH*0.56);
-      ctx.fillStyle='#f4f6f8';ctx.font=`600 ${Math.round(56*sc)}px ${F}`;
+      ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(25*sc)}px ${F}`;
+      ctx.fillText(c[0],cx,top+infoH*0.57);
+      // 數值：太寬（例如「↑45 ↓30 m」）就自動縮字級，不要溢出格子
+      ctx.fillStyle=TH.textMain;
+      let fs=46*sc;
+      ctx.font=`600 ${Math.round(fs)}px ${F}`;
+      const maxW=cw-10*sc;
+      if(ctx.measureText(c[1]).width>maxW){
+        fs*=maxW/ctx.measureText(c[1]).width;
+        ctx.font=`600 ${Math.round(fs)}px ${F}`;
+      }
       ctx.fillText(c[1],cx,top+infoH*0.81);
     });
 
