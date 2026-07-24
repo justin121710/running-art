@@ -9,6 +9,9 @@
   /* 深色（預設）與淺色主題都用這組變數，只有 body.light 覆寫。
      強調色（藍/綠/紅）兩種主題共用，不放進來。 */
   :root{
+    /* color-scheme 讓原生控制項（拉桿、捲軸）跟著主題，而不是跟著作業系統。
+       少了它，淺色主題下的 range 拉桿在深色系統上會是深色的。 */
+    color-scheme:dark;
     --bg:#0d0f12; --panel:#14171c; --panel2:#171b21; --panel3:#0f1216;
     --border:#262b33; --border2:#3a4048;
     --text:#e8eaed; --text2:#c9cdd3; --dim:#8b929c;
@@ -17,6 +20,7 @@
     --tile-filter:brightness(1.5) contrast(1.04);
   }
   body.light{
+    color-scheme:light;
     --bg:#eef1f5; --panel:#ffffff; --panel2:#eef1f6; --panel3:#e6eaf0;
     --border:#d3d9e2; --border2:#c2cad6;
     --text:#1a1d22; --text2:#3a4048; --dim:#6b727d;
