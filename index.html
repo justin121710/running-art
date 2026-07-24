@@ -154,8 +154,8 @@
   .modal{position:absolute;inset:0;z-index:900;background:var(--scrim);
     display:flex;align-items:center;justify-content:center;padding:20px}
   .modal[hidden]{display:none}
-  .mbox{width:100%;max-width:340px;background:var(--panel);border:1px solid var(--border);
-    border-radius:16px;padding:16px}
+  .mbox{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--border);
+    border-radius:16px;padding:16px;max-height:92vh;overflow:auto}
   .mtitle{font-size:15px;font-weight:500;margin-bottom:12px}
   .sw{display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:11px;
     padding:11px 12px;margin-bottom:8px}
@@ -170,9 +170,16 @@
   .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
   .rt.on{background:#2563eb;border-color:#2563eb;color:#fff}
   .rt.on i{color:rgba(255,255,255,.82)}
-  /* 匯出即時預覽小框 + 進度拉桿 */
-  .mprev{display:block;width:100%;background:var(--panel3);border:1px solid var(--border);
-    border-radius:11px;margin-bottom:12px}
+  /* 匯出對話框：左右兩欄（選項左、即時預覽右），預覽限高、按鈕移到欄外底部，
+     這樣 9:16 這種高比例不會把「產生圖片」按鈕擠出畫面 */
+  .mcols{display:flex;gap:14px;align-items:flex-start}
+  .mopts{flex:1 1 250px;min-width:0}
+  .mprevwrap{flex:0 0 auto;display:flex;justify-content:center}
+  .mprev{display:block;background:var(--panel3);border:1px solid var(--border);border-radius:11px;
+    max-height:60vh;max-width:100%;width:auto;height:auto}
+  .lyrs{flex-wrap:wrap;margin-bottom:12px}
+  .lyr{flex:1 1 28%}
+  @media (max-width:560px){ .mcols{flex-direction:column-reverse} .mprevwrap{width:100%} .mprev{width:100%} }
   .mprog{width:100%;margin:2px 0 12px;-webkit-appearance:none;appearance:none;height:6px;
     border-radius:3px;background:linear-gradient(to right,#f59e0b 0%,#38bdf8 0%);outline:none}
   .mprog::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
@@ -349,24 +356,29 @@
 <div class="modal" id="pngModal" hidden>
   <div class="mbox">
     <div class="mtitle" data-en="Export image">匯出圖片</div>
-    <canvas id="pngPrev" class="mprev" width="300" height="300"></canvas>
-    <div class="rlabel" data-en="Ratio">比例</div>
-    <div class="ratios">
-      <button class="rt on" data-ratio="1:1">1:1<i data-en="Square">正方形</i></button>
-      <button class="rt" data-ratio="4:5">4:5<i data-en="Portrait">直式貼文</i></button>
-      <button class="rt" data-ratio="9:16">9:16<i data-en="Story">限時動態</i></button>
+    <div class="mcols">
+      <div class="mopts">
+        <div class="rlabel" data-en="Ratio">比例</div>
+        <div class="ratios">
+          <button class="rt on" data-ratio="1:1">1:1<i data-en="Square">正方形</i></button>
+          <button class="rt" data-ratio="4:5">4:5<i data-en="Portrait">直式貼文</i></button>
+          <button class="rt" data-ratio="9:16">9:16<i data-en="Story">限時動態</i></button>
+        </div>
+        <div class="rlabel" data-en="Layers">圖層</div>
+        <div class="ratios lyrs">
+          <button class="rt lyr on" data-layer="route" data-en="Route">路線</button>
+          <button class="rt lyr on" data-layer="arrows" data-en="Arrows">箭頭</button>
+          <button class="rt lyr" data-layer="draw" data-en="Drawing">紅線</button>
+          <button class="rt lyr on" data-layer="marks" data-en="Marks">起訖點</button>
+          <button class="rt lyr on" data-layer="basemap" data-en="Base map">地圖底圖</button>
+        </div>
+        <div class="rlabel"><span data-en="Runner progress">跑者進度</span> · <span id="pngProgTxt">100%</span></div>
+        <input type="range" id="pngProg" class="mprog" min="0" max="1000" value="1000" step="1">
+      </div>
+      <div class="mprevwrap">
+        <canvas id="pngPrev" class="mprev" width="300" height="300"></canvas>
+      </div>
     </div>
-    <div class="rlabel" data-en="Layers">圖層</div>
-    <label class="sw"><input type="checkbox" id="pngRoute" checked>
-      <span><span class="t" data-en="Route">路線</span><i data-en="Generated blue & orange lines">生成出來的藍色與橘色線</i></span></label>
-    <label class="sw"><input type="checkbox" id="pngArrows" checked>
-      <span><span class="t" data-en="Arrows">方向箭頭</span><i data-en="Direction along the route">沿路線標示前進方向</i></span></label>
-    <label class="sw"><input type="checkbox" id="pngDraw">
-      <span><span class="t" data-en="My drawing">我畫的紅線</span><i data-en="Original hand-drawn shape">原始手繪圖案</i></span></label>
-    <label class="sw"><input type="checkbox" id="pngMarks" checked>
-      <span><span class="t" data-en="Start & finish">起點與終點</span><i data-en="Green start, red finish">綠色起點、紅色終點</i></span></label>
-    <div class="rlabel"><span data-en="Runner progress">跑者進度</span> · <span id="pngProgTxt">100%</span></div>
-    <input type="range" id="pngProg" class="mprog" min="0" max="1000" value="1000" step="1">
     <div class="mact">
       <button id="pngCancel" data-en="Cancel">取消</button>
       <button class="pri" id="pngGo" data-en="Create image">產生圖片</button>
@@ -849,7 +861,12 @@ $('pvPlay').onclick=()=>{
   $('pvPlay').textContent='⏸';
   pvPose(true);   // 播放中＝奔跑（雙手舉高）
   pvTimer=setInterval(()=>{
-    let v=+$('pvSlider').value+8;
+    // 前進速度跟著配速：配速越慢（S.pace 越大）小人跑越慢。
+    // 等於把真實跑步時間壓縮成固定比例（約 1/120）播放。
+    const vMps = S.pace>0 ? 1000/(S.pace*60) : 2.8;   // 真實跑步 m/s
+    const stepM = vMps * 120 * 0.04;                   // 每 40ms 前進的公尺
+    const inc = S.totalM>0 ? (stepM/S.totalM)*1000 : 8;
+    let v=+$('pvSlider').value+inc;
     if(v>=1000){v=1000;pvStop();}
     $('pvSlider').value=v;pvSet(v/1000);
   },40);
@@ -1279,20 +1296,22 @@ async function exportPNG(opt){
     const ctx=cv.getContext('2d');
     ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,H);
 
-    // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）
+    // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）；opt.basemap 關閉時只留純色底
     ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
-    const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
-    const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
-    const jobs=[];let ji=0;
-    for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:ji++});
-    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i,TH.tile)));
-    const ts=TILE_SIZE*K;
-    ctx.filter=TH.tileFilter;
-    jobs.forEach((j,n)=>{
-      if(!imgs[n]) return;
-      ctx.drawImage(imgs[n], mapW/2+(j.tx*TILE_SIZE-cxZ)*K, mapH/2+(j.ty*TILE_SIZE-cyZ)*K, ts+1, ts+1);
-    });
-    ctx.filter='none';
+    if(opt.basemap){
+      const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
+      const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
+      const jobs=[];let ji=0;
+      for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:ji++});
+      const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i,TH.tile)));
+      const ts=TILE_SIZE*K;
+      ctx.filter=TH.tileFilter;
+      jobs.forEach((j,n)=>{
+        if(!imgs[n]) return;
+        ctx.drawImage(imgs[n], mapW/2+(j.tx*TILE_SIZE-cxZ)*K, mapH/2+(j.ty*TILE_SIZE-cyZ)*K, ts+1, ts+1);
+      });
+      ctx.filter='none';
+    }
 
     // 5) 手繪紅線。路線通常正好貼著它跑，所以紅線要畫得比路線寬、
     //    當成路線底下透出來的光暈，否則會被藍線整條蓋掉、勾了也看不見。
@@ -1501,10 +1520,12 @@ function pngCollectPts(opt){
   if(opt.marks){ if(S.start)pts.push([S.start.lat,S.start.lng]); if(S.end)pts.push([S.end.lat,S.end.lng]); }
   return pts;
 }
+// 圖層是「填色多選按鈕」（同比例按鈕樣式），選取＝加上 .on。狀態直接讀 class。
+const layerOn=name=>{const b=document.querySelector('.lyr[data-layer="'+name+'"]');return !!(b&&b.classList.contains('on'));};
 function renderPreview(){
   const cv=$('pngPrev'); if(!cv||!S.result) return;
-  const opt={route:$('pngRoute').checked,arrows:$('pngArrows').checked,
-             draw:$('pngDraw').checked,marks:$('pngMarks').checked};
+  const opt={route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
+             marks:layerOn('marks'),basemap:layerOn('basemap')};
   const frac=+$('pngProg').value/1000;
   const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
   const W=cv.width, scale=W/RW, H=Math.round(RH*scale); cv.height=H;
@@ -1514,6 +1535,11 @@ function renderPreview(){
   const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,mapH);
+  if(!opt.basemap){   // 不要地圖底圖：畫淡棋盤示意（匯出時底圖區會是純色）
+    const gs=Math.max(12,mapW/14);
+    for(let yy=0;yy<mapH;yy+=gs)for(let xx=0;xx<mapW;xx+=gs)
+      if(((xx/gs|0)+(yy/gs|0))%2){ctx.fillStyle='rgba(128,128,128,.12)';ctx.fillRect(xx,yy,gs,gs);}
+  }
   const pts=pngCollectPts(opt);
   if(pts.length){
     const lats=pts.map(p=>p[0]),lons=pts.map(p=>p[1]);
@@ -1572,7 +1598,7 @@ document.querySelectorAll('.rt').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.rt').forEach(x=>x.classList.toggle('on',x===b));
   renderPreview();
 });
-['pngRoute','pngArrows','pngDraw','pngMarks'].forEach(id=>$(id).addEventListener('change',renderPreview));
+document.querySelectorAll('.lyr').forEach(b=>b.onclick=()=>{b.classList.toggle('on');renderPreview();});
 $('pngProg').oninput=()=>{
   const pct=+$('pngProg').value/10;
   $('pngProgTxt').textContent=Math.round(pct)+'%';
@@ -1589,8 +1615,8 @@ $('aPng').onclick=()=>{
 $('pngCancel').onclick=()=>{ $('pngModal').hidden=true; };
 $('pngGo').onclick=()=>{
   $('pngModal').hidden=true;
-  exportPNG({ratio:pngRatio,route:$('pngRoute').checked,arrows:$('pngArrows').checked,
-             draw:$('pngDraw').checked,marks:$('pngMarks').checked,frac:+$('pngProg').value/1000});
+  exportPNG({ratio:pngRatio,route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
+             marks:layerOn('marks'),basemap:layerOn('basemap'),frac:+$('pngProg').value/1000});
 };
 
 el.sheet.querySelector('.grip').onclick=()=>{S.sheetUp=false;el.sheet.classList.remove('up');refresh();};
