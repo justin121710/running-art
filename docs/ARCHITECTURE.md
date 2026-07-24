@@ -216,6 +216,16 @@ CSS 用 `:root` 變數，`body.light` 覆寫；`setTheme(light)` 切換 class、
 匯出圖片讀 `isLight()` 選一組配色（底圖樣式、`brightness` 濾鏡、資訊欄顏色）。
 `@media (min-width:900px)` 是桌面版排版：操作列移左側、結果改右下浮空卡片。
 
+### 中／英文（i18n）
+
+靜態文字：HTML 元素加 `data-en="English"`，`applyLang()` 依 `lang` 在 `data-zh`
+（首次記錄的原文）與 `data-en` 之間切換 `textContent`。圖示＋文字的按鈕要把文字
+包在自己的 `<span>` 裡（否則會連 SVG 一起被 textContent 蓋掉）。
+動態文字：`toast()` 查 `TOASTS_EN`、`busy()` 查 `PROG_EN`（含 engine.js 透過
+onProgress 送來的進度字串）自動翻譯；有插值的字串用 `tx(zh,en)`。引導步驟、配速名稱、
+匯出資訊欄標籤各有對照表。地點名稱靠 Nominatim 的 `accept-language` 切換，快取 key
+要含 `lang`。
+
 3. **更新 `gpsart/` 要同時改 `engine.js` 的 `VERSION`**
    否則瀏覽器會沿用快取的舊演算法（`fetch('gpsart/x.py?v=VERSION')`）。
 

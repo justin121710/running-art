@@ -35,7 +35,7 @@
   .top{position:absolute;top:0;left:0;right:0;z-index:500;padding:10px 12px;
     display:flex;gap:8px;align-items:center;pointer-events:none}
   .top>*{pointer-events:auto}
-  .brand{font-size:15px;font-weight:500;letter-spacing:.5px;
+  .brand{font-size:15px;font-weight:700;letter-spacing:.5px;
     background:var(--glass);backdrop-filter:blur(8px);
     border:1px solid var(--border);border-radius:10px;padding:8px 12px}
   .btn-dl{display:flex;align-items:center;gap:6px;
@@ -206,12 +206,13 @@
 
 <div class="top">
   <div class="brand">Running Art</div>
-  <button class="btn-dl icon-btn push" id="btnTheme" aria-label="切換深淺色主題">
+  <button class="btn-dl icon-btn push" id="btnLang" aria-label="Language">EN</button>
+  <button class="btn-dl icon-btn" id="btnTheme" aria-label="切換深淺色主題">
     <svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
   </button>
   <button class="btn-dl" id="btnDl">
     <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
-    <span id="dlLabel">下載地圖</span>
+    <span id="dlLabel">載入地圖範圍</span>
   </button>
 </div>
 
@@ -226,30 +227,30 @@
   <div class="modes">
     <button class="m on" data-mode="pan" id="mPan">
       <svg viewBox="0 0 24 24"><path d="M8 13V5a1.5 1.5 0 013 0v6m0-1V4a1.5 1.5 0 013 0v6m0 0V6a1.5 1.5 0 013 0v7m0-2a1.5 1.5 0 013 0v4a7 7 0 01-7 7h-1a7 7 0 01-7-7v-1a1.5 1.5 0 013-1"/></svg>
-      移動
+      <span data-en="Move">移動</span>
     </button>
     <button class="m" data-mode="draw" id="mDraw" disabled>
       <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg>
-      畫圖
+      <span data-en="Draw">畫圖</span>
     </button>
     <button class="m" data-mode="start" id="mStart" disabled>
       <svg viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-      起點
+      <span data-en="Start">起點</span>
     </button>
     <button class="m" data-mode="end" id="mEnd" disabled>
       <svg viewBox="0 0 24 24"><path d="M5 21V4m0 0l9 3-9 3"/><path d="M5 7h13l-3 4 3 4H5"/></svg>
-      終點
+      <span data-en="Finish">終點</span>
     </button>
   </div>
   <div class="row2">
     <button class="sm" id="btnUndo" disabled>
-      <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-4"/></svg>復原
+      <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-4"/></svg><span data-en="Undo">復原</span>
     </button>
     <button class="sm" id="btnClear" disabled>
-      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>清除
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Clear">清除</span>
     </button>
     <button class="sm go" id="btnGo" disabled>
-      <svg viewBox="0 0 24 24"><path d="M13 4l-1.5 4.5L15 11l-4 2 1 7-6-8 3-1-2-3 6-4z"/></svg>生成路線
+      <svg viewBox="0 0 24 24"><path d="M13 4l-1.5 4.5L15 11l-4 2 1 7-6-8 3-1-2-3 6-4z"/></svg><span data-en="Generate">生成路線</span>
     </button>
   </div>
 </div>
@@ -257,21 +258,21 @@
 <div class="dock" id="editDock" hidden>
   <div class="row2">
     <button class="sm" id="eBox">
-      <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>框選
+      <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg><span data-en="Box Select">框選</span>
     </button>
     <button class="sm" id="eNone" disabled>
-      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>取消選取
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span data-en="Deselect">取消選取</span>
     </button>
     <button class="sm" id="eUndo" disabled>
-      <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-4"/></svg>復原
+      <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-4"/></svg><span data-en="Undo">復原</span>
     </button>
   </div>
   <div class="row2">
     <button class="sm danger" id="eDel" disabled>
-      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>刪除選取
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Delete">刪除選取</span>
     </button>
     <button class="sm go" id="eDone">
-      <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>完成
+      <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg><span data-en="Done">完成</span>
     </button>
   </div>
 </div>
@@ -279,68 +280,68 @@
 <div class="sheet" id="sheet">
   <div class="grip"></div>
   <div class="stats">
-    <div class="stat"><span>路線距離</span><b id="sDist">–</b></div>
-    <div class="stat"><span>與圖形吻合</span><b id="sFit">–</b></div>
-    <div class="stat"><span>預估時間</span><b id="sTime">–</b></div>
-    <div class="stat"><span>爬升 / 下降</span><b id="sElev">–</b></div>
+    <div class="stat"><span data-en="Distance">路線距離</span><b id="sDist">–</b></div>
+    <div class="stat"><span data-en="Match">與圖形吻合</span><b id="sFit">–</b></div>
+    <div class="stat"><span data-en="Est. time">預估時間</span><b id="sTime">–</b></div>
+    <div class="stat"><span data-en="Elevation">爬升 / 下降</span><b id="sElev">–</b></div>
   </div>
   <div class="prev">
     <div class="prow">
-      <span class="lbl">路線預覽</span>
+      <span class="lbl" data-en="Preview">路線預覽</span>
       <b id="pvAt">0.00 km</b>
       <span class="unit" id="pvPct">0%</span>
-      <button id="pvPlay" aria-label="播放路線">▶</button>
+      <button id="pvPlay" aria-label="play">▶</button>
     </div>
     <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
   </div>
   <div class="pace">
-    <span class="lbl">配速</span>
-    <button id="pDn" aria-label="配速調慢">−</button>
-    <b id="pVal">6:00</b><span class="unit">分/公里</span>
-    <button id="pUp" aria-label="配速調快">+</button>
+    <span class="lbl" data-en="Pace">配速</span>
+    <button id="pDn" aria-label="slower">−</button>
+    <b id="pVal">6:00</b><span class="unit" id="pUnit" data-en="min/km">分/公里</span>
+    <button id="pUp" aria-label="faster">+</button>
     <span class="hint" id="pHint">慢跑</span>
   </div>
   <div class="tools">
     <button id="aEdit">
-      <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg>微調路徑
+      <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg><span data-en="Edit Path">微調路徑</span>
     </button>
     <button id="aRev">
-      <svg viewBox="0 0 24 24"><path d="M17 3l4 4-4 4"/><path d="M21 7H8a4 4 0 00-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13a4 4 0 004-4v-1"/></svg>反轉方向
+      <svg viewBox="0 0 24 24"><path d="M17 3l4 4-4 4"/><path d="M21 7H8a4 4 0 00-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13a4 4 0 004-4v-1"/></svg><span data-en="Reverse">反轉方向</span>
     </button>
     <button id="aMod">
-      <svg viewBox="0 0 24 24"><path d="M11 4H5a2 2 0 00-2 2v13a2 2 0 002 2h13a2 2 0 002-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg>修改圖案
+      <svg viewBox="0 0 24 24"><path d="M11 4H5a2 2 0 00-2 2v13a2 2 0 002 2h13a2 2 0 002-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg><span data-en="Edit Shape">修改圖案</span>
     </button>
     <button id="aNew">
-      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>重新繪製
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Restart">重新繪製</span>
     </button>
   </div>
   <div class="acts">
-    <button id="aPng"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>下載圖片</button>
-    <button class="pri" id="aGpx"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>下載 GPX</button>
+    <button id="aPng"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg><span data-en="Save Image">下載圖片</span></button>
+    <button class="pri" id="aGpx"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span data-en="Save GPX">下載 GPX</span></button>
   </div>
 </div>
 
 <div class="modal" id="pngModal" hidden>
   <div class="mbox">
-    <div class="mtitle">匯出圖片</div>
-    <div class="rlabel">比例</div>
+    <div class="mtitle" data-en="Export image">匯出圖片</div>
+    <div class="rlabel" data-en="Ratio">比例</div>
     <div class="ratios">
-      <button class="rt on" data-ratio="1:1">1:1<i>正方形</i></button>
-      <button class="rt" data-ratio="4:5">4:5<i>直式貼文</i></button>
-      <button class="rt" data-ratio="9:16">9:16<i>限時動態</i></button>
+      <button class="rt on" data-ratio="1:1">1:1<i data-en="Square">正方形</i></button>
+      <button class="rt" data-ratio="4:5">4:5<i data-en="Portrait">直式貼文</i></button>
+      <button class="rt" data-ratio="9:16">9:16<i data-en="Story">限時動態</i></button>
     </div>
-    <div class="rlabel">圖層</div>
+    <div class="rlabel" data-en="Layers">圖層</div>
     <label class="sw"><input type="checkbox" id="pngRoute" checked>
-      <span>路線<i>生成出來的藍色與橘色線</i></span></label>
+      <span><span class="t" data-en="Route">路線</span><i data-en="Generated blue & orange lines">生成出來的藍色與橘色線</i></span></label>
     <label class="sw"><input type="checkbox" id="pngArrows" checked>
-      <span>方向箭頭<i>沿路線標示前進方向</i></span></label>
+      <span><span class="t" data-en="Arrows">方向箭頭</span><i data-en="Direction along the route">沿路線標示前進方向</i></span></label>
     <label class="sw"><input type="checkbox" id="pngDraw">
-      <span>我畫的紅線<i>原始手繪圖案</i></span></label>
+      <span><span class="t" data-en="My drawing">我畫的紅線</span><i data-en="Original hand-drawn shape">原始手繪圖案</i></span></label>
     <label class="sw"><input type="checkbox" id="pngMarks" checked>
-      <span>起點與終點<i>紫色與粉紅色圓點</i></span></label>
+      <span><span class="t" data-en="Start & finish">起點與終點</span><i data-en="Purple & pink dots">紫色與粉紅色圓點</i></span></label>
     <div class="mact">
-      <button id="pngCancel">取消</button>
-      <button class="pri" id="pngGo">產生圖片</button>
+      <button id="pngCancel" data-en="Cancel">取消</button>
+      <button class="pri" id="pngGo" data-en="Create image">產生圖片</button>
     </div>
   </div>
 </div>
@@ -380,6 +381,77 @@ function setTheme(light,save=true){
 })();
 document.getElementById('btnTheme').onclick=()=>setTheme(!isLight());
 
+/* ---------- 中英文切換（i18n） ----------
+   靜態文字用 HTML 的 data-en 屬性；動態字串（toast / 進度 / 引導 / 匯出）查下面的表。
+   toast() 與 busy() 會自動把中文原字換成英文，所以大多數呼叫端不用改。 */
+let lang = localStorage.getItem('runart_lang') || (navigator.language.toLowerCase().startsWith('zh')?'zh':'en');
+const EN=()=>lang==='en';
+const tx=(zh,en)=>EN()?en:zh;   // 有插值的字串用這個選字
+
+const STEPS_I18N={
+ zh:{
+  1:['先框選要載入的地圖範圍','點右上角 <b>載入地圖範圍</b>，然後在地圖上拖曳一個方框'],
+  2:['畫出你想要的圖案','點下方 <b>畫圖</b>，在<b>藍色框線內</b>畫。畫錯可以按復原'],
+  3:['設定起點與終點','點 <b>起點</b> 後在地圖上點一下，終點同理'],
+  4:['準備好了','按 <b>生成路線</b>，把圖案對齊到真實道路'],
+  5:['完成','可下載 GPX 或圖片。要改圖案請按 <b>修改圖案</b>']
+ },
+ en:{
+  1:['Choose an area to load','Tap <b>Load Map</b> (top-right), then drag a box on the map'],
+  2:['Draw your shape','Tap <b>Draw</b> and draw inside the <b>blue box</b>. Undo if needed'],
+  3:['Set start & finish','Tap <b>Start</b> then tap the map; same for Finish'],
+  4:['Ready','Tap <b>Generate</b> to snap your shape onto real roads'],
+  5:['Done','Save a GPX or image. Tap <b>Edit Shape</b> to change the drawing']
+ }
+};
+const TOASTS_EN={
+ '在地圖上拖曳一個方框':'Drag a box on the map',
+ '請在藍色框線內畫圖':'Please draw inside the blue box',
+ '超出已下載範圍':'Outside the loaded area',
+ '起點／終點要在藍色框線內':'Start / finish must be inside the blue box',
+ '起點已設定':'Start set','終點已設定':'Finish set',
+ '可以繼續修改圖案，改完再按生成路線':'Edit your shape, then tap Generate again',
+ '已清空，重新開始畫':'Cleared — start drawing again',
+ '已反轉方向':'Direction reversed',
+ '點一下節點選取，或用「框選」一次選多個':'Tap a node to select, or use Box Select for many',
+ '拖曳框住要刪除的節點':'Drag a box over the nodes to delete',
+ '改回點擊選取，可拖曳地圖':'Back to tap-select; you can pan the map',
+ '刪掉這些節點後找不到別條路可以繞過去，已自動復原。試著把整段繞路一起框選刪除。':'No alternative road to detour around — auto-reverted. Try box-selecting the whole detour.',
+ '無法刪除：這一段剩下的點太少了。':'Cannot delete: too few nodes left in this segment.',
+ '已重新沿道路接好':'Re-routed along the roads',
+ '沒有可復原的步驟':'Nothing to undo',
+ 'GPX 已下載':'GPX downloaded','運算引擎已就緒':'Engine ready',
+ '地圖下載失敗：目前公用伺服器（Overpass）都很忙碌。請縮小範圍、或等一兩分鐘再試。已下載過的範圍會被記住，可以離線重用。':'Map load failed: the public Overpass servers are all busy. Try a smaller area or wait a minute. Loaded areas are remembered and reusable offline.',
+ '這個範圍抓不到可跑的道路（伺服器可能回了空資料）。請換個地點、把範圍放大一點或稍後再試。':'No runnable roads found here (the server may have returned empty data). Try another spot, enlarge the area, or retry later.'
+};
+const PROG_EN={
+ '載入運算引擎…':'Loading engine…','載入數學套件…':'Loading math packages…',
+ '載入路網套件…':'Loading graph packages…','載入演算法…':'Loading algorithm…',
+ '下載路網（同時向多台伺服器請求）…':'Loading roads (querying several servers)…',
+ '伺服器忙碌，重試中…':'Servers busy, retrying…','使用已下載的地圖…':'Using saved map…',
+ '建立路網…':'Building road network…','對齊道路中…':'Snapping to roads…',
+ '重新接路中…':'Re-routing…','產生圖片…':'Creating image…','查詢地點…':'Finding location…'
+};
+const PACE_NAMES={zh:['競速','慢跑','輕鬆跑','快走'],en:['Fast','Jog','Easy','Brisk']};
+const EXP_LABELS={zh:['距離','配速','預估時間','爬升／下降'],en:['Distance','Pace','Est. time','Elev. ↑/↓']};
+
+function updateDlLabel(){
+  // 尚未載入地圖時顯示提示字；載入後由既有流程顯示面積，不覆寫
+  if(!S.hasMap && !S.boxing) $('dlLabel').textContent = tx('載入地圖範圍','Load Map');
+}
+function applyLang(){
+  document.querySelectorAll('[data-en]').forEach(eln=>{
+    if(eln.dataset.zh==null) eln.dataset.zh=eln.textContent;
+    eln.textContent = EN()?eln.dataset.en:eln.dataset.zh;
+  });
+  document.documentElement.lang = EN()?'en':'zh-Hant';
+  $('btnLang').textContent = EN()?'中':'EN';
+  localStorage.setItem('runart_lang',lang);
+  guide(); paceUI(); updateDlLabel();
+  if(S.result&&S.elevGain!=null) $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
+}
+document.getElementById('btnLang').onclick=()=>{ lang=EN()?'zh':'en'; applyLang(); };
+
 const S={mode:'pan',hasMap:false,strokes:[],cur:null,start:null,end:null,
          boxing:false,generated:false,sheetUp:false,step:1,bounds:null,warned:0,
          editing:false,ebox:false,eDown:null,sel:new Set(),locked:false};
@@ -387,22 +459,43 @@ const $=id=>document.getElementById(id);
 const el={guide:$('guide'),gn:$('gn'),gt:$('gt'),pill:$('pill'),sheet:$('sheet'),toast:$('toast')};
 let routeLayer=null,startMk=null,endMk=null,boxEl=null,boxA=null;
 
-const STEPS={
- 1:['先框選要下載的地圖範圍','點右上角 <b>下載地圖</b>，然後在地圖上拖曳一個方框'],
- 2:['畫出你想要的圖案','點下方 <b>畫圖</b>，在<b>藍色框線內</b>畫。畫錯可以按復原'],
- 3:['設定起點與終點','點 <b>起點</b> 後在地圖上點一下，終點同理'],
- 4:['準備好了','按 <b>生成路線</b>，把圖案對齊到真實道路'],
- 5:['完成','可下載 GPX 或圖片。要改圖案請按 <b>修改圖案</b>']
-};
 function guide(){
-  const s=STEPS[S.step];
+  const s=STEPS_I18N[lang][S.step];
   // 結果面板升起時，引導條與距離膠囊都讓位，避免互相遮擋
   if(S.sheetUp||!s){el.guide.classList.add('hide');return;}
   el.guide.classList.remove('hide');
   el.gn.textContent=S.step;
   el.gt.innerHTML='<b>'+s[0]+'</b><br>'+s[1];
+  positionGuide();
 }
+/* 把引導提示框放到「當前步驟要按的那顆按鈕」旁邊，操作更直覺。
+   頂部按鈕→放下方；桌面左側工具列→放右邊；手機底部工具列→放上方。 */
+const GUIDE_TARGET={1:'btnDl',2:'mDraw',3:'mStart',4:'btnGo'};
+function positionGuide(){
+  const g=el.guide;
+  const btn=GUIDE_TARGET[S.step]&&$(GUIDE_TARGET[S.step]);
+  // 先清掉之前的定位，交回 CSS
+  g.style.position=g.style.left=g.style.right=g.style.top=g.style.bottom=g.style.width=g.style.maxWidth='';
+  if(!btn) return;
+  const r=btn.getBoundingClientRect();
+  if(!r.width) return;
+  const gw=Math.min(300, window.innerWidth-24);
+  g.style.position='fixed';g.style.right='auto';g.style.bottom='auto';
+  g.style.width='auto';g.style.maxWidth=gw+'px';g.style.left='0px';g.style.top='0px';
+  const gh=g.offsetHeight, gwA=Math.min(g.offsetWidth,gw), M=10;
+  let left,top;
+  if(r.top<120){                                   // 頂部（載入地圖）→ 放下方靠右
+    top=r.bottom+M; left=Math.min(r.right-gwA, window.innerWidth-gwA-12);
+  }else if(window.innerWidth>=900 && r.left<window.innerWidth/2){  // 桌面左側→放右邊
+    left=r.right+M; top=Math.min(Math.max(12,r.top+r.height/2-gh/2), window.innerHeight-gh-12);
+  }else{                                            // 手機底部→放上方
+    top=r.top-gh-M; left=Math.min(Math.max(12,r.left+r.width/2-gwA/2), window.innerWidth-gwA-12);
+  }
+  g.style.left=Math.max(12,left)+'px'; g.style.top=Math.max(12,top)+'px';
+}
+window.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); });
 function toast(t,ms=1500){
+  if(EN()&&TOASTS_EN[t]) t=TOASTS_EN[t];   // 已知中文字串自動換英文
   el.toast.textContent=t;el.toast.classList.add('show');
   setTimeout(()=>el.toast.classList.remove('show'),ms);
 }
@@ -464,7 +557,7 @@ function refresh(){
   if(S.result&&!S.sheetUp){
     // 生成後不能再畫圖，所以膠囊要能把結果面板叫回來，否則收起來就卡住了
     el.pill.classList.remove('hide');
-    el.pill.textContent='▲ 路線 '+S.km.toFixed(2)+' km';
+    el.pill.textContent=tx('▲ 路線 ','▲ Route ')+S.km.toFixed(2)+' km';
     el.pill.classList.add('tap');
   }else if(n&&!S.sheetUp){
     el.pill.classList.remove('hide');
@@ -487,7 +580,7 @@ function refresh(){
 $('btnDl').onclick=()=>{
   S.boxing=!S.boxing;
   $('btnDl').classList.toggle('on',S.boxing);
-  $('dlLabel').textContent=S.boxing?'取消框選':'下載地圖';
+  $('dlLabel').textContent=S.boxing?tx('取消框選','Cancel'):tx('載入地圖範圍','Load Map');
   map.dragging[S.boxing?'disable':'enable']();
   if(S.boxing) toast('在地圖上拖曳一個方框',1800);
 };
@@ -548,16 +641,16 @@ mc.addEventListener('pointerup',e=>{
       S.boxing=false;$('btnDl').classList.remove('on');
       const km=(map.distance(bounds.getNorthWest(),bounds.getNorthEast())/1000)
              *(map.distance(bounds.getNorthWest(),bounds.getSouthWest())/1000);
-      $('dlLabel').textContent='下載中…';
+      $('dlLabel').textContent=tx('載入中…','Loading…');
       Engine.loadArea(bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast())
         .then(st=>{
           S.hasMap=true;S.bounds=bounds;
           showArea(bounds);
           $('dlLabel').textContent=km.toFixed(1)+' km²';
           ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=false);
-          toast('路網已載入（'+st.nodes+' 個路口）');setMode('draw');refresh();
+          toast(tx('路網已載入（'+st.nodes+' 個路口）','Roads loaded ('+st.nodes+' junctions)'));setMode('draw');refresh();
         })
-        .catch(err=>{busy('');$('dlLabel').textContent='下載地圖';toast(err.message,3000);});
+        .catch(err=>{busy('');updateDlLabel();toast(err.message,3000);});
     }
     return;
   }
@@ -586,6 +679,9 @@ map.on('click',e=>{
 $('btnUndo').onclick=()=>{const s=S.strokes.pop();if(s)s.line.remove();refresh();};
 function clearAll(){
   S.strokes.forEach(s=>s.line.remove());S.strokes=[];
+  // 清空畫布時，起點與終點也一併清掉
+  if(startMk){startMk.remove();startMk=null;} S.start=null;
+  if(endMk){endMk.remove();endMk=null;} S.end=null;
   dropRoute();
   refresh();
 }
@@ -691,10 +787,8 @@ $('pvPlay').onclick=()=>{
 S.pace=parseFloat(localStorage.getItem('runart_pace'))||6;   // 分鐘/公里
 S.km=0;
 function paceName(p){
-  if(p<=4.5) return '競速';
-  if(p<=6.5) return '慢跑';
-  if(p<=9)   return '輕鬆跑';
-  return '快走';
+  const i = p<=4.5?0 : p<=6.5?1 : p<=9?2 : 3;
+  return PACE_NAMES[lang][i];
 }
 function paceUI(){
   const m=Math.floor(S.pace), sec=Math.round((S.pace-m)*60);
@@ -703,10 +797,10 @@ function paceUI(){
   const t=S.km*S.pace;
   let txt='–';
   if(S.km){
-    if(t<60) txt=Math.round(t)+' 分';
+    if(t<60) txt=Math.round(t)+tx(' 分',' min');
     else{
       const h=Math.floor(t/60), mm=Math.round(t%60);
-      txt = mm ? h+' 小時 '+mm+' 分' : h+' 小時';
+      txt = mm ? h+tx(' 小時 ',' h ')+mm+tx(' 分',' min') : h+tx(' 小時',' h');
     }
   }
   $('sTime').textContent=txt;
@@ -800,7 +894,7 @@ $('btnGo').onclick=()=>{
       S.sheetUp=true;el.sheet.classList.add('up');
       refresh();fitRoute();updateElevation();
     })
-    .catch(err=>{busy('');toast('生成失敗：'+err.message,3000);});
+    .catch(err=>{busy('');toast(tx('生成失敗：','Generate failed: ')+err.message,3000);});
 };
 
 /* ---------- 生成後的動作 ---------- */
@@ -828,7 +922,7 @@ $('aRev').onclick=()=>{
       if(S.elevGain!=null) $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
       toast('已反轉方向',1600);
     })
-    .catch(err=>{busy('');toast('反轉失敗：'+err.message,3000);});
+    .catch(err=>{busy('');toast(tx('反轉失敗：','Reverse failed: ')+err.message,3000);});
 };
 
 /* ---------- 微調路徑 ---------- */
@@ -863,7 +957,7 @@ function editUI(){
   $('eDel').disabled=!n;$('eNone').disabled=!n;
   $('eUndo').disabled=!(S.result&&S.result.undo);
   el.pill.classList.remove('hide');
-  el.pill.textContent=n?('已選 '+n+' 個節點'):(nodeMks.length+' 個可調整的節點');
+  el.pill.textContent=n?tx('已選 '+n+' 個節點',n+' selected'):tx(nodeMks.length+' 個可調整的節點',nodeMks.length+' editable nodes');
 }
 function editPick(ll){
   const p0=map.latLngToContainerPoint(ll);
@@ -919,7 +1013,7 @@ $('eDel').onclick=()=>{
       applyResult(res,false);editBuild();
       toast('已重新沿道路接好',1400);
     })
-    .catch(err=>{busy('');toast('刪除失敗：'+err.message,3000);});
+    .catch(err=>{busy('');toast(tx('刪除失敗：','Delete failed: ')+err.message,3000);});
 };
 $('eUndo').onclick=()=>{
   Engine.editUndo()
@@ -927,7 +1021,7 @@ $('eUndo').onclick=()=>{
       if(!res.ok){toast('沒有可復原的步驟');return;}
       applyResult(res,false);editBuild();
     })
-    .catch(err=>toast('復原失敗：'+err.message,3000));
+    .catch(err=>toast(tx('復原失敗：','Undo failed: ')+err.message,3000));
 };
 $('eDone').onclick=()=>{
   S.editing=false;S.ebox=false;$('eBox').classList.remove('on');
@@ -963,12 +1057,12 @@ const PNG_RATIOS={'1:1':[1080,1080],'4:5':[1080,1350],'9:16':[1080,1920]};
    結果快取在記憶體，失敗就回空字串、不影響出圖。 */
 const _placeCache={};
 async function getPlaceName(lat,lon){
-  const key=lat.toFixed(3)+','+lon.toFixed(3);
+  const key=lang+':'+lat.toFixed(3)+','+lon.toFixed(3);   // 語言不同要分開快取
   if(key in _placeCache) return _placeCache[key];
   try{
     const ctrl=new AbortController();const tm=setTimeout(()=>ctrl.abort(),7000);
     const u='https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14'+
-            '&accept-language=zh-TW&lat='+lat+'&lon='+lon;
+            '&accept-language='+(EN()?'en':'zh-TW')+'&lat='+lat+'&lon='+lon;
     const r=await fetch(u,{signal:ctrl.signal});clearTimeout(tm);
     if(!r.ok) throw 0;
     const a=(await r.json()).address||{};
@@ -977,8 +1071,8 @@ async function getPlaceName(lat,lon){
     const parts=[];
     if(district) parts.push(district);
     if(city&&city!==district) parts.push(city);
-    // 臺→台：Nominatim 回「臺北市」，一般習慣寫「台北市」
-    const name=parts.join(', ').replace(/臺/g,'台');
+    // 臺→台：Nominatim 中文回「臺北市」，一般習慣寫「台北市」（英文不用替換）
+    const name=EN()?parts.join(', '):parts.join(', ').replace(/臺/g,'台');
     _placeCache[key]=name;
     return name;
   }catch(_){ _placeCache[key]=''; return ''; }
@@ -1128,18 +1222,19 @@ async function exportPNG(opt){
           const seg=cum[i]-cum[i-1],t=seg>0?(dd-cum[i-1])/seg:0,a=path[i-1],b=path[i];
           return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];};
         const step=Math.max(80,total/16);
-        const asz=15*sc;
+        // 用和地圖上一樣的箭頭字元 ➤（U+27A4），比正三角形更看得出方向
+        const F0='"Segoe UI Symbol","Apple Color Emoji","Noto Sans Symbols",sans-serif';
         for(let d=step;d<total;d+=step){
           const c=at(d), a=at(Math.max(0,d-14)), b=at(Math.min(total,d+14));
           const ax=X(a[1]),ay=Y(a[0]),bx=X(b[1]),by=Y(b[0]);
           if(ax===bx&&ay===by) continue;
           ctx.save();
           ctx.translate(X(c[1]),Y(c[0]));ctx.rotate(Math.atan2(by-ay,bx-ax));
-          ctx.beginPath();
-          ctx.moveTo(-asz*0.5,-asz*0.72);ctx.lineTo(asz*0.72,0);ctx.lineTo(-asz*0.5,asz*0.72);
-          ctx.closePath();
-          ctx.lineJoin='round';ctx.strokeStyle='rgba(8,8,8,.9)';ctx.lineWidth=3.5*sc;ctx.stroke();
-          ctx.fillStyle='#fde047';ctx.fill();
+          ctx.font=`${Math.round(27*sc)}px ${F0}`;
+          ctx.textAlign='center';ctx.textBaseline='middle';
+          ctx.lineWidth=4*sc;ctx.strokeStyle='rgba(8,8,8,.9)';
+          ctx.strokeText('➤',0,0);
+          ctx.fillStyle='#fde047';ctx.fillText('➤',0,0);
           ctx.restore();
         }
       }
@@ -1170,11 +1265,12 @@ async function exportPNG(opt){
     ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
     ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
     const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
-    ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='left';
+    ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='center';
     const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
+    const barMid=bx+barPx/2;   // 距離文字置中於線段中間
     ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
-    ctx.strokeText(barTxt,bx,by-14*sc);
-    ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,bx,by-14*sc);
+    ctx.strokeText(barTxt,barMid,by-14*sc);
+    ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,barMid,by-14*sc);
 
     // 品牌浮水印（地圖區右下角，不搶焦點）
     ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
@@ -1208,10 +1304,11 @@ async function exportPNG(opt){
     // 下排：四個數據（含爬升／下降）
     const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
     const elevTxt=(S.elevGain!=null)?('↑'+S.elevGain+' ↓'+S.elevLoss+' m'):'–';
-    const cells=[['距離',$('sDist').textContent],
-                 ['配速',pm+':'+String(ps).padStart(2,'0')+' /km'],
-                 ['預估時間',$('sTime').textContent],
-                 ['爬升／下降',elevTxt]];
+    const EL=EXP_LABELS[lang];
+    const cells=[[EL[0],$('sDist').textContent],
+                 [EL[1],pm+':'+String(ps).padStart(2,'0')+' /km'],
+                 [EL[2],$('sTime').textContent],
+                 [EL[3],elevTxt]];
     const cw=(mapW-pad*2)/4;
     ctx.textAlign='left';
     cells.forEach((c,n)=>{
@@ -1238,9 +1335,9 @@ async function exportPNG(opt){
     a.download='RunningArt_'+localDate()+'.png';
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-    toast('圖片已下載（'+mapW+'×'+(mapH+infoH)+'）',2200);
+    toast(tx('圖片已下載（'+mapW+'×'+(mapH+infoH)+'）','Image saved ('+mapW+'×'+(mapH+infoH)+')'),2200);
   }catch(err){
-    toast('產生圖片失敗：'+err.message,3200);
+    toast(tx('產生圖片失敗：','Image export failed: ')+err.message,3200);
   }finally{ busy(''); }
 }
 let pngRatio='1:1';
@@ -1262,10 +1359,13 @@ el.pill.onclick=()=>{
   S.sheetUp=true;el.sheet.classList.add('up');refresh();fitRoute();
 };
 
-function busy(t){const b=$('busy');if(t){$('busyTxt').textContent=t;b.classList.add('on');}else b.classList.remove('on');}
+function busy(t){const b=$('busy');
+  if(t){if(EN()&&PROG_EN[t]) t=PROG_EN[t]; $('busyTxt').textContent=t;b.classList.add('on');}
+  else b.classList.remove('on');}
 Engine.setProgress(busy);
-Engine.boot().then(()=>toast('運算引擎已就緒')).catch(e=>toast('引擎載入失敗：'+e.message,3000));
+Engine.boot().then(()=>toast('運算引擎已就緒')).catch(e=>toast(tx('引擎載入失敗：','Engine load failed: ')+e.message,3000));
 
+applyLang();
 setMode('pan');guide();refresh();
 </script>
 </body>
