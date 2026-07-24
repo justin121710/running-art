@@ -729,32 +729,67 @@ def prune_non_overlapping_segments(segments, red_strokes, G, threshold=40):
         
         # ROAD type
         if seg.get('type') == 'road' and seg.get('nodes'):
-            valid_nodes = []
             ns = seg['nodes']
-            
+
+            # 每個節點是否貼合紅線 (離線 < threshold)
+            valid_flags = []
             for n in ns:
-                is_valid = False
-                # Check distance
+                ok = False
                 if G and n in G.nodes:
                     p = (G.nodes[n]['y'], G.nodes[n]['x'])
-                    # Quick check against nearest red point
                     _, d = find_nearest_point_on_strokes(p[0], p[1], [red_points])
-                    if d < threshold: is_valid = True
-                else: 
-                    is_valid = False # [Fix] If node unknown, assume Invalid (safe deletion)
-                    
-                if is_valid: valid_nodes.append(n)
-            
-            # Reconstruct if we have roughly enough nodes relative to original unique nodes?
-            # Or just keep whatever valid pieces? 
-            # If we cut the middle, we join A->C. That matches "Remove non-overlapping".
-            
-            if len(valid_nodes) >= 2: # Keep segment if at least 2 points remain
-                # Optimization: Check if we just removed everything
+                    ok = d < threshold
+                valid_flags.append(ok)
+
+            # [2026-07-24 連通性感知] 不再盲刪離線節點。舊行為是把每個離線
+            # (>threshold) 節點刪掉、剩下的兩端直接相連 (A->C)，若 A、C 之間沒有
+            # 道路相連就被畫成直線 = 切西瓜 (實測中山區大圓左/下側 3 條 50~89m)。
+            #
+            # A46 的本意是砍「幻覺繞路」(憑空多出、離線遠、但兩端本來就有近路)，
+            # 不是砍「格網逼出來的合理離線道路」(那段就是唯一的路)。兩者的差別
+            # 正好是「砍掉後 bridge 補不補得回來」:
+            #   - 補得回 (最短路 <= bridge 上限)：真幻覺，規整成最短路 (等同舊行為)。
+            #   - 補不回 (> 上限)：合理道路，保留原樣，否則切西瓜。
+            out_nodes = []
+            i = 0
+            Nn = len(ns)
+            while i < Nn:
+                if valid_flags[i]:
+                    out_nodes.append(ns[i]); i += 1
+                    continue
+                j = i
+                while j < Nn and not valid_flags[j]:
+                    j += 1
+                a = out_nodes[-1] if out_nodes else None
+                b = ns[j] if j < Nn else None
+                seg_inv = ns[i:j]
+                keep = True
+                if a is not None and b is not None and G is not None \
+                        and a in G.nodes and b in G.nodes:
+                    try:
+                        straight = haversine(G.nodes[a]['y'], G.nodes[a]['x'],
+                                             G.nodes[b]['y'], G.nodes[b]['x'])
+                        filled = robust_shortest_path(G, a, b, weight='length')
+                        plen = None
+                        if filled and len(filled) >= 2:
+                            plen = sum(haversine(G.nodes[u]['y'], G.nodes[u]['x'],
+                                                 G.nodes[v]['y'], G.nodes[v]['x'])
+                                       for u, v in zip(filled[:-1], filled[1:]))
+                        # 與 bridge_node_path_gaps 同款上限，判斷保持一致
+                        cap = max(straight * 4.0, straight + 150.0)
+                        if plen is not None and plen <= cap:
+                            out_nodes.extend(filled[1:-1])   # 規整幻覺為最短路
+                            keep = False
+                    except Exception:
+                        keep = True
+                if keep:
+                    out_nodes.extend(seg_inv)   # 頭尾段 或 補不回 -> 保留原樣
+                i = j
+
+            if len(out_nodes) >= 2:
                 new_s = seg.copy()
-                new_s['nodes'] = valid_nodes
-                # Refresh coords
-                if G: new_s['coords'] = get_path_geometry(G, valid_nodes)
+                new_s['nodes'] = out_nodes
+                if G: new_s['coords'] = get_path_geometry(G, out_nodes)
                 filtered_seg = new_s
         
         # COORDS type (Beeline Draw)
