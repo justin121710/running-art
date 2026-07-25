@@ -2369,7 +2369,10 @@ def reorder_closed_strokes(strokes, user_pos, close_tol_m=None):
             best = None
             for i in range(win):
                 for j in range(len(s) - win, len(s)):
-                    if j - i < len(s) // 2:   # 至少保留一半的筆畫
+                    # 交錯疊本來只是「多畫一小段」，剪掉超過 20% 就不是交錯閉合。
+                    # 舊門檻(保留一半)會把 R/9/6 這種「環+尾巴」的開放字誤判成閉合、
+                    # 把尾巴剪掉只留環（實測 R 保留 74% 被剪，交錯圓保留 91%）。
+                    if j - i < len(s) * 0.8:   # 保留 <80% 就不算交錯閉合
                         continue
                     d = (s[i][0]-s[j][0])**2 + (s[i][1]-s[j][1])**2
                     if d < _close_thr and (best is None or d < best[0]):

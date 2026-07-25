@@ -266,11 +266,11 @@
       <span data-en="Draw">畫圖</span>
     </button>
     <button class="m" data-mode="start" id="mStart" disabled>
-      <svg viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      <svg class="se-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" style="fill:#16a34a;stroke:#fff;stroke-width:2"/><path d="M9.5 8 L16.5 12 L9.5 16 Z" style="fill:#fff;stroke:none"/></svg>
       <span data-en="Start">起點</span>
     </button>
     <button class="m" data-mode="end" id="mEnd" disabled>
-      <svg viewBox="0 0 24 24"><path d="M5 21V4m0 0l9 3-9 3"/><path d="M5 7h13l-3 4 3 4H5"/></svg>
+      <svg class="se-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" style="fill:#dc2626;stroke:#fff;stroke-width:2"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.2" style="fill:#fff;stroke:none"/></svg>
       <span data-en="Finish">終點</span>
     </button>
   </div>
@@ -392,7 +392,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
-<script src="engine.js?v=20260724g"></script>
+<script src="engine.js?v=20260724h"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 
@@ -1522,76 +1522,122 @@ function pngCollectPts(opt){
 }
 // 圖層是「填色多選按鈕」（同比例按鈕樣式），選取＝加上 .on。狀態直接讀 class。
 const layerOn=name=>{const b=document.querySelector('.lyr[data-layer="'+name+'"]');return !!(b&&b.classList.contains('on'));};
-function renderPreview(){
+// 匯出預覽的底圖 tile 快取：同一顆 tile 只抓一次，之後 toggle/拖桿都用快取重畫。
+const _tileCache={};
+function loadTileCached(z,x,y,style){
+  const k=z+'/'+x+'/'+y+'/'+style;
+  if(k in _tileCache) return Promise.resolve(_tileCache[k]);
+  return new Promise(res=>{
+    const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>{_tileCache[k]=img;res(img);};
+    img.onerror=()=>{_tileCache[k]=null;res(null);};
+    img.src=`https://${TILE_HOSTS[((x%4)+(y%4))%TILE_HOSTS.length]}.basemaps.cartocdn.com/${style}/${z}/${x}/${y}@2x.png`;
+  });
+}
+let _prevToken=0;
+async function renderPreview(){
   const cv=$('pngPrev'); if(!cv||!S.result) return;
+  const myTok=++_prevToken;
   const opt={route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
              marks:layerOn('marks'),basemap:layerOn('basemap')};
   const frac=+$('pngProg').value/1000;
   const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
   const W=cv.width, scale=W/RW, H=Math.round(RH*scale); cv.height=H;
   const infoH=INFO_H*scale, mapW=W, mapH=H-infoH, lw=W/1080, light=isLight();
-  const TH=light?{mapBg:'#e8ecf1',info:'#ffffff',line:'#dfe4ea',dim:'#cfd4db'}
-               :{mapBg:'#0d0f12',info:'#14171c',line:'#2b313b',dim:'#3a4048'};
+  const TH=light?{mapBg:'#e8ecf1',info:'#ffffff',line:'#dfe4ea',dim:'#cfd4db',tile:'light_all',tileFilter:'none'}
+               :{mapBg:'#0d0f12',info:'#14171c',line:'#2b313b',dim:'#3a4048',tile:'dark_all',tileFilter:'brightness(1.5) contrast(1.04)'};
   const ctx=cv.getContext('2d');
+  function drawInfoBar(){
+    ctx.fillStyle=TH.info;ctx.fillRect(0,mapH,W,infoH);
+    ctx.fillStyle=TH.line;ctx.fillRect(0,mapH,W,Math.max(1,infoH*0.012));
+    ctx.fillStyle=TH.dim;const pd=infoH*0.16;
+    ctx.fillRect(pd,mapH+infoH*0.26,W*0.42,infoH*0.11);
+    for(let i=0;i<4;i++) ctx.fillRect(pd+i*(W-pd*2)/4,mapH+infoH*0.62,(W-pd*2)/4-pd*0.4,infoH*0.16);
+  }
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,mapH);
-  if(!opt.basemap){   // 不要地圖底圖：畫淡棋盤示意（匯出時底圖區會是純色）
+  const pts=pngCollectPts(opt);
+  if(!pts.length){ drawInfoBar(); return; }
+  const lats=pts.map(p=>p[0]),lons=pts.map(p=>p[1]);
+  const wx0=lonToWorld(Math.min(...lons),0),wx1=lonToWorld(Math.max(...lons),0);
+  const wy0=latToWorld(Math.max(...lats),0),wy1=latToWorld(Math.min(...lats),0);
+  const cx=(wx0+wx1)/2,cy=(wy0+wy1)/2;
+  const dx=Math.max(wx1-wx0,1e-9)*1.16,dy=Math.max(wy1-wy0,1e-9)*1.16;
+  const s=Math.min(mapW/dx,mapH/dy)*0.9;
+  const z=Math.max(1,Math.min(19,Math.floor(Math.log2(s)))), K=s/Math.pow(2,z);
+  const cxZ=cx*Math.pow(2,z), cyZ=cy*Math.pow(2,z);
+  const X=lon=>mapW/2+(lonToWorld(lon,z)-cxZ)*K, Y=lat=>mapH/2+(latToWorld(lat,z)-cyZ)*K;
+  // 底圖：basemap 開＝抓真實 tile（快取）、關＝棋盤示意
+  if(opt.basemap){
+    const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
+    const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
+    const jobs=[];for(let tx=tx0;tx<=tx1;tx++)for(let ty=ty0;ty<=ty1;ty++)jobs.push({tx,ty});
+    const imgs=await Promise.all(jobs.map(j=>loadTileCached(z,j.tx,j.ty,TH.tile)));
+    if(myTok!==_prevToken) return;   // 期間有更新的呼叫，放棄這次繪製
+    ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
+    const ts=TILE_SIZE*K;ctx.filter=TH.tileFilter;
+    jobs.forEach((j,n)=>{if(imgs[n])ctx.drawImage(imgs[n],mapW/2+(j.tx*TILE_SIZE-cxZ)*K,mapH/2+(j.ty*TILE_SIZE-cyZ)*K,ts+1,ts+1);});
+    ctx.filter='none';ctx.restore();
+  }else{
     const gs=Math.max(12,mapW/14);
     for(let yy=0;yy<mapH;yy+=gs)for(let xx=0;xx<mapW;xx+=gs)
       if(((xx/gs|0)+(yy/gs|0))%2){ctx.fillStyle='rgba(128,128,128,.12)';ctx.fillRect(xx,yy,gs,gs);}
   }
-  const pts=pngCollectPts(opt);
-  if(pts.length){
-    const lats=pts.map(p=>p[0]),lons=pts.map(p=>p[1]);
-    const wx0=lonToWorld(Math.min(...lons),0),wx1=lonToWorld(Math.max(...lons),0);
-    const wy0=latToWorld(Math.max(...lats),0),wy1=latToWorld(Math.min(...lats),0);
-    const cx=(wx0+wx1)/2,cy=(wy0+wy1)/2;
-    const dx=Math.max(wx1-wx0,1e-9),dy=Math.max(wy1-wy0,1e-9);
-    const s=Math.min(mapW/dx,mapH/dy)*0.82;
-    const X=lon=>mapW/2+(lonToWorld(lon,0)-cx)*s, Y=lat=>mapH/2+(latToWorld(lat,0)-cy)*s;
-    ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
-    ctx.lineCap=ctx.lineJoin='round';
-    if(opt.draw){
-      ctx.strokeStyle='#ef4444';ctx.lineWidth=(opt.route?15:5)*lw;ctx.globalAlpha=.9;
-      S.strokes.forEach(st=>{ctx.beginPath();st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
-      ctx.globalAlpha=1;
+  // 向量層
+  ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();ctx.lineCap=ctx.lineJoin='round';
+  if(opt.draw){
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=(opt.route?15:5)*lw;ctx.globalAlpha=.9;
+    S.strokes.forEach(st=>{ctx.beginPath();st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
+    ctx.globalAlpha=1;
+  }
+  let head=null;
+  if(opt.route){
+    S.result.segments.forEach(sg=>{const draw=sg.kind==='draw';
+      ctx.strokeStyle=draw?'#38bdf8':'#f59e0b';ctx.lineWidth=(draw?7:4)*lw;
+      ctx.setLineDash(draw?[]:[10*lw,9*lw]);ctx.beginPath();
+      sg.pts.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
+    ctx.setLineDash([]);
+    if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
+      const target=S.totalM*frac;let lo=0,hi=S.cum.length-1;
+      while(lo<hi){const mm=(lo+hi)>>1;S.cum[mm]<target?lo=mm+1:hi=mm;}
+      const idx=lo;const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
+      head=S.path[Math.max(idx,0)];
+      if(idx>0){const seg=S.cum[idx]-S.cum[idx-1],t=seg>0?(target-S.cum[idx-1])/seg:0,a=S.path[idx-1],b=S.path[idx];
+        head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];shown[shown.length-1]=head;}
+      ctx.strokeStyle='#f59e0b';ctx.lineWidth=7*lw;ctx.beginPath();
+      shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
+      if(frac>=1) head=null;
     }
-    let head=null;
-    if(opt.route){
-      S.result.segments.forEach(sg=>{const draw=sg.kind==='draw';
-        ctx.strokeStyle=draw?'#38bdf8':'#f59e0b';ctx.lineWidth=(draw?7:4)*lw;
-        ctx.setLineDash(draw?[]:[10*lw,9*lw]);ctx.beginPath();
-        sg.pts.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
-      ctx.setLineDash([]);
-      if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
-        const target=S.totalM*frac;let lo=0,hi=S.cum.length-1;
-        while(lo<hi){const m=(lo+hi)>>1;S.cum[m]<target?lo=m+1:hi=m;}
-        const idx=lo;const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
-        head=S.path[Math.max(idx,0)];
-        if(idx>0){const seg=S.cum[idx]-S.cum[idx-1],t=seg>0?(target-S.cum[idx-1])/seg:0,a=S.path[idx-1],b=S.path[idx];
-          head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];shown[shown.length-1]=head;}
-        ctx.strokeStyle='#f59e0b';ctx.lineWidth=7*lw;ctx.beginPath();
-        shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
-        if(frac>=1) head=null;
+  }
+  if(opt.arrows){
+    const path=[];S.result.segments.forEach(sg=>sg.pts.forEach(p=>{const last=path.length?path[path.length-1]:null;if(!last||last[0]!==p[0]||last[1]!==p[1])path.push(p);}));
+    if(path.length>=2){
+      const cum=[0];for(let i=1;i<path.length;i++)cum.push(cum[i-1]+map.distance(path[i-1],path[i]));
+      const total=cum[cum.length-1]||0;
+      const iAt=dd=>{let lo=0,hi=cum.length-1;while(lo<hi){const mm=(lo+hi)>>1;cum[mm]<dd?lo=mm+1:hi=mm;}return lo;};
+      const at=dd=>{const i=iAt(dd);if(i<1)return path[0];const seg=cum[i]-cum[i-1],t=seg>0?(dd-cum[i-1])/seg:0,a=path[i-1],b=path[i];return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];};
+      const step=Math.max(80,total/16),F0='"Segoe UI Symbol","Noto Sans Symbols",sans-serif';
+      for(let d=step;d<total;d+=step){
+        const c=at(d),a=at(Math.max(0,d-14)),b=at(Math.min(total,d+14));
+        const ax=X(a[1]),ay=Y(a[0]),bx=X(b[1]),by=Y(b[0]);if(ax===bx&&ay===by)continue;
+        ctx.save();ctx.translate(X(c[1]),Y(c[0]));ctx.rotate(Math.atan2(by-ay,bx-ax));
+        ctx.font=`${Math.max(9,Math.round(27*lw))}px ${F0}`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.lineWidth=4*lw;ctx.strokeStyle='rgba(8,8,8,.9)';ctx.strokeText('➤',0,0);
+        ctx.fillStyle='#fde047';ctx.fillText('➤',0,0);ctx.restore();
       }
     }
-    if(opt.marks){
-      const mk=(ll,isStart)=>{if(!ll)return;const x=X(ll.lng),y=Y(ll.lat),r=15*lw;
-        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=isStart?'#16a34a':'#dc2626';ctx.fill();
-        ctx.lineWidth=3*lw;ctx.strokeStyle='#fff';ctx.stroke();ctx.fillStyle='#fff';
-        if(isStart){ctx.beginPath();ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);ctx.closePath();ctx.fill();}
-        else{const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);}};
-      mk(S.start,true);mk(S.end,false);
-    }
-    if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
-    ctx.restore();
   }
-  // 資訊欄佈局示意（地點條＋四個數據塊）
-  ctx.fillStyle=TH.info;ctx.fillRect(0,mapH,W,infoH);
-  ctx.fillStyle=TH.line;ctx.fillRect(0,mapH,W,Math.max(1,infoH*0.012));
-  ctx.fillStyle=TH.dim;const pd=infoH*0.16;
-  ctx.fillRect(pd,mapH+infoH*0.26,W*0.42,infoH*0.11);
-  for(let i=0;i<4;i++) ctx.fillRect(pd+i*(W-pd*2)/4,mapH+infoH*0.62,(W-pd*2)/4-pd*0.4,infoH*0.16);
+  if(opt.marks){
+    const mk=(ll,isStart)=>{if(!ll)return;const x=X(ll.lng),y=Y(ll.lat),r=15*lw;
+      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=isStart?'#16a34a':'#dc2626';ctx.fill();
+      ctx.lineWidth=3*lw;ctx.strokeStyle='#fff';ctx.stroke();ctx.fillStyle='#fff';
+      if(isStart){ctx.beginPath();ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);ctx.closePath();ctx.fill();}
+      else{const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);}};
+    mk(S.start,true);mk(S.end,false);
+  }
+  if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
+  ctx.restore();
+  drawInfoBar();
 }
 document.querySelectorAll('.rt').forEach(b=>b.onclick=()=>{
   pngRatio=b.dataset.ratio;
