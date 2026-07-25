@@ -116,32 +116,34 @@
   .sheet.up{transform:translateY(0)}
   .grip{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 12px}
 
-  /* 四大群組由左至右：Group 1 -> Group 3 -> Group 2 -> Group 4，寬度展延不擠壓 */
+  /* 四大群組由左至右：Group 1 -> Group 3 -> Group 2 -> Group 4，寬度展延且底部齊平對齊 */
   .sheet-content{display:flex;gap:12px;align-items:stretch;width:100%;box-sizing:border-box}
 
   /* 群組 1：數據 4 框與配速框 */
-  .grp-1{flex:1.1 1 270px;display:flex;flex-direction:column;gap:8px;min-width:0}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .stat{background:var(--panel2);border-radius:11px;padding:9px 10px;min-width:0;
+  .grp-1{flex:1.1 1 270px;display:flex;flex-direction:column;gap:8px;min-width:0;justify-content:space-between}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1 1 auto}
+  .stat{background:var(--panel2);border-radius:11px;padding:8px 10px;min-width:0;
     display:flex;flex-direction:column;justify-content:center}
   .stat span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .stat b{font-size:15px;font-weight:600;white-space:nowrap;display:inline-block}
 
-  .pace{background:var(--panel2);border-radius:11px;padding:9px 10px;
-    display:flex;flex-direction:column;justify-content:space-between;gap:4px}
+  /* 配速框：配速按鈕放在速度文字右側 */
+  .pace{background:var(--panel2);border-radius:11px;padding:8px 10px;
+    display:flex;flex-direction:column;justify-content:center;gap:3px;flex:0 0 auto}
   .pace .lbl{display:block;font-size:11.5px;color:var(--dim);white-space:nowrap}
+  .pace .pace-main{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .pace .pval-row{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
-  .pace .pval-row b{font-size:15.5px;font-weight:600}
+  .pace .pval-row b{font-size:16px;font-weight:600}
   .pace .pval-row .unit{font-size:11px;color:var(--dim)}
-  .pace .pbtn-row{display:flex;align-items:center;gap:6px}
-  .pace .pbtn-row button{flex:1;height:26px;border-radius:7px;border:1px solid var(--border);
+  .pace .pbtn-row{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+  .pace .pbtn-row button{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:15px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
   /* 群組 3：路線預覽與高程變化圖 */
-  .grp-3{flex:1.5 1 340px;display:flex;flex-direction:column;gap:8px;min-width:0}
-  .prev{background:var(--panel2);border-radius:11px;padding:12px 14px;
-    display:flex;align-items:center;gap:14px}
+  .grp-3{flex:1.5 1 340px;display:flex;flex-direction:column;gap:8px;min-width:0;justify-content:space-between}
+  .prev{background:var(--panel2);border-radius:11px;padding:10px 14px;
+    display:flex;align-items:center;gap:14px;flex:0 0 auto}
   .prev .lbl{flex:0 0 auto;font-size:12px;color:var(--dim);white-space:nowrap;font-weight:500}
   .prev .pv-col{flex:1 1 auto;display:flex;flex-direction:column;gap:6px;min-width:0}
   .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap}
@@ -161,12 +163,12 @@
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
   /* 高程折線圖 (Elevation Profile Chart) - 對齊預覽拉桿兩側且文字不換行 */
-  .elev-box{background:var(--panel2);border-radius:11px;padding:10px 14px;
-    display:flex;flex-direction:column;gap:6px;min-width:0}
+  .elev-box{background:var(--panel2);border-radius:11px;padding:8px 14px;
+    display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto;justify-content:center}
   .elev-box .elev-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim);white-space:nowrap}
   .elev-box .elev-head span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .elev-box .elev-head b{color:var(--text);font-weight:600;font-size:12.5px;white-space:nowrap}
-  #elevChartArea{position:relative;width:100%;height:60px;margin:2px 0;box-sizing:border-box}
+  #elevChartArea{position:relative;width:100%;height:58px;margin:2px 0;box-sizing:border-box}
   .elev-chart-svg{width:100%;height:100%;display:block;overflow:visible}
   /* 跑者藍點縮小 50% (9px x 9px 完美正圓) */
   #elevRunnerDot{position:absolute;width:9px;height:9px;border-radius:50%;
@@ -174,20 +176,20 @@
     transform:translate(-50%,-50%);pointer-events:none;transition:left 0.05s, top 0.05s;z-index:10}
 
   /* 群組 2：微調與編輯四按鈕 (2x2) */
-  .grp-2{flex:1 1 180px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+  .grp-2{flex:1 1 180px;display:flex;flex-direction:column;justify-content:stretch;min-width:0}
   .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0;height:100%}
   .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
     color:var(--text2);font-size:11.5px;font-weight:500;font-family:inherit;padding:8px 4px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:nowrap;cursor:pointer}
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:nowrap;cursor:pointer;height:100%}
   .tools svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
   .tools button:disabled{opacity:.32}
 
   /* 群組 4：下載按鈕（下載圖片在上、下載 GPX 在下） */
-  .grp-4{flex:0.9 1 145px;display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:0}
+  .grp-4{flex:0.9 1 145px;display:flex;flex-direction:column;gap:8px;justify-content:stretch;min-width:0}
   .grp-4 button{flex:1;padding:10px 12px;border-radius:11px;font-size:13.5px;
     font-family:inherit;font-weight:600;border:1px solid var(--border);
-    display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap}
+    display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;height:calc(50% - 4px)}
   .grp-4 .exp{background:#16a34a;border-color:#16a34a;color:#fff}
   .grp-4 .pri{background:#2563eb;border-color:#2563eb;color:#fff}
   .grp-4 svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
@@ -316,12 +318,14 @@
       </div>
       <div class="pace">
         <span class="lbl" data-en="Pace">配速</span>
-        <div class="pval-row">
-          <b id="pVal">6:00</b><span class="unit" id="pUnit" data-en="min/km">分/公里</span>
-        </div>
-        <div class="pbtn-row">
-          <button id="pDn" aria-label="slower">−</button>
-          <button id="pUp" aria-label="faster">+</button>
+        <div class="pace-main">
+          <div class="pval-row">
+            <b id="pVal">6:00</b><span class="unit" id="pUnit" data-en="min/km">分/公里</span>
+          </div>
+          <div class="pbtn-row">
+            <button id="pDn" aria-label="slower">−</button>
+            <button id="pUp" aria-label="faster">+</button>
+          </div>
         </div>
       </div>
     </div>
@@ -398,6 +402,7 @@
           <button class="rt lyr" data-layer="draw" data-en="Drawing">紅線</button>
           <button class="rt lyr on" data-layer="marks" data-en="Marks">起訖點</button>
           <button class="rt lyr on" data-layer="basemap" data-en="Base map">地圖底圖</button>
+          <button class="rt lyr on" data-layer="elevchart" data-en="Elev. Chart">高程圖</button>
         </div>
         <div class="rlabel" data-en="Info data (all off = no info bar)">資訊欄數據（全關＝不顯示資訊欄）</div>
         <div class="ratios lyrs">
@@ -1252,7 +1257,7 @@ $('aRev').onclick=()=>{
 
 /* ---------- 微調路徑 ---------- */
 /* 節點畫在 canvas 上（幾百個 SVG 圓在手機上會很鈍），指定 pane: 'markerPane' 確保於路線上層 */
-const nodeRenderer=L.canvas({padding:.3, pane:'markerPane'});
+let nodeRenderer=null;
 const NODE_R=4, NODE_SEL_R=9, NODE_TURN_R=7.5, PICK_TOL_PX=24;
 const TURN_DEG=28;   // 轉多少度才算「轉彎點」
 let nodeLayer=null, nodeMks=[];
@@ -1281,6 +1286,10 @@ function nodeStyle(turn){
 function editBuild(){
   if(nodeLayer) nodeLayer.remove();
   nodeMks=[];S.sel.clear();
+  if(!nodeRenderer){
+    try { nodeRenderer = L.canvas({padding:.3, pane:'markerPane'}); }
+    catch(_) { nodeRenderer = L.canvas({padding:.3}); }
+  }
   const marks=[];
   for(const sg of S.result.segments){
     const flags=turnFlags(sg.nodes||[]);   // 只把轉彎點標出來
@@ -1294,7 +1303,7 @@ function editBuild(){
     });
   }
   nodeLayer=L.layerGroup(marks,{pane:'markerPane'}).addTo(map);
-  if(nodeRenderer.getContainer()) nodeRenderer.getContainer().style.zIndex = '750';
+  if(nodeRenderer && nodeRenderer.getContainer()) nodeRenderer.getContainer().style.zIndex = '750';
   if(nodeLayer) nodeLayer.bringToFront();
   editUI();
 }
@@ -1356,15 +1365,24 @@ $('eDel').onclick=()=>{
   Engine.editDelete(picks)
     .then(res=>{
       if(!res.ok){
+        S.sel.forEach(i=>editMark(i,false));
+        S.sel.clear();
+        editUI();
         toast(res.reason==='break'
-          ? '刪掉這些節點後找不到別條路可以繞過去，已自動復原。試著把整段繞路一起框選刪除。'
-          : '無法刪除：這一段剩下的點太少了。',3400);
+          ? '刪掉這些節點後找不到別條路繞過去，已自動取消選取。請嘗試框選整段路徑。'
+          : '無法刪除（該段剩餘節點太少），已自動取消選取。',3400);
         return;
       }
       applyResult(res,false);editBuild();
       toast('已重新沿道路接好',1400);
     })
-    .catch(err=>{busy('');toast(tx('刪除失敗：','Delete failed: ')+err.message,3000);});
+    .catch(err=>{
+      busy('');
+      S.sel.forEach(i=>editMark(i,false));
+      S.sel.clear();
+      editUI();
+      toast(tx('刪除失敗：','Delete failed: ')+err.message,3000);
+    });
 };
 $('eUndo').onclick=()=>{
   Engine.editUndo()
@@ -1663,6 +1681,10 @@ async function exportPNG(opt){
     if(runnerHead){
       drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light);
     }
+    // 8.5) 高程圖圖層（若勾選）
+    if(opt.elevchart && elevChartData){
+      drawElevProfileCanvas(ctx, 16 * sc, mapH - 90 * sc, Math.min(420 * sc, mapW - 32 * sc), 70 * sc, light);
+    }
     ctx.restore();
 
     // 9) 比例尺
@@ -1882,12 +1904,70 @@ async function renderPreview(){
     mk(S.start,true);mk(S.end,false);
   }
   if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
+  if(opt.elevchart && elevChartData){
+    drawElevProfileCanvas(ctx, 16 * lw, mapH - 75 * lw, Math.min(360 * lw, mapW - 32 * lw), 60 * lw, light);
+  }
   ctx.restore();
   drawInfoBar();
 }
-document.querySelectorAll('.rt').forEach(b=>b.onclick=()=>{
+function drawElevProfileCanvas(ctx, x, y, w, h, light){
+  if(!elevChartData || !elevChartData.elevations || elevChartData.elevations.length < 2) return;
+  const elevations = elevChartData.elevations;
+  let minE = Infinity, maxE = -Infinity;
+  elevations.forEach(e => {
+    if(e < minE) minE = e;
+    if(e > maxE) maxE = e;
+  });
+  const rangeE = Math.max(10, maxE - minE);
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = light ? 'rgba(255,255,255,0.85)' : 'rgba(20,23,28,0.85)';
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(0, 0, w, h, 8);
+  else ctx.rect(0, 0, w, h);
+  ctx.fill();
+
+  const padL = 10, padR = 10, padT = 16, padB = 8;
+  const chartW = w - padL - padR, chartH = h - padT - padB;
+
+  ctx.beginPath();
+  elevations.forEach((e, idx) => {
+    const px = padL + (idx / (elevations.length - 1)) * chartW;
+    const py = padT + chartH - ((e - minE) / rangeE) * chartH;
+    if(idx === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+
+  ctx.strokeStyle = '#00E5FF';
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  ctx.lineTo(w - padR, padT + chartH);
+  ctx.lineTo(padL, padT + chartH);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, padT, 0, padT + chartH);
+  grad.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
+  grad.addColorStop(1, 'rgba(0, 229, 255, 0.02)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.fillStyle = '#00E5FF';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText(`▲ ${Math.round(maxE)}m`, padL, padT - 3);
+
+  ctx.fillStyle = light ? '#64748b' : '#94a3b8';
+  ctx.font = '600 9px sans-serif';
+  ctx.fillText(`▼ ${Math.round(minE)}m`, w - padR - 36, padT - 3);
+
+  ctx.restore();
+}
+document.querySelectorAll('.rt[data-ratio]').forEach(b=>b.onclick=()=>{
   pngRatio=b.dataset.ratio;
-  document.querySelectorAll('.rt').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.rt[data-ratio]').forEach(x=>x.classList.toggle('on',x===b));
   renderPreview();
 });
 document.querySelectorAll('.lyr').forEach(b=>b.onclick=()=>{b.classList.toggle('on');renderPreview();});
