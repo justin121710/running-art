@@ -217,19 +217,11 @@
 
   /* ==== 桌面版：操作按鈕移到左側直排，結果改成右下角浮空卡片 ==== */
   @media (min-width:900px){
-    .dock{left:14px;top:72px;right:auto;bottom:auto;width:133px}
-    .dock .modes,.dock .row2{flex-direction:column}
-    #mainDock .m{flex-direction:row;justify-content:flex-start;gap:11px;
-      padding:11px 13px;font-size:13px}
-    #mainDock .m svg{width:19px;height:19px}
-    #mainDock .sm{justify-content:flex-start}
-    .sheet{left:auto;right:20px;bottom:20px;width:410px;
-      border:1px solid var(--border);border-radius:16px;
-      max-height:calc(100vh - 40px);overflow:auto}
-    .grip{display:none}
-    .guide{left:230px;right:auto;max-width:460px;bottom:26px}
-    .pill{left:auto;right:20px;transform:none}
-    .pill.tap{transform:none}
+    /* 方案 A：操作與結果都收到底部置中橫條，地圖上方整片全開 */
+    .dock{left:50%;transform:translateX(-50%);right:auto;width:auto;max-width:680px}
+    .sheet{left:50%;right:auto;width:520px;transform:translateX(-50%) translateY(102%)}
+    .sheet.up{transform:translateX(-50%) translateY(0)}
+    .guide{left:50%;transform:translateX(-50%);right:auto;max-width:600px}
   }
 </style>
 </head>
