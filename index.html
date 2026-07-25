@@ -153,14 +153,15 @@
   .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between}
   .prev .pv-info b{font-size:14px;font-weight:600}
   .prev .pv-info .unit{font-size:11.5px;color:var(--dim)}
-  /* 拉桿：左側＝走過 #4169E1、右側＝對齊道路原色 #708090。 */
+  /* 拉桿：左側＝走過 #4169E1、右側＝對齊道路原色 #708090。點點上下精準置中 */
   #pvSlider{width:100%;margin:2px 0 0;-webkit-appearance:none;appearance:none;height:6px;
-    border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none}
+    border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none;
+    display:block;box-sizing:border-box;vertical-align:middle}
   #pvSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;
     border-radius:50%;background:#4169E1;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
-    cursor:pointer;margin-top:-6px}
+    cursor:pointer;margin-top:-6px;box-sizing:border-box}
   #pvSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#4169E1;
-    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer}
+    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;box-sizing:border-box}
   #pvPlay{flex:0 0 34px;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -293,6 +294,9 @@
     </button>
     <button class="sm" id="btnClear" disabled>
       <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Clear">清除</span>
+    </button>
+    <button class="sm" id="btnCancelMod" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg><span data-en="Cancel Edit">取消修改</span>
     </button>
     <button class="sm go" id="btnGo" disabled>
       <svg viewBox="0 0 24 24"><path d="M13 4l-1.5 4.5L15 11l-4 2 1 7-6-8 3-1-2-3 6-4z"/></svg><span data-en="Generate">生成路線</span>
@@ -627,7 +631,8 @@ function showArea(b){
   areaMask=L.polygon([W,hole],{stroke:false,fillColor:isLight()?'#8a96a6':'#05070a',
     fillOpacity:.72,interactive:false}).addTo(map);
   areaRect=L.rectangle(b,{color:isLight()?'#000':'#fff',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map);
-  map.fitBounds(b,{padding:[26,26]});
+  // 留出上下非對稱邊距，避免被頂部按鈕或底部工具欄遮擋
+  map.fitBounds(b,{paddingTopLeft:[30,64],paddingBottomRight:[30,110]});
 }
 function inArea(ll){return !S.bounds||S.bounds.contains(ll);}
 
@@ -663,6 +668,16 @@ function boxEnd(e){
           x1:Math.max(a[0],e.clientX)-r.left, y1:Math.max(a[1],e.clientY)-r.top};
 }
 
+function updatePillPos(){
+  const dock = $('mainDock');
+  if(!dock) return;
+  const d = dock.getBoundingClientRect();
+  if(!d.width) return;
+  const bottomDist = Math.max(88, Math.round(window.innerHeight - d.top + 14));
+  el.pill.style.bottom = bottomDist + 'px';
+}
+window.addEventListener('resize', updatePillPos);
+
 function refresh(){
   if(S.editing) return;   // 微調模式有自己的一套按鈕與提示
   const n=S.strokes.length;
@@ -670,6 +685,12 @@ function refresh(){
   $('btnGo').disabled=!(n&&S.start&&S.end)||S.locked;
   ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=!S.hasMap||S.locked);
   if(S.locked&&S.mode!=='pan') setMode('pan');
+
+  // 取消修改按鈕：只有在先前有生成結果、且目前退回修改圖案模式時顯示
+  if($('btnCancelMod')){
+    $('btnCancelMod').style.display = (S.prevResult && !S.sheetUp) ? 'flex' : 'none';
+  }
+
   let d=0;
   for(const s of S.strokes) for(let i=1;i<s.pts.length;i++) d+=map.distance(s.pts[i-1],s.pts[i]);
   if(S.result&&!S.sheetUp){
@@ -677,10 +698,12 @@ function refresh(){
     el.pill.classList.remove('hide');
     el.pill.textContent=tx('▲ 查看路線結果 (','▲ View Result (')+S.km.toFixed(2)+' km)';
     el.pill.classList.add('tap');
+    updatePillPos();
   }else if(n&&!S.sheetUp){
     el.pill.classList.remove('hide');
     el.pill.textContent=(d/1000).toFixed(2)+' km';
     el.pill.classList.remove('tap');
+    updatePillPos();
   }else{
     el.pill.classList.add('hide');
     el.pill.classList.remove('tap');
@@ -860,33 +883,30 @@ function pvBuild(res){
   pvDone=L.polyline([],{color:'#4169E1',weight:8,opacity:.95}).addTo(map);
   pvHead=L.marker(S.path[0],{icon:personIcon(false),interactive:false,zIndexOffset:1000}).addTo(map);
 
-  // 沿線每隔一段放一個方向箭頭（耀黃 #FFD700，內插在直線段中間、避開轉角節點處）
-  const arrows=[], step=Math.max(80, S.totalM / 14), minNodeDist = 12;
-  for(let targetD=step; targetD < S.totalM - 15; targetD += step){
-    let d = targetD;
-    const i = pvIndexAt(d);
-    if(i < 1) continue;
-    const segFrom = S.cum[i-1], segTo = S.cum[i], segLen = segTo - segFrom;
-    if(segLen < minNodeDist * 2) continue;   // 短線段或劇烈轉角處不放箭頭
-    if(d - segFrom < minNodeDist) d = segFrom + minNodeDist;
-    else if(segTo - d < minNodeDist) d = segTo - minNodeDist;
-
-    const dir = pvHeading(d);
-    if(dir === null) continue;
-    const t = (d - segFrom) / segLen;
-    const a = S.path[i-1], b = S.path[i];
-    const ll = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-
-    arrows.push(L.marker(ll, {
-      interactive: false,
-      icon: L.divIcon({
-        className: '',
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
-        html: '<svg width="26" height="26" viewBox="0 0 26 26" style="transform:rotate('+dir+'deg);overflow:visible;filter:drop-shadow(0 0 1.2px rgba(0,0,0,.6))"><path d="M7 10 L25 13 L7 16 Z" fill="#FFD700"/></svg>'
-      })
-    }));
-  }
+  // 箭頭方向由相鄰兩點向量決定，且「只能出現在兩相鄰節點正中間的位置」，形狀為大於 (>)
+  const arrows=[];
+  res.segments.forEach(sg=>{
+    for(let k=1;k<sg.pts.length;k++){
+      const a=sg.pts[k-1], b=sg.pts[k];
+      const d=map.distance(a,b);
+      // 相鄰兩點距離 >= 15m 材標示正中間箭頭（避免過於密麻重疊）
+      if(d>=15){
+        const mid=[(a[0]+b[0])/2, (a[1]+b[1])/2];
+        const pa=map.project(a,18), pb=map.project(b,18);
+        if(pa.x===pb.x && pa.y===pb.y) continue;
+        const dir=Math.atan2(pb.y-pa.y, pb.x-pa.x)*180/Math.PI;
+        arrows.push(L.marker(mid,{
+          interactive:false,
+          icon:L.divIcon({
+            className:'',
+            iconSize:[22,22],
+            iconAnchor:[11,11],
+            html:'<svg width="22" height="22" viewBox="0 0 22 22" style="transform:rotate('+dir+'deg);overflow:visible;filter:drop-shadow(0 0 1.2px rgba(0,0,0,.6))"><path d="M 6 4 L 16 11 L 6 18" stroke="#FFD700" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+          })
+        }));
+      }
+    }
+  });
   pvArrows=L.layerGroup(arrows).addTo(map);
   $('pvSlider').value=0; pvSet(0);
 }
@@ -1078,14 +1098,29 @@ $('btnGo').onclick=()=>{
 
 /* ---------- 生成後的動作 ---------- */
 $('aMod').onclick=()=>{
+  S.prevResult = S.result;
   dropRoute();
   S.strokes.forEach(s=>s.line.setStyle({opacity:.95,weight:5}));
   setMode('draw');refresh();
-  toast('可以繼續修改圖案，改完再按生成路線',2600);
+  toast(tx('已進入修改圖案模式，改完按生成，或按「取消修改」回到原路線', 'Edit shape mode. Tap Generate when done or Cancel to revert'),3000);
+};
+$('btnCancelMod').onclick=()=>{
+  if(!S.prevResult) return;
+  S.result = S.prevResult;
+  S.prevResult = null;
+  S.generated = true; S.locked = true;
+  applyResult(S.result);
+  S.strokes.forEach(s=>s.line.setStyle({opacity:.25,weight:3}));
+  S.sheetUp = true; el.sheet.classList.add('up');
+  refresh(); fitRoute();
+  toast(tx('已取消修改，恢復原路線', 'Cancelled edits, restored route'), 2000);
 };
 $('aNew').onclick=()=>{
-  clearAll();setMode('draw');
-  toast('已清空，重新開始畫',2000);
+  if(confirm(tx('確定要重新繪製？目前畫布上的所有內容與路線將會被清空。', 'Are you sure you want to restart? All drawings and route content will be cleared.'))){
+    S.prevResult = null;
+    clearAll(); setMode('draw');
+    toast(tx('已清空畫布，重新開始畫圖', 'Canvas cleared. Start drawing again'), 2000);
+  }
 };
 $('aRev').onclick=()=>{
   if(!S.result) return;
@@ -1138,16 +1173,18 @@ function editBuild(){
   nodeMks=[];S.sel.clear();
   const marks=[];
   for(const sg of S.result.segments){
-    const flags=turnFlags(sg.nodes||[]);   // 依你選的：只把轉彎點標出來
+    const flags=turnFlags(sg.nodes||[]);   // 只把轉彎點標出來
     (sg.nodes||[]).forEach((ll,n)=>{
       if(!ll) return;   // null 佔位：這個節點不在路網裡，不能編輯
       const turn=!!flags[n];
-      const mk=L.circleMarker(ll,{renderer:nodeRenderer,interactive:false,...nodeStyle(turn)});
+      // 指定 pane: 'markerPane' 讓節點永遠顯示於路線 Layer 之上
+      const mk=L.circleMarker(ll,{pane:'markerPane',renderer:nodeRenderer,interactive:false,...nodeStyle(turn)});
       nodeMks.push({si:sg.si,n,ll,mk,turn});
       marks.push(mk);
     });
   }
   nodeLayer=L.layerGroup(marks).addTo(map);
+  if(nodeLayer) nodeLayer.bringToFront();
   editUI();
 }
 function editMark(i,on){
@@ -1336,11 +1373,18 @@ function drawRunnerCanvas(ctx,x,footY,u,light){
   ctx.restore();
 }
 
-// 匯出/預覽的方向箭頭：在已 translate+rotate 的座標系畫指向右的細長三角（耀黃 #FFD700，無外框）
-function drawArrowTri(ctx,base){
-  const w=base, h=base*3;   // 底:高 = 1:3，質心置於原點
-  ctx.beginPath();ctx.moveTo(-h/3,-w/2);ctx.lineTo(2*h/3,0);ctx.lineTo(-h/3,w/2);ctx.closePath();
-  ctx.fillStyle='#FFD700';ctx.fill();
+// 匯出/預覽的方向箭頭：在已 translate+rotate 的座標系畫指向右的大於符號 (>)（耀黃 #FFD700）
+function drawChevron(ctx,base){
+  const w=base*1.4, h=base*1.4;
+  ctx.beginPath();
+  ctx.moveTo(-h/2,-w/2);
+  ctx.lineTo(h/2,0);
+  ctx.lineTo(-h/2,w/2);
+  ctx.strokeStyle='#FFD700';
+  ctx.lineWidth=Math.max(2.2, base*0.45);
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  ctx.stroke();
 }
 
 async function exportPNG(opt){
@@ -1463,34 +1507,22 @@ async function exportPNG(opt){
         if(frac<1) runnerHead=head;   // 跑完(100%)就不畫小人，避免杵在終點
       }
     }
-    // 7) 方向箭頭：沿整條路線（含筆畫間的連接虛線）標示前進方向，避開轉角節點處
-    if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
-      const step = Math.max(80, S.totalM / 14), minNodeDist = 12;
-      for(let targetD = step; targetD < S.totalM - 15; targetD += step){
-        let d = targetD;
-        let lo = 0, hi = S.cum.length - 1;
-        while(lo < hi){ const m = (lo + hi) >> 1; S.cum[m] < d ? lo = m + 1 : hi = m; }
-        const i = lo;
-        if(i < 1) continue;
-        const segFrom = S.cum[i-1], segTo = S.cum[i], segLen = segTo - segFrom;
-        if(segLen < minNodeDist * 2) continue;
-        if(d - segFrom < minNodeDist) d = segFrom + minNodeDist;
-        else if(segTo - d < minNodeDist) d = segTo - minNodeDist;
-
-        const a = S.path[i-1], b = S.path[i];
-        const t = (d - segFrom) / segLen;
-        const c = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-        const aHead = [a[0] + (b[0] - a[0]) * Math.max(0, t - 0.05), a[1] + (b[1] - a[1]) * Math.max(0, t - 0.05)];
-        const bHead = [a[0] + (b[0] - a[0]) * Math.min(1, t + 0.05), a[1] + (b[1] - a[1]) * Math.min(1, t + 0.05)];
-
-        const ax = X(aHead[1]), ay = Y(aHead[0]), bx = X(bHead[1]), by = Y(bHead[0]);
-        if(ax === bx && ay === by) continue;
-        ctx.save();
-        ctx.translate(X(c[1]), Y(c[0]));
-        ctx.rotate(Math.atan2(by - ay, bx - ax));
-        drawArrowTri(ctx, 6 * sc);
-        ctx.restore();
-      }
+    // 7) 方向箭頭：只能出現在兩相鄰節點正中間的位置，形狀為大於 (>)
+    if(opt.arrows && S.result && S.result.segments){
+      S.result.segments.forEach(sg => {
+        for(let k = 1; k < sg.pts.length; k++){
+          const a = sg.pts[k-1], b = sg.pts[k];
+          if(map.distance(a, b) < 15) continue;
+          const mid = [(a[0] + b[0])/2, (a[1] + b[1])/2];
+          const ax = X(a[1]), ay = Y(a[0]), bx = X(b[1]), by = Y(b[0]);
+          if(ax === bx && ay === by) continue;
+          ctx.save();
+          ctx.translate(X(mid[1]), Y(mid[0]));
+          ctx.rotate(Math.atan2(by - ay, bx - ax));
+          drawChevron(ctx, 6 * sc);
+          ctx.restore();
+        }
+      });
     }
     // 8) 起終點：綠圈▶＝起點、紅圈■＝終點（與地圖上同一套）
     if(opt.marks){
@@ -1705,33 +1737,21 @@ async function renderPreview(){
       if(frac>=1) head=null;
     }
   }
-  if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
-    const step = Math.max(80, S.totalM / 14), minNodeDist = 12;
-    for(let targetD = step; targetD < S.totalM - 15; targetD += step){
-      let d = targetD;
-      let lo = 0, hi = S.cum.length - 1;
-      while(lo < hi){ const m = (lo + hi) >> 1; S.cum[m] < d ? lo = m + 1 : hi = m; }
-      const i = lo;
-      if(i < 1) continue;
-      const segFrom = S.cum[i-1], segTo = S.cum[i], segLen = segTo - segFrom;
-      if(segLen < minNodeDist * 2) continue;
-      if(d - segFrom < minNodeDist) d = segFrom + minNodeDist;
-      else if(segTo - d < minNodeDist) d = segTo - minNodeDist;
-
-      const a = S.path[i-1], b = S.path[i];
-      const t = (d - segFrom) / segLen;
-      const c = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-      const aHead = [a[0] + (b[0] - a[0]) * Math.max(0, t - 0.05), a[1] + (b[1] - a[1]) * Math.max(0, t - 0.05)];
-      const bHead = [a[0] + (b[0] - a[0]) * Math.min(1, t + 0.05), a[1] + (b[1] - a[1]) * Math.min(1, t + 0.05)];
-
-      const ax = X(aHead[1]), ay = Y(aHead[0]), bx = X(bHead[1]), by = Y(bHead[0]);
-      if(ax === bx && ay === by) continue;
-      ctx.save();
-      ctx.translate(X(c[1]), Y(c[0]));
-      ctx.rotate(Math.atan2(by - ay, bx - ax));
-      drawArrowTri(ctx, Math.max(4, 6 * lw));
-      ctx.restore();
-    }
+  if(opt.arrows && S.result && S.result.segments){
+    S.result.segments.forEach(sg => {
+      for(let k = 1; k < sg.pts.length; k++){
+        const a = sg.pts[k-1], b = sg.pts[k];
+        if(map.distance(a, b) < 15) continue;
+        const mid = [(a[0] + b[0])/2, (a[1] + b[1])/2];
+        const ax = X(a[1]), ay = Y(a[0]), bx = X(b[1]), by = Y(b[0]);
+        if(ax === bx && ay === by) continue;
+        ctx.save();
+        ctx.translate(X(mid[1]), Y(mid[0]));
+        ctx.rotate(Math.atan2(by - ay, bx - ax));
+        drawChevron(ctx, Math.max(4, 6 * lw));
+        ctx.restore();
+      }
+    });
   }
   if(opt.marks){
     const mk=(ll,isStart)=>{if(!ll)return;const x=X(ll.lng),y=Y(ll.lat),r=15*lw;
