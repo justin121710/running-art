@@ -110,16 +110,17 @@
   /* ---- 結果面板 ---- */
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;
     background:var(--panel);border-top:1px solid var(--border);
-    border-radius:18px 18px 0 0;padding:12px 16px 18px;
-    transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+    border-radius:18px 18px 0 0;padding:14px 20px 18px;
+    transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+    box-sizing:border-box;overflow-x:hidden}
   .sheet.up{transform:translateY(0)}
   .grip{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 12px}
 
-  /* 四大群組由左至右：Group 1 -> Group 3 -> Group 2 -> Group 4 */
-  .sheet-content{display:flex;gap:12px;align-items:stretch}
+  /* 四大群組由左至右：Group 1 -> Group 3 -> Group 2 -> Group 4，寬度展延不擠壓 */
+  .sheet-content{display:flex;gap:12px;align-items:stretch;width:100%;box-sizing:border-box}
 
   /* 群組 1：數據 4 框與配速框 */
-  .grp-1{flex:1 1 270px;display:flex;flex-direction:column;gap:8px;min-width:240px}
+  .grp-1{flex:1.1 1 270px;display:flex;flex-direction:column;gap:8px;min-width:0}
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .stat{background:var(--panel2);border-radius:11px;padding:9px 10px;min-width:0;
     display:flex;flex-direction:column;justify-content:center}
@@ -128,7 +129,7 @@
 
   .pace{background:var(--panel2);border-radius:11px;padding:9px 10px;
     display:flex;flex-direction:column;justify-content:space-between;gap:4px}
-  .pace .lbl{display:block;font-size:11.5px;color:var(--dim)}
+  .pace .lbl{display:block;font-size:11.5px;color:var(--dim);white-space:nowrap}
   .pace .pval-row{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
   .pace .pval-row b{font-size:15.5px;font-weight:600}
   .pace .pval-row .unit{font-size:11px;color:var(--dim)}
@@ -138,15 +139,15 @@
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
   /* 群組 3：路線預覽與高程變化圖 */
-  .grp-3{flex:1.4 1 330px;display:flex;flex-direction:column;gap:8px;min-width:280px}
+  .grp-3{flex:1.5 1 340px;display:flex;flex-direction:column;gap:8px;min-width:0}
   .prev{background:var(--panel2);border-radius:11px;padding:12px 14px;
     display:flex;align-items:center;gap:14px}
   .prev .lbl{flex:0 0 auto;font-size:12px;color:var(--dim);white-space:nowrap;font-weight:500}
   .prev .pv-col{flex:1 1 auto;display:flex;flex-direction:column;gap:6px;min-width:0}
-  .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between}
-  .prev .pv-info b{font-size:14px;font-weight:600}
-  .prev .pv-info .unit{font-size:11.5px;color:var(--dim)}
-  /* 拉桿：點點 18px， margin-top 給 6px 留白空間，完全不撞上方數字 */
+  .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap}
+  .prev .pv-info b{font-size:14px;font-weight:600;white-space:nowrap}
+  .prev .pv-info .unit{font-size:11.5px;color:var(--dim);white-space:nowrap}
+  /* 拉桿：點點 18px， margin-top 給 6px 留白空間 */
   #pvSlider{width:100%;margin:6px 0 2px;-webkit-appearance:none;appearance:none;height:6px;
     border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none;
     display:block;box-sizing:border-box;vertical-align:middle}
@@ -159,33 +160,34 @@
     background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* 高程折線圖 (Elevation Profile Chart) - 對齊預覽拉桿兩側 */
+  /* 高程折線圖 (Elevation Profile Chart) - 對齊預覽拉桿兩側且文字不換行 */
   .elev-box{background:var(--panel2);border-radius:11px;padding:10px 14px;
-    display:flex;flex-direction:column;gap:6px}
-  .elev-box .elev-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim)}
-  .elev-box .elev-head b{color:var(--text);font-weight:600;font-size:13px}
-  #elevChartArea{position:relative;width:100%;height:65px;margin:2px 0}
+    display:flex;flex-direction:column;gap:6px;min-width:0}
+  .elev-box .elev-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim);white-space:nowrap}
+  .elev-box .elev-head span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .elev-box .elev-head b{color:var(--text);font-weight:600;font-size:12.5px;white-space:nowrap}
+  #elevChartArea{position:relative;width:100%;height:60px;margin:2px 0;box-sizing:border-box}
   .elev-chart-svg{width:100%;height:100%;display:block;overflow:visible}
-  /* 不會變扁的正圓形 HTML 點點，形狀大小與拉桿點點完全一致 (18px) */
-  #elevRunnerDot{position:absolute;width:18px;height:18px;border-radius:50%;
-    background:#4169E1;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
+  /* 跑者藍點縮小 50% (9px x 9px 完美正圓) */
+  #elevRunnerDot{position:absolute;width:9px;height:9px;border-radius:50%;
+    background:#4169E1;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
     transform:translate(-50%,-50%);pointer-events:none;transition:left 0.05s, top 0.05s;z-index:10}
 
   /* 群組 2：微調與編輯四按鈕 (2x2) */
-  .grp-2{flex:0 0 160px;display:flex;flex-direction:column;justify-content:center}
-  .tools{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0;height:100%}
+  .grp-2{flex:1 1 180px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+  .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0;height:100%}
   .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
-    color:var(--text2);font-size:11px;font-family:inherit;padding:6px 2px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
-  .tools svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
+    color:var(--text2);font-size:11.5px;font-weight:500;font-family:inherit;padding:8px 4px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:nowrap;cursor:pointer}
+  .tools svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
   .tools button:disabled{opacity:.32}
 
   /* 群組 4：下載按鈕（下載圖片在上、下載 GPX 在下） */
-  .grp-4{flex:0 0 135px;display:flex;flex-direction:column;gap:8px;justify-content:center}
-  .grp-4 button{flex:1;padding:10px 12px;border-radius:11px;font-size:13px;
-    font-family:inherit;font-weight:500;border:1px solid var(--border);
-    display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+  .grp-4{flex:0.9 1 145px;display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:0}
+  .grp-4 button{flex:1;padding:10px 12px;border-radius:11px;font-size:13.5px;
+    font-family:inherit;font-weight:600;border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap}
   .grp-4 .exp{background:#16a34a;border-color:#16a34a;color:#fff}
   .grp-4 .pri{background:#2563eb;border-color:#2563eb;color:#fff}
   .grp-4 svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
@@ -212,11 +214,11 @@
   .box{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.14);
     z-index:450;pointer-events:none;border-radius:4px}
 
-  /* ==== 桌面版 ==== */
+  /* ==== 桌面版與大螢幕 ==== */
   @media (min-width:900px){
     .dock{left:50%;transform:translateX(-50%);right:auto;width:auto;max-width:680px}
-    .sheet{left:50%;right:auto;width:720px;transform:translateX(-50%) translateY(102%);
-      max-height:calc(100vh - 80px);overflow-y:auto}
+    .sheet{left:50%;right:auto;width:calc(100vw - 36px);max-width:1380px;transform:translateX(-50%) translateY(102%);
+      max-height:calc(100vh - 80px);overflow-y:auto;box-sizing:border-box;padding:14px 20px 18px}
     .sheet.up{transform:translateX(-50%) translateY(0)}
   }
 </style>
@@ -612,7 +614,7 @@ function positionGuide(){
   left = Math.max(12, Math.min(left, window.innerWidth - gwA - 12));
   g.style.left = left+'px'; g.style.top = top+'px';
 }
-window.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); });
+window.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); updatePillPos(); alignElevChart(); });
 function toast(t,ms=1500){
   if(EN()&&TOASTS_EN[t]) t=TOASTS_EN[t];   // 已知中文字串自動換英文
   el.toast.textContent=t;el.toast.classList.add('show');
@@ -1041,6 +1043,20 @@ function pvClear(){
    加總正的落差＝爬升、負的＝下降。DEM 解析度較粗，城市路線通常起伏不大屬正常。 */
 let elevChartData = null;
 
+function alignElevChart(){
+  const slider = $('pvSlider');
+  const elevBox = $('elevBox');
+  const area = $('elevChartArea');
+  if(!slider || !elevBox || !area) return;
+  const sliderRect = slider.getBoundingClientRect();
+  const elevRect = elevBox.getBoundingClientRect();
+  if(sliderRect.width > 0 && elevRect.width > 0){
+    const leftOffset = Math.max(0, sliderRect.left - elevRect.left);
+    area.style.marginLeft = leftOffset.toFixed(1) + 'px';
+    area.style.width = sliderRect.width.toFixed(1) + 'px';
+  }
+}
+
 function renderElevChart(data){
   const area = $('elevChartArea');
   if(!area) return;
@@ -1050,6 +1066,7 @@ function renderElevChart(data){
   }
   if($('elevBox')) $('elevBox').style.display = 'flex';
   elevChartData = data;
+  alignElevChart();
 
   const elevations = data.elevations;
   let minE = Infinity, maxE = -Infinity, minIdx = 0, maxIdx = 0;
@@ -1061,18 +1078,18 @@ function renderElevChart(data){
 
   if($('elevRangeText')) $('elevRangeText').textContent = tx('最高 ','Max ') + Math.round(maxE) + tx(' m / 最低 ',' m / Min ') + Math.round(minE) + ' m';
 
-  const W = 340, H = 65, padT = 14, padB = 10, padL = 9, padR = 9;
-  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const W = 340, H = 60, padT = 14, padB = 8;
+  const chartW = W, chartH = H - padT - padB;
 
   const pts = elevations.map((e, idx) => {
-    const x = padL + (idx / (elevations.length - 1)) * chartW;
+    const x = (idx / (elevations.length - 1)) * chartW;
     const y = padT + chartH - ((e - minE) / rangeE) * chartH;
     return { x, y, e, idx };
   });
 
   const pathStr = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
   const lineD = 'M ' + pathStr.join(' L ');
-  const areaD = `M ${padL},${H - padB} L ` + pathStr.join(' L ') + ` L ${W - padR},${H - padB} Z`;
+  const areaD = `M 0,${H - padB} L ` + pathStr.join(' L ') + ` L ${W},${H - padB} Z`;
 
   const minPt = pts[minIdx];
   const maxPt = pts[maxIdx];
@@ -1087,10 +1104,10 @@ function renderElevChart(data){
       </defs>
       <path d="${areaD}" fill="url(#elevGrad)"/>
       <path d="${lineD}" fill="none" stroke="#00E5FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="${maxPt.x.toFixed(1)}" cy="${maxPt.y.toFixed(1)}" r="3" fill="#00E5FF"/>
-      <text x="${Math.max(28, Math.min(W - 28, maxPt.x)).toFixed(1)}" y="${Math.max(10, maxPt.y - 3).toFixed(1)}" fill="#00E5FF" font-size="9.5" font-weight="700" text-anchor="middle">▲${Math.round(maxE)}m</text>
-      <circle cx="${minPt.x.toFixed(1)}" cy="${minPt.y.toFixed(1)}" r="3" fill="#8b929c"/>
-      <text x="${Math.max(28, Math.min(W - 28, minPt.x)).toFixed(1)}" y="${Math.min(H - 1, minPt.y + 9).toFixed(1)}" fill="var(--dim)" font-size="9" font-weight="600" text-anchor="middle">▼${Math.round(minE)}m</text>
+      <circle cx="${maxPt.x.toFixed(1)}" cy="${maxPt.y.toFixed(1)}" r="2.8" fill="#00E5FF"/>
+      <text x="${Math.max(26, Math.min(W - 26, maxPt.x)).toFixed(1)}" y="${Math.max(10, maxPt.y - 3).toFixed(1)}" fill="#00E5FF" font-size="9" font-weight="700" text-anchor="middle">▲${Math.round(maxE)}m</text>
+      <circle cx="${minPt.x.toFixed(1)}" cy="${minPt.y.toFixed(1)}" r="2.8" fill="#8b929c"/>
+      <text x="${Math.max(26, Math.min(W - 26, minPt.x)).toFixed(1)}" y="${Math.min(H - 1, minPt.y + 8.5).toFixed(1)}" fill="var(--dim)" font-size="8.5" font-weight="600" text-anchor="middle">▼${Math.round(minE)}m</text>
     </svg>
     <div id="elevRunnerDot"></div>
   `;
@@ -1110,11 +1127,11 @@ function updateElevRunnerDot(frac){
   });
   const rangeE = Math.max(10, maxE - minE);
 
-  const padT = 14, padB = 10, padL = 9, padR = 9;
+  const padT = 14, padB = 8;
   const area = $('elevChartArea');
   if(!area) return;
-  const W = area.offsetWidth || 340, H = area.offsetHeight || 65;
-  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const W = area.offsetWidth || 340, H = area.offsetHeight || 60;
+  const chartH = H - padT - padB;
 
   const idxFloat = Math.max(0, Math.min(1, frac)) * (elevations.length - 1);
   const idx = Math.floor(idxFloat);
@@ -1123,7 +1140,7 @@ function updateElevRunnerDot(frac){
   const e2 = elevations[Math.min(idx + 1, elevations.length - 1)];
   const e = e1 + (e2 - e1) * t;
 
-  const x = padL + frac * chartW;
+  const x = frac * W;
   const y = padT + chartH - ((e - minE) / rangeE) * chartH;
 
   dot.style.left = x.toFixed(1) + 'px';
