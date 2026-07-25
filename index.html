@@ -135,9 +135,9 @@
   .pace .pval-row{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
   .pace .pval-row b{font-size:16px;font-weight:600}
   .pace .pval-row .unit{font-size:11px;color:var(--dim)}
-  .pace .pbtn-row{display:flex;align-items:center;gap:5px;flex:0 0 auto}
-  .pace .pbtn-row button{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);
-    background:var(--panel3);color:var(--text);font-size:15px;font-family:inherit;line-height:1;
+  .pace .pbtn-row{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .pace .pbtn-row button{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);
+    background:var(--panel3);color:var(--text);font-size:16px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
   /* 群組 3：路線預覽與高程變化圖 */
@@ -1303,7 +1303,7 @@ function editBuild(){
     });
   }
   nodeLayer=L.layerGroup(marks,{pane:'markerPane'}).addTo(map);
-  if(nodeRenderer && nodeRenderer.getContainer()) nodeRenderer.getContainer().style.zIndex = '750';
+  if(nodeRenderer && nodeRenderer._container) nodeRenderer._container.style.zIndex = '750';
   if(nodeLayer) nodeLayer.bringToFront();
   editUI();
 }
@@ -1757,15 +1757,24 @@ async function exportPNG(opt){
       });
     }
 
-    // 12) 下載
-    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
-    if(!blob) throw new Error('產生圖片失敗');
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='RunningArt_'+localDate()+'.png';
-    document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-    toast(tx('圖片已下載（'+mapW+'×'+(mapH+infoH)+'）','Image saved ('+mapW+'×'+(mapH+infoH)+')'),2200);
+    // 12) 下載圖片
+    let downloadUrl = '';
+    try {
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      if(blob) downloadUrl = URL.createObjectURL(blob);
+    } catch(_) {}
+    if(!downloadUrl){
+      try { downloadUrl = cv.toDataURL('image/png'); }
+      catch(e) { throw new Error('地圖底圖跨域受限，請嘗試取消勾選「地圖底圖」後重新匯出。'); }
+    }
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = 'RunningArt_' + localDate() + '.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    if(downloadUrl.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+    toast(tx('圖片已下載（'+mapW+'×'+(mapH+infoH)+'）','Image saved ('+mapW+'×'+(mapH+infoH)+')'),2500);
   }catch(err){
     toast(tx('產生圖片失敗：','Image export failed: ')+err.message,3200);
   }finally{ busy(''); }
