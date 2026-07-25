@@ -98,65 +98,78 @@
   .sm.danger{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:500}
   .sm.danger:disabled{background:var(--panel2);border-color:var(--border);color:var(--dim)}
 
-  /* ---- 距離膠囊 ---- */
-  .pill{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:500;
+  /* ---- 恢復結果按鈕 / 距離膠囊（移至工具列上方） ---- */
+  .pill{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);z-index:550;
     background:var(--glass);backdrop-filter:blur(8px);border:1px solid var(--border);
-    border-radius:999px;padding:6px 15px;font-size:13px;font-weight:500;
-    transition:opacity .2s}
-  .pill.hide{opacity:0;pointer-events:none}
-  .pill.tap{background:#2563eb;border-color:#2563eb;color:#fff;cursor:pointer}
+    border-radius:999px;padding:7px 18px;font-size:13px;font-weight:500;
+    transition:opacity .2s, transform .2s, background .2s;white-space:nowrap}
+  .pill.hide{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(8px)}
+  .pill.tap{background:#2563eb;border-color:#2563eb;color:#fff;cursor:pointer;
+    box-shadow:0 4px 14px rgba(37,99,235,.4)}
 
   /* ---- 結果面板 ---- */
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;
     background:var(--panel);border-top:1px solid var(--border);
-    border-radius:18px 18px 0 0;padding:8px 16px 18px;
+    border-radius:18px 18px 0 0;padding:12px 16px 18px;
     transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
   .sheet.up{transform:translateY(0)}
-  .grip{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
-  .stat{background:var(--panel2);border-radius:11px;padding:10px 11px}
-  .stat span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:3px}
-  .stat b{font-size:19px;font-weight:500}
-  /* 路線預覽：四行（1: 標題, 2: 數值, 3: 拉桿, 4: 播放按鈕置中） */
-  .prev{background:var(--panel2);border-radius:11px;padding:9px 11px;margin-bottom:10px;
-    display:flex;flex-direction:column;gap:3px}
-  .prev .lbl{font-size:11.5px;color:var(--dim);display:block}
-  .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between;margin-top:1px}
-  .prev .pv-info b{font-size:15px;font-weight:600}
+  .grip{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 12px}
+
+  /* 上半部：4 個數據框 ＋ 配速與工具框 */
+  .srow-top{display:flex;gap:10px;margin-bottom:10px;align-items:stretch}
+  .stats{flex:1 1 52%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{background:var(--panel2);border-radius:11px;padding:9px 10px;min-width:0;
+    display:flex;flex-direction:column;justify-content:center}
+  .stat span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stat b{font-size:15px;font-weight:600;white-space:nowrap;display:inline-block}
+
+  /* 配速框 (3行) 與工具框 (2*2) */
+  .pace-wrap{flex:1 1 48%;display:flex;gap:8px;align-items:stretch}
+  .pace{flex:1 1 42%;background:var(--panel2);border-radius:11px;padding:9px 10px;
+    display:flex;flex-direction:column;justify-content:space-between;gap:4px}
+  .pace .lbl{display:block;font-size:11.5px;color:var(--dim)}
+  .pace .pval-row{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+  .pace .pval-row b{font-size:15.5px;font-weight:600}
+  .pace .pval-row .unit{font-size:11px;color:var(--dim)}
+  .pace .pbtn-row{display:flex;align-items:center;gap:6px}
+  .pace .pbtn-row button{flex:1;height:26px;border-radius:7px;border:1px solid var(--border);
+    background:var(--panel3);color:var(--text);font-size:15px;font-family:inherit;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+  /* 次要動作：配速右側 2×2 四顆按鈕 */
+  .tools{flex:1 1 58%;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0}
+  .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
+    color:var(--text2);font-size:11px;font-family:inherit;padding:6px 2px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+  .tools svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  .tools button:disabled{opacity:.32}
+
+  /* 下半部：路線預覽（由左至右：字樣 -> 拉桿與數值 -> 播放按鈕，滿版對齊） */
+  .prev{background:var(--panel2);border-radius:11px;padding:9px 12px;margin-bottom:10px;
+    display:flex;align-items:center;gap:12px}
+  .prev .lbl{flex:0 0 auto;font-size:12px;color:var(--dim);white-space:nowrap;font-weight:500}
+  .prev .pv-col{flex:1 1 auto;display:flex;flex-direction:column;gap:2px;min-width:0}
+  .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between}
+  .prev .pv-info b{font-size:14px;font-weight:600}
   .prev .pv-info .unit{font-size:11.5px;color:var(--dim)}
   /* 拉桿：左側＝走過 #4169E1、右側＝對齊道路原色 #708090。 */
-  #pvSlider{width:100%;margin:4px 0 2px;-webkit-appearance:none;appearance:none;height:6px;
+  #pvSlider{width:100%;margin:2px 0 0;-webkit-appearance:none;appearance:none;height:6px;
     border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none}
   #pvSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;
     border-radius:50%;background:#4169E1;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
     cursor:pointer;margin-top:-6px}
   #pvSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#4169E1;
     border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer}
-  .prev .pv-btn-wrap{display:flex;justify-content:center;margin-top:2px}
-  #pvPlay{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);
+  #pvPlay{flex:0 0 34px;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* 配速框：三行（1: 標題, 2: 配速數值與單位, 3: -與+按鈕） */
-  .pace-wrap{display:flex;gap:8px;margin-bottom:10px;align-items:stretch}
-  .pace{flex:1 1 42%;background:var(--panel2);border-radius:11px;padding:9px 10px;
-    display:flex;flex-direction:column;justify-content:space-between;gap:4px}
-  .pace .lbl{display:block;font-size:11.5px;color:var(--dim)}
-  .pace .pval-row{display:flex;align-items:baseline;gap:4px}
-  .pace .pval-row b{font-size:16px;font-weight:600}
-  .pace .pval-row .unit{font-size:11px;color:var(--dim)}
-  .pace .pbtn-row{display:flex;align-items:center;gap:6px}
-  .pace .pbtn-row button{flex:1;height:28px;border-radius:8px;border:1px solid var(--border);
-    background:var(--panel3);color:var(--text);font-size:16px;font-family:inherit;line-height:1;
-    display:flex;align-items:center;justify-content:center;cursor:pointer}
-  /* 次要動作：配速右側 2×2 四顆按鈕 */
-  .tools{flex:1 1 58%;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0}
-  .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
-    color:var(--text2);font-size:11px;font-family:inherit;padding:7px 2px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-  .tools svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
-    stroke-linecap:round;stroke-linejoin:round}
-  .tools button:disabled{opacity:.32}
+  @media (max-width:640px){
+    .srow-top{flex-direction:column;gap:8px}
+    .stats{width:100%}
+    .pace-wrap{width:100%}
+  }
 
   /* 匯出圖片的選項對話框 */
   .modal{position:absolute;inset:0;z-index:900;background:var(--scrim);
@@ -178,8 +191,7 @@
   .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
   .rt.on{background:#2563eb;border-color:#2563eb;color:#fff}
   .rt.on i{color:rgba(255,255,255,.82)}
-  /* 匯出對話框：左右兩欄（選項左、即時預覽右），預覽限高、按鈕移到欄外底部，
-     這樣 9:16 這種高比例不會把「產生圖片」按鈕擠出畫面 */
+  /* 匯出對話框：左右兩欄（選項左、即時預覽右），預覽限高、按鈕移到欄外底部 */
   .mcols{display:flex;gap:14px;align-items:flex-start}
   .mopts{flex:1 1 250px;min-width:0}
   .mprevwrap{flex:0 0 auto;display:flex;justify-content:center}
@@ -225,19 +237,12 @@
   .box{position:absolute;border:2px dashed #2563eb;background:rgba(37,99,235,.14);
     z-index:450;pointer-events:none;border-radius:4px}
 
-  /* ==== 桌面版：操作按鈕移到左側直排，結果改成右下角浮空卡片 ==== */
+  /* ==== 桌面版 ==== */
   @media (min-width:900px){
-    /* 方案 A：操作與結果都收到底部置中橫條，地圖上方整片全開 */
     .dock{left:50%;transform:translateX(-50%);right:auto;width:auto;max-width:680px}
     .sheet{left:50%;right:auto;width:720px;transform:translateX(-50%) translateY(102%);
       max-height:calc(100vh - 80px);overflow-y:auto}
     .sheet.up{transform:translateX(-50%) translateY(0)}
-    /* 結果視窗橫排：數據｜預覽拉桿｜配速與工具 排成一列，面板變矮 */
-    .srow{display:flex;gap:12px;align-items:stretch;margin-bottom:10px}
-    .srow .stats{flex:0 0 200px;margin-bottom:0}
-    .srow .prev{flex:1 1 auto;margin-bottom:0;display:flex;flex-direction:column;justify-content:center}
-    .srow .pace-wrap{flex:0 0 320px;margin-bottom:0}
-    .guide{left:50%;transform:translateX(-50%);right:auto;max-width:600px}
   }
 </style>
 </head>
@@ -319,50 +324,52 @@
 
 <div class="sheet" id="sheet">
   <div class="grip"></div>
-  <div class="srow">
-  <div class="stats">
-    <div class="stat"><span data-en="Distance">路線距離</span><b id="sDist">–</b></div>
-    <div class="stat"><span data-en="Match">與圖形吻合</span><b id="sFit">–</b></div>
-    <div class="stat"><span data-en="Est. time">預估時間</span><b id="sTime">–</b></div>
-    <div class="stat"><span data-en="Elevation">爬升 / 下降</span><b id="sElev">–</b></div>
+  <!-- 上半部：4 個數據框 ＋ 配速與工具框 -->
+  <div class="srow-top">
+    <div class="stats">
+      <div class="stat"><span data-en="Distance">路線距離</span><b id="sDist">–</b></div>
+      <div class="stat"><span data-en="Match">與圖形吻合</span><b id="sFit">–</b></div>
+      <div class="stat"><span data-en="Est. time">預估時間</span><b id="sTime">–</b></div>
+      <div class="stat"><span data-en="Elevation">爬升 / 下降</span><b id="sElev">–</b></div>
+    </div>
+    <div class="pace-wrap">
+      <div class="pace">
+        <span class="lbl" data-en="Pace">配速</span>
+        <div class="pval-row">
+          <b id="pVal">6:00</b><span class="unit" id="pUnit" data-en="min/km">分/公里</span>
+        </div>
+        <div class="pbtn-row">
+          <button id="pDn" aria-label="slower">−</button>
+          <button id="pUp" aria-label="faster">+</button>
+        </div>
+      </div>
+      <div class="tools">
+        <button id="aEdit">
+          <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg><span data-en="Edit Path">微調路徑</span>
+        </button>
+        <button id="aRev">
+          <svg viewBox="0 0 24 24"><path d="M17 3l4 4-4 4"/><path d="M21 7H8a4 4 0 00-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13a4 4 0 004-4v-1"/></svg><span data-en="Reverse">反轉方向</span>
+        </button>
+        <button id="aMod">
+          <svg viewBox="0 0 24 24"><path d="M11 4H5a2 2 0 00-2 2v13a2 2 0 002 2h13a2 2 0 002-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg><span data-en="Edit Shape">修改圖案</span>
+        </button>
+        <button id="aNew">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Restart">重新繪製</span>
+        </button>
+      </div>
+    </div>
   </div>
+  <!-- 下半部：路線預覽（由左至右：字樣 -> 拉桿與數值 -> 播放按鈕，滿版對齊） -->
   <div class="prev">
     <span class="lbl" data-en="Preview">路線預覽</span>
-    <div class="pv-info">
-      <b id="pvAt">0.00 km</b>
-      <span class="unit" id="pvPct">0%</span>
-    </div>
-    <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
-    <div class="pv-btn-wrap">
-      <button id="pvPlay" aria-label="play">▶</button>
-    </div>
-  </div>
-  <div class="pace-wrap">
-    <div class="pace">
-      <span class="lbl" data-en="Pace">配速</span>
-      <div class="pval-row">
-        <b id="pVal">6:00</b><span class="unit" id="pUnit" data-en="min/km">分/公里</span>
+    <div class="pv-col">
+      <div class="pv-info">
+        <b id="pvAt">0.00 km</b>
+        <span class="unit" id="pvPct">0%</span>
       </div>
-      <div class="pbtn-row">
-        <button id="pDn" aria-label="slower">−</button>
-        <button id="pUp" aria-label="faster">+</button>
-      </div>
+      <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
     </div>
-    <div class="tools">
-      <button id="aEdit">
-        <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg><span data-en="Edit Path">微調路徑</span>
-      </button>
-      <button id="aRev">
-        <svg viewBox="0 0 24 24"><path d="M17 3l4 4-4 4"/><path d="M21 7H8a4 4 0 00-4 4v1"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h13a4 4 0 004-4v-1"/></svg><span data-en="Reverse">反轉方向</span>
-      </button>
-      <button id="aMod">
-        <svg viewBox="0 0 24 24"><path d="M11 4H5a2 2 0 00-2 2v13a2 2 0 002 2h13a2 2 0 002-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg><span data-en="Edit Shape">修改圖案</span>
-      </button>
-      <button id="aNew">
-        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Restart">重新繪製</span>
-      </button>
-    </div>
-  </div>
+    <button id="pvPlay" aria-label="play">▶</button>
   </div>
   <div class="acts">
     <button class="pri" id="aGpx"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span data-en="Save GPX">下載 GPX</span></button>
@@ -548,23 +555,61 @@ function guide(){
 const GUIDE_TARGET={1:'btnDl',2:'mDraw',3:'mStart',4:'btnGo'};
 function positionGuide(){
   const g=el.guide;
-  const btn=GUIDE_TARGET[S.step]&&$(GUIDE_TARGET[S.step]);
-  // 先清掉之前的定位，交回 CSS
   g.style.position=g.style.left=g.style.right=g.style.top=g.style.bottom=g.style.width=g.style.maxWidth='';
-  if(!btn) return;
-  const r=btn.getBoundingClientRect();
-  if(!r.width) return;
-  const gw=Math.min(300, window.innerWidth-24);
-  g.style.position='fixed';g.style.right='auto';g.style.bottom='auto';
-  g.style.width='auto';g.style.maxWidth=gw+'px';g.style.left='0px';g.style.top='0px';
-  const gh=g.offsetHeight, gwA=Math.min(g.offsetWidth,gw), M=10;
-  let left,top;
-  if(r.top<120){                                   // 頂部（載入地圖）→ 放下方靠右
-    top=r.bottom+M; left=Math.min(r.right-gwA, window.innerWidth-gwA-12);
-  }else{                                            // 底部工具列（方案A：桌面手機都在底部）→ 放上方，才不會被 dock 擋
-    top=r.top-gh-M; left=Math.min(Math.max(12,r.left+r.width/2-gwA/2), window.innerWidth-gwA-12);
+  if(!S.step) return;
+
+  if(S.step===1){
+    const btn=$('btnDl');
+    if(!btn) return;
+    const r=btn.getBoundingClientRect();
+    if(!r.width) return;
+    g.style.position='fixed';g.style.right='auto';g.style.bottom='auto';
+    g.style.width='auto';
+    const gw=Math.min(300, window.innerWidth-24);
+    g.style.maxWidth=gw+'px';
+    const gh=g.offsetHeight, gwA=Math.min(g.offsetWidth,gw), M=10;
+    const top=r.bottom+M;
+    const left=Math.min(r.right-gwA, window.innerWidth-gwA-12);
+    g.style.left=Math.max(12,left)+'px'; g.style.top=Math.max(12,top)+'px';
+    return;
   }
-  g.style.left=Math.max(12,left)+'px'; g.style.top=Math.max(12,top)+'px';
+
+  // 步驟 2, 3, 4 定位在工具欄 (mainDock) 左右側，確保絕不遮擋工具欄
+  const dock=$('mainDock');
+  if(!dock) return;
+  const d=dock.getBoundingClientRect();
+  if(!d.width) return;
+
+  g.style.position='fixed';g.style.right='auto';g.style.bottom='auto';g.style.width='auto';
+  const gw=Math.min(270, window.innerWidth*0.65);
+  g.style.maxWidth=gw+'px';g.style.left='0px';g.style.top='0px';
+
+  const gh=g.offsetHeight, gwA=Math.min(g.offsetWidth,gw);
+  let left, top;
+
+  if(S.step===2){
+    // 2 號放工具欄左側
+    if(d.left >= gwA + 16){
+      left = d.left - gwA - 12;
+      top = d.top + (d.height - gh)/2;
+    }else{
+      left = Math.max(12, d.left);
+      top = d.top - gh - 10;
+    }
+  }else{
+    // 3, 4 號放工具欄右側
+    if(window.innerWidth - d.right >= gwA + 16){
+      left = d.right + 12;
+      top = d.top + (d.height - gh)/2;
+    }else{
+      left = Math.min(window.innerWidth - gwA - 12, d.right - gwA);
+      top = d.top - gh - 10;
+    }
+  }
+
+  top = Math.max(12, Math.min(top, window.innerHeight - gh - 12));
+  left = Math.max(12, Math.min(left, window.innerWidth - gwA - 12));
+  g.style.left = left+'px'; g.style.top = top+'px';
 }
 window.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); });
 function toast(t,ms=1500){
@@ -628,9 +673,9 @@ function refresh(){
   let d=0;
   for(const s of S.strokes) for(let i=1;i<s.pts.length;i++) d+=map.distance(s.pts[i-1],s.pts[i]);
   if(S.result&&!S.sheetUp){
-    // 生成後不能再畫圖，所以膠囊要能把結果面板叫回來，否則收起來就卡住了
+    // 生成後不能再畫圖，在工具列上方顯示「查看路線結果」按鈕讓使用者點擊叫回
     el.pill.classList.remove('hide');
-    el.pill.textContent=tx('▲ 路線 ','▲ Route ')+S.km.toFixed(2)+' km';
+    el.pill.textContent=tx('▲ 查看路線結果 (','▲ View Result (')+S.km.toFixed(2)+' km)';
     el.pill.classList.add('tap');
   }else if(n&&!S.sheetUp){
     el.pill.classList.remove('hide');
