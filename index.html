@@ -115,17 +115,18 @@
   .sheet.up{transform:translateY(0)}
   .grip{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 12px}
 
-  /* 上半部：4 個數據框 ＋ 配速與工具框 */
-  .srow-top{display:flex;gap:10px;margin-bottom:10px;align-items:stretch}
-  .stats{flex:1 1 52%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  /* 四大群組由左至右：Group 1 -> Group 3 -> Group 2 -> Group 4 */
+  .sheet-content{display:flex;gap:12px;align-items:stretch}
+
+  /* 群組 1：數據 4 框與配速框 */
+  .grp-1{flex:1 1 270px;display:flex;flex-direction:column;gap:8px;min-width:240px}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .stat{background:var(--panel2);border-radius:11px;padding:9px 10px;min-width:0;
     display:flex;flex-direction:column;justify-content:center}
   .stat span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .stat b{font-size:15px;font-weight:600;white-space:nowrap;display:inline-block}
 
-  /* 配速框 (3行) 與工具框 (2*2) */
-  .pace-wrap{flex:1 1 48%;display:flex;gap:8px;align-items:stretch}
-  .pace{flex:1 1 42%;background:var(--panel2);border-radius:11px;padding:9px 10px;
+  .pace{background:var(--panel2);border-radius:11px;padding:9px 10px;
     display:flex;flex-direction:column;justify-content:space-between;gap:4px}
   .pace .lbl{display:block;font-size:11.5px;color:var(--dim)}
   .pace .pval-row{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
@@ -136,24 +137,16 @@
     background:var(--panel3);color:var(--text);font-size:15px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* 次要動作：配速右側 2×2 四顆按鈕 */
-  .tools{flex:1 1 58%;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0}
-  .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
-    color:var(--text2);font-size:11px;font-family:inherit;padding:6px 2px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
-  .tools svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
-    stroke-linecap:round;stroke-linejoin:round}
-  .tools button:disabled{opacity:.32}
-
-  /* 下半部：路線預覽（拉桿容器高度加高、加大 gap 與 margin，避免點點蓋到字樣） */
-  .prev{background:var(--panel2);border-radius:11px;padding:12px 14px;margin-bottom:10px;
+  /* 群組 3：路線預覽與高程變化圖 */
+  .grp-3{flex:1.4 1 330px;display:flex;flex-direction:column;gap:8px;min-width:280px}
+  .prev{background:var(--panel2);border-radius:11px;padding:12px 14px;
     display:flex;align-items:center;gap:14px}
   .prev .lbl{flex:0 0 auto;font-size:12px;color:var(--dim);white-space:nowrap;font-weight:500}
   .prev .pv-col{flex:1 1 auto;display:flex;flex-direction:column;gap:6px;min-width:0}
   .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between}
   .prev .pv-info b{font-size:14px;font-weight:600}
   .prev .pv-info .unit{font-size:11.5px;color:var(--dim)}
-  /* 拉桿：點點 18px，margin-top 給 6px 留白空間，完全不撞上方數字 */
+  /* 拉桿：點點 18px， margin-top 給 6px 留白空間，完全不撞上方數字 */
   #pvSlider{width:100%;margin:6px 0 2px;-webkit-appearance:none;appearance:none;height:6px;
     border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none;
     display:block;box-sizing:border-box;vertical-align:middle}
@@ -166,69 +159,43 @@
     background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* 高程折線圖 (Elevation Profile Chart) */
-  .elev-box{background:var(--panel2);border-radius:11px;padding:10px 12px;margin-bottom:10px;
+  /* 高程折線圖 (Elevation Profile Chart) - 對齊預覽拉桿兩側 */
+  .elev-box{background:var(--panel2);border-radius:11px;padding:10px 14px;
     display:flex;flex-direction:column;gap:6px}
   .elev-box .elev-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim)}
   .elev-box .elev-head b{color:var(--text);font-weight:600;font-size:13px}
-  .elev-chart-svg{width:100%;height:75px;display:block;overflow:visible}
+  #elevChartArea{position:relative;width:100%;height:65px;margin:2px 0}
+  .elev-chart-svg{width:100%;height:100%;display:block;overflow:visible}
+  /* 不會變扁的正圓形 HTML 點點，形狀大小與拉桿點點完全一致 (18px) */
+  #elevRunnerDot{position:absolute;width:18px;height:18px;border-radius:50%;
+    background:#4169E1;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
+    transform:translate(-50%,-50%);pointer-events:none;transition:left 0.05s, top 0.05s;z-index:10}
 
-  @media (max-width:640px){
-    .srow-top{flex-direction:column;gap:8px}
-    .stats{width:100%}
-    .pace-wrap{width:100%}
-  }
-
-  /* 匯出圖片的選項對話框 */
-  .modal{position:absolute;inset:0;z-index:900;background:var(--scrim);
-    display:flex;align-items:center;justify-content:center;padding:20px}
-  .modal[hidden]{display:none}
-  .mbox{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--border);
-    border-radius:16px;padding:16px;max-height:92vh;overflow:auto}
-  .mtitle{font-size:15px;font-weight:500;margin-bottom:12px}
-  .sw{display:flex;align-items:center;gap:10px;background:var(--panel2);border-radius:11px;
-    padding:11px 12px;margin-bottom:8px}
-  .sw input{width:19px;height:19px;flex:none;accent-color:#2563eb;margin:0}
-  .sw span{font-size:13.5px;display:flex;flex-direction:column;gap:2px}
-  .sw i{font-style:normal;font-size:11.5px;color:var(--dim)}
-  .rlabel{font-size:11.5px;color:var(--dim);margin:2px 2px 6px}
-  .ratios{display:flex;gap:6px;margin-bottom:12px}
-  .rt{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:11px;
-    color:var(--text2);font-size:14px;font-weight:500;font-family:inherit;padding:9px 2px;
-    display:flex;flex-direction:column;align-items:center;gap:3px}
-  .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
-  .rt.on{background:#2563eb;border-color:#2563eb;color:#fff}
-  .rt.on i{color:rgba(255,255,255,.82)}
-  /* 匯出對話框：左右兩欄（選項左、即時預覽右），預覽限高、按鈕移到欄外底部 */
-  .mcols{display:flex;gap:14px;align-items:flex-start}
-  .mopts{flex:1 1 250px;min-width:0}
-  .mprevwrap{flex:0 0 auto;display:flex;justify-content:center}
-  .mprev{display:block;background:var(--panel3);border:1px solid var(--border);border-radius:11px;
-    max-height:60vh;max-width:100%;width:auto;height:auto}
-  .lyrs{flex-wrap:wrap;margin-bottom:12px}
-  .lyr{flex:1 1 28%}
-  @media (max-width:560px){ .mcols{flex-direction:column-reverse} .mprevwrap{width:100%} .mprev{width:100%} }
-  .mprog{width:100%;margin:2px 0 12px;-webkit-appearance:none;appearance:none;height:6px;
-    border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none}
-  .mprog::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
-    border-radius:50%;background:#4169E1;border:2px solid #fff;cursor:pointer;margin-top:-5px}
-  .mprog::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#4169E1;
-    border:2px solid #fff;cursor:pointer}
-  .mact{display:flex;gap:8px;margin-top:14px}
-  .mact button{flex:1;padding:11px;border-radius:11px;font-size:13.5px;font-family:inherit;
-    font-weight:500;border:1px solid var(--border);background:var(--panel2);color:var(--text)}
-  .mact .pri{background:#2563eb;border-color:#2563eb;color:#fff}
-
-  .acts{display:flex;gap:8px}
-  .acts button{flex:1;padding:12px;border-radius:11px;font-size:13.5px;
-    font-family:inherit;font-weight:500;border:1px solid var(--border);
-    background:var(--panel2);color:var(--text);display:flex;align-items:center;
-    justify-content:center;gap:6px}
-  .acts .pri{background:#2563eb;border-color:#2563eb;color:#fff}
-  /* 匯出（下載圖片）：綠色強調，和其他按鈕區分，排在最右下 */
-  .acts .exp{background:#16a34a;border-color:#16a34a;color:#fff}
-  .acts svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
+  /* 群組 2：微調與編輯四按鈕 (2x2) */
+  .grp-2{flex:0 0 160px;display:flex;flex-direction:column;justify-content:center}
+  .tools{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0;height:100%}
+  .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
+    color:var(--text2);font-size:11px;font-family:inherit;padding:6px 2px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+  .tools svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
     stroke-linecap:round;stroke-linejoin:round}
+  .tools button:disabled{opacity:.32}
+
+  /* 群組 4：下載按鈕（下載圖片在上、下載 GPX 在下） */
+  .grp-4{flex:0 0 135px;display:flex;flex-direction:column;gap:8px;justify-content:center}
+  .grp-4 button{flex:1;padding:10px 12px;border-radius:11px;font-size:13px;
+    font-family:inherit;font-weight:500;border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+  .grp-4 .exp{background:#16a34a;border-color:#16a34a;color:#fff}
+  .grp-4 .pri{background:#2563eb;border-color:#2563eb;color:#fff}
+  .grp-4 svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+
+  @media (max-width:960px){
+    .sheet-content{flex-direction:column;gap:10px}
+    .grp-1, .grp-3, .grp-2, .grp-4{width:100%;flex:none}
+    .grp-4{flex-direction:row;gap:8px}
+  }
 
   .toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:900;
     background:var(--glass);border:1px solid var(--border);border-radius:12px;color:var(--text);
@@ -335,15 +302,16 @@
 
 <div class="sheet" id="sheet">
   <div class="grip"></div>
-  <!-- 上半部：4 個數據框 ＋ 配速與工具框 -->
-  <div class="srow-top">
-    <div class="stats">
-      <div class="stat"><span data-en="Distance">路線距離</span><b id="sDist">–</b></div>
-      <div class="stat"><span data-en="Match">與圖形吻合</span><b id="sFit">–</b></div>
-      <div class="stat"><span data-en="Est. time">預估時間</span><b id="sTime">–</b></div>
-      <div class="stat"><span data-en="Elevation">爬升 / 下降</span><b id="sElev">–</b></div>
-    </div>
-    <div class="pace-wrap">
+  <!-- 結果面板四大群組（排版由左至右為 1 ➔ 3 ➔ 2 ➔ 4） -->
+  <div class="sheet-content">
+    <!-- 群組 1：【路線距離、與圖形吻合、預估時間、總爬升 / 下降、配速】 -->
+    <div class="grp-1">
+      <div class="stats">
+        <div class="stat"><span data-en="Distance">路線距離</span><b id="sDist">–</b></div>
+        <div class="stat"><span data-en="Match">與圖形吻合</span><b id="sFit">–</b></div>
+        <div class="stat"><span data-en="Est. time">預估時間</span><b id="sTime">–</b></div>
+        <div class="stat"><span data-en="Total Elev.">總爬升 / 下降</span><b id="sElev">–</b></div>
+      </div>
       <div class="pace">
         <span class="lbl" data-en="Pace">配速</span>
         <div class="pval-row">
@@ -354,6 +322,32 @@
           <button id="pUp" aria-label="faster">+</button>
         </div>
       </div>
+    </div>
+
+    <!-- 群組 3：【路線預覽、高程變化】 -->
+    <div class="grp-3">
+      <div class="prev">
+        <span class="lbl" data-en="Preview">路線預覽</span>
+        <div class="pv-col">
+          <div class="pv-info">
+            <b id="pvAt">0.00 km</b>
+            <span class="unit" id="pvPct">0%</span>
+          </div>
+          <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
+        </div>
+        <button id="pvPlay" aria-label="play">▶</button>
+      </div>
+      <div class="elev-box" id="elevBox" style="display:none">
+        <div class="elev-head">
+          <span data-en="Elevation Profile">高程變化 (距離 / 海拔高度)</span>
+          <b id="elevRangeText">– m</b>
+        </div>
+        <div id="elevChartArea"></div>
+      </div>
+    </div>
+
+    <!-- 群組 2：【微調路徑、反轉方向、修改圖案、重新繪製】 -->
+    <div class="grp-2">
       <div class="tools">
         <button id="aEdit">
           <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/></svg><span data-en="Edit Path">微調路徑</span>
@@ -369,30 +363,18 @@
         </button>
       </div>
     </div>
-  </div>
-  <!-- 下半部：路線預覽（由左至右：字樣 -> 拉桿與數值 -> 播放按鈕，滿版對齊） -->
-  <div class="prev">
-    <span class="lbl" data-en="Preview">路線預覽</span>
-    <div class="pv-col">
-      <div class="pv-info">
-        <b id="pvAt">0.00 km</b>
-        <span class="unit" id="pvPct">0%</span>
-      </div>
-      <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
+
+    <!-- 群組 4：【下載圖片在上、下載GPX在下】 -->
+    <div class="grp-4">
+      <button class="exp" id="aPng">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
+        <span data-en="Save Image">下載圖片</span>
+      </button>
+      <button class="pri" id="aGpx">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        <span data-en="Save GPX">下載 GPX</span>
+      </button>
     </div>
-    <button id="pvPlay" aria-label="play">▶</button>
-  </div>
-  <!-- 高程剖面折線圖（高度與距離圖表） -->
-  <div class="elev-box" id="elevBox" style="display:none">
-    <div class="elev-head">
-      <span data-en="Elevation Profile">高程變化 (距離 / 海拔高度)</span>
-      <b id="elevRangeText">– m</b>
-    </div>
-    <div id="elevChartArea"></div>
-  </div>
-  <div class="acts">
-    <button class="pri" id="aGpx"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg><span data-en="Save GPX">下載 GPX</span></button>
-    <button class="exp" id="aPng"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg><span data-en="Save Image">下載圖片</span></button>
   </div>
 </div>
 
@@ -534,7 +516,7 @@ const PROG_EN={
  '重新接路中…':'Re-routing…','產生圖片…':'Creating image…','查詢地點…':'Finding location…'
 };
 const PACE_NAMES={zh:['競速','慢跑','輕鬆跑','快走'],en:['Fast','Jog','Easy','Brisk']};
-const EXP_LABELS={zh:['距離','配速','預估時間','爬升／下降'],en:['Distance','Pace','Est. time','Elev. ↑/↓']};
+const EXP_LABELS={zh:['距離','配速','預估時間','總爬升／下降'],en:['Distance','Pace','Est. time','Total Elev.']};
 
 function updateDlLabel(){
   // 尚未載入地圖時顯示提示字；載入後由既有流程顯示面積，不覆寫
@@ -1070,52 +1052,71 @@ function renderElevChart(data){
   elevChartData = data;
 
   const elevations = data.elevations;
-  const minE = Math.min(...elevations);
-  const maxE = Math.max(...elevations);
-  const rangeE = Math.max(8, maxE - minE);
+  let minE = Infinity, maxE = -Infinity, minIdx = 0, maxIdx = 0;
+  elevations.forEach((e, i) => {
+    if(e < minE){ minE = e; minIdx = i; }
+    if(e > maxE){ maxE = e; maxIdx = i; }
+  });
+  const rangeE = Math.max(10, maxE - minE);
 
-  if($('elevRangeText')) $('elevRangeText').textContent = tx('最低 ','Min ')+Math.round(minE)+tx(' m / 最高 ',' m / Max ')+Math.round(maxE)+' m';
+  if($('elevRangeText')) $('elevRangeText').textContent = tx('最高 ','Max ') + Math.round(maxE) + tx(' m / 最低 ',' m / Min ') + Math.round(minE) + ' m';
 
-  const W = 340, H = 60, padT = 6, padB = 10, padL = 6, padR = 6;
+  const W = 340, H = 65, padT = 14, padB = 10, padL = 9, padR = 9;
   const chartW = W - padL - padR, chartH = H - padT - padB;
 
   const pts = elevations.map((e, idx) => {
     const x = padL + (idx / (elevations.length - 1)) * chartW;
     const y = padT + chartH - ((e - minE) / rangeE) * chartH;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+    return { x, y, e, idx };
   });
 
-  const lineD = 'M ' + pts.join(' L ');
-  const areaD = `M ${padL},${H - padB} L ` + pts.join(' L ') + ` L ${W - padR},${H - padB} Z`;
+  const pathStr = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+  const lineD = 'M ' + pathStr.join(' L ');
+  const areaD = `M ${padL},${H - padB} L ` + pathStr.join(' L ') + ` L ${W - padR},${H - padB} Z`;
+
+  const minPt = pts[minIdx];
+  const maxPt = pts[maxIdx];
 
   area.innerHTML = `
     <svg class="elev-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
       <defs>
         <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.45"/>
-          <stop offset="100%" stop-color="#00E5FF" stop-opacity="0.02"/>
+          <stop offset="100%" stop-color="#00E5FF" stop-opacity="0.03"/>
         </linearGradient>
       </defs>
       <path d="${areaD}" fill="url(#elevGrad)"/>
       <path d="${lineD}" fill="none" stroke="#00E5FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle id="elevDot" cx="${padL}" cy="${(padT + chartH - ((elevations[0] - minE) / rangeE) * chartH).toFixed(1)}" r="4.5" fill="#4169E1" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="${maxPt.x.toFixed(1)}" cy="${maxPt.y.toFixed(1)}" r="3" fill="#00E5FF"/>
+      <text x="${Math.max(28, Math.min(W - 28, maxPt.x)).toFixed(1)}" y="${Math.max(10, maxPt.y - 3).toFixed(1)}" fill="#00E5FF" font-size="9.5" font-weight="700" text-anchor="middle">▲${Math.round(maxE)}m</text>
+      <circle cx="${minPt.x.toFixed(1)}" cy="${minPt.y.toFixed(1)}" r="3" fill="#8b929c"/>
+      <text x="${Math.max(28, Math.min(W - 28, minPt.x)).toFixed(1)}" y="${Math.min(H - 1, minPt.y + 9).toFixed(1)}" fill="var(--dim)" font-size="9" font-weight="600" text-anchor="middle">▼${Math.round(minE)}m</text>
     </svg>
+    <div id="elevRunnerDot"></div>
   `;
+
+  updateElevRunnerDot(S.totalM > 0 && $('pvSlider') ? +$('pvSlider').value / 1000 : 0);
 }
 
 function updateElevRunnerDot(frac){
   if(!elevChartData || !elevChartData.elevations) return;
-  const dot = $('elevDot');
+  const dot = $('elevRunnerDot');
   if(!dot) return;
   const elevations = elevChartData.elevations;
-  const minE = Math.min(...elevations);
-  const maxE = Math.max(...elevations);
-  const rangeE = Math.max(8, maxE - minE);
+  let minE = Infinity, maxE = -Infinity;
+  elevations.forEach(e => {
+    if(e < minE) minE = e;
+    if(e > maxE) maxE = e;
+  });
+  const rangeE = Math.max(10, maxE - minE);
 
-  const W = 340, H = 60, padT = 6, padB = 10, padL = 6, padR = 6;
+  const padT = 14, padB = 10, padL = 9, padR = 9;
+  const area = $('elevChartArea');
+  if(!area) return;
+  const W = area.offsetWidth || 340, H = area.offsetHeight || 65;
   const chartW = W - padL - padR, chartH = H - padT - padB;
 
-  const idxFloat = frac * (elevations.length - 1);
+  const idxFloat = Math.max(0, Math.min(1, frac)) * (elevations.length - 1);
   const idx = Math.floor(idxFloat);
   const t = idxFloat - idx;
   const e1 = elevations[Math.min(idx, elevations.length - 1)];
@@ -1125,8 +1126,8 @@ function updateElevRunnerDot(frac){
   const x = padL + frac * chartW;
   const y = padT + chartH - ((e - minE) / rangeE) * chartH;
 
-  dot.setAttribute('cx', x.toFixed(1));
-  dot.setAttribute('cy', y.toFixed(1));
+  dot.style.left = x.toFixed(1) + 'px';
+  dot.style.top = y.toFixed(1) + 'px';
 }
 
 let elevSeq=0;
