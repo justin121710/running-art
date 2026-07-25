@@ -117,32 +117,38 @@
   .stat{background:var(--panel2);border-radius:11px;padding:10px 11px}
   .stat span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:3px}
   .stat b{font-size:19px;font-weight:500}
-  .prev{background:var(--panel2);border-radius:11px;padding:9px 11px;margin-bottom:10px}
-  .prow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .prow .lbl{font-size:12.5px;color:var(--dim)}
-  .prow b{font-size:15px;font-weight:500;margin-left:auto}
-  .prow .unit{font-size:11.5px;color:var(--dim);min-width:34px;text-align:right}
-  .prow button{width:30px;height:30px;flex:none;border-radius:8px;border:1px solid var(--border);
-    background:var(--panel3);color:var(--text);font-size:13px;font-family:inherit;line-height:1}
-  /* 拉桿：左側＝走過 #4169E1、右側＝對齊道路原色 #708090。
-     漸層分界由 JS 隨拉桿位置更新（見 pvSet）。 */
-  #pvSlider{width:100%;margin:8px 0;-webkit-appearance:none;appearance:none;height:6px;
+  /* 路線預覽：四行（1: 標題, 2: 數值, 3: 拉桿, 4: 播放按鈕置中） */
+  .prev{background:var(--panel2);border-radius:11px;padding:9px 11px;margin-bottom:10px;
+    display:flex;flex-direction:column;gap:3px}
+  .prev .lbl{font-size:11.5px;color:var(--dim);display:block}
+  .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between;margin-top:1px}
+  .prev .pv-info b{font-size:15px;font-weight:600}
+  .prev .pv-info .unit{font-size:11.5px;color:var(--dim)}
+  /* 拉桿：左側＝走過 #4169E1、右側＝對齊道路原色 #708090。 */
+  #pvSlider{width:100%;margin:4px 0 2px;-webkit-appearance:none;appearance:none;height:6px;
     border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none}
   #pvSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;
     border-radius:50%;background:#4169E1;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
     cursor:pointer;margin-top:-6px}
   #pvSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#4169E1;
     border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer}
+  .prev .pv-btn-wrap{display:flex;justify-content:center;margin-top:2px}
+  #pvPlay{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);
+    background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+  /* 配速框：三行（1: 標題, 2: 配速數值與單位, 3: -與+按鈕） */
   .pace-wrap{display:flex;gap:8px;margin-bottom:10px;align-items:stretch}
   .pace{flex:1 1 42%;background:var(--panel2);border-radius:11px;padding:9px 10px;
-    display:flex;flex-direction:column;justify-content:space-between}
-  .pace .lbl{display:block;font-size:11.5px;color:var(--dim);margin-bottom:2px}
-  .pace .pctrl{display:flex;align-items:center;gap:4px;margin-top:auto}
-  .pace button{width:28px;height:28px;flex:none;border-radius:8px;border:1px solid var(--border);
+    display:flex;flex-direction:column;justify-content:space-between;gap:4px}
+  .pace .lbl{display:block;font-size:11.5px;color:var(--dim)}
+  .pace .pval-row{display:flex;align-items:baseline;gap:4px}
+  .pace .pval-row b{font-size:16px;font-weight:600}
+  .pace .pval-row .unit{font-size:11px;color:var(--dim)}
+  .pace .pbtn-row{display:flex;align-items:center;gap:6px}
+  .pace .pbtn-row button{flex:1;height:28px;border-radius:8px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:16px;font-family:inherit;line-height:1;
-    display:flex;align-items:center;justify-content:center}
-  .pace b{font-size:15px;font-weight:500;min-width:34px;text-align:center}
-  .pace .unit{font-size:11px;color:var(--dim);margin-right:2px}
+    display:flex;align-items:center;justify-content:center;cursor:pointer}
   /* 次要動作：配速右側 2×2 四顆按鈕 */
   .tools{flex:1 1 58%;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0}
   .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
@@ -321,20 +327,24 @@
     <div class="stat"><span data-en="Elevation">爬升 / 下降</span><b id="sElev">–</b></div>
   </div>
   <div class="prev">
-    <div class="prow">
-      <span class="lbl" data-en="Preview">路線預覽</span>
+    <span class="lbl" data-en="Preview">路線預覽</span>
+    <div class="pv-info">
       <b id="pvAt">0.00 km</b>
       <span class="unit" id="pvPct">0%</span>
-      <button id="pvPlay" aria-label="play">▶</button>
     </div>
     <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
+    <div class="pv-btn-wrap">
+      <button id="pvPlay" aria-label="play">▶</button>
+    </div>
   </div>
   <div class="pace-wrap">
     <div class="pace">
       <span class="lbl" data-en="Pace">配速</span>
-      <div class="pctrl">
-        <button id="pDn" aria-label="slower">−</button>
+      <div class="pval-row">
         <b id="pVal">6:00</b><span class="unit" id="pUnit" data-en="min/km">分/公里</span>
+      </div>
+      <div class="pbtn-row">
+        <button id="pDn" aria-label="slower">−</button>
         <button id="pUp" aria-label="faster">+</button>
       </div>
     </div>
@@ -804,16 +814,33 @@ function pvBuild(res){
   [pvDone,pvHead,pvArrows].forEach(l=>{if(l)l.remove();});
   pvDone=L.polyline([],{color:'#4169E1',weight:8,opacity:.95}).addTo(map);
   pvHead=L.marker(S.path[0],{icon:personIcon(false),interactive:false,zIndexOffset:1000}).addTo(map);
-  // 沿線每隔一段放一個方向箭頭（純藍 #4169E1，無白色外框）
-  const arrows=[],step=Math.max(120,S.totalM/14);
-  for(let d=step;d<S.totalM;d+=step){
-    const i=pvIndexAt(d);
-    if(i<1) continue;
-    const dir=pvHeading(d);
-    if(dir===null) continue;
-    arrows.push(L.marker(S.path[i],{interactive:false,icon:L.divIcon({className:'',
-      iconSize:[26,26],iconAnchor:[13,13],
-      html:'<svg width="26" height="26" viewBox="0 0 26 26" style="transform:rotate('+dir+'deg);overflow:visible;filter:drop-shadow(0 0 1px rgba(0,0,0,.5))"><path d="M7 10 L25 13 L7 16 Z" fill="#4169E1"/></svg>'})}));
+
+  // 沿線每隔一段放一個方向箭頭（耀黃 #FFD700，內插在直線段中間、避開轉角節點處）
+  const arrows=[], step=Math.max(80, S.totalM / 14), minNodeDist = 12;
+  for(let targetD=step; targetD < S.totalM - 15; targetD += step){
+    let d = targetD;
+    const i = pvIndexAt(d);
+    if(i < 1) continue;
+    const segFrom = S.cum[i-1], segTo = S.cum[i], segLen = segTo - segFrom;
+    if(segLen < minNodeDist * 2) continue;   // 短線段或劇烈轉角處不放箭頭
+    if(d - segFrom < minNodeDist) d = segFrom + minNodeDist;
+    else if(segTo - d < minNodeDist) d = segTo - minNodeDist;
+
+    const dir = pvHeading(d);
+    if(dir === null) continue;
+    const t = (d - segFrom) / segLen;
+    const a = S.path[i-1], b = S.path[i];
+    const ll = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+
+    arrows.push(L.marker(ll, {
+      interactive: false,
+      icon: L.divIcon({
+        className: '',
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+        html: '<svg width="26" height="26" viewBox="0 0 26 26" style="transform:rotate('+dir+'deg);overflow:visible;filter:drop-shadow(0 0 1.2px rgba(0,0,0,.6))"><path d="M7 10 L25 13 L7 16 Z" fill="#FFD700"/></svg>'
+      })
+    }));
   }
   pvArrows=L.layerGroup(arrows).addTo(map);
   $('pvSlider').value=0; pvSet(0);
@@ -1264,11 +1291,11 @@ function drawRunnerCanvas(ctx,x,footY,u,light){
   ctx.restore();
 }
 
-// 匯出/預覽的方向箭頭：在已 translate+rotate 的座標系畫指向右的細長三角（藍 #4169E1，無外框）
+// 匯出/預覽的方向箭頭：在已 translate+rotate 的座標系畫指向右的細長三角（耀黃 #FFD700，無外框）
 function drawArrowTri(ctx,base){
   const w=base, h=base*3;   // 底:高 = 1:3，質心置於原點
   ctx.beginPath();ctx.moveTo(-h/3,-w/2);ctx.lineTo(2*h/3,0);ctx.lineTo(-h/3,w/2);ctx.closePath();
-  ctx.fillStyle='#4169E1';ctx.fill();
+  ctx.fillStyle='#FFD700';ctx.fill();
 }
 
 async function exportPNG(opt){
@@ -1391,32 +1418,33 @@ async function exportPNG(opt){
         if(frac<1) runnerHead=head;   // 跑完(100%)就不畫小人，避免杵在終點
       }
     }
-    // 7) 方向箭頭：沿整條路線（含筆畫間的連接虛線）標示前進方向，可由選項關閉。
-    //    角度直接用 canvas 座標算（已是螢幕座標，不必再處理 Mercator）。
-    if(opt.arrows){
-      const path=[];
-      S.result.segments.forEach(sg=>sg.pts.forEach(p=>{
-        const last=path.length?path[path.length-1]:null;
-        if(!last||last[0]!==p[0]||last[1]!==p[1]) path.push(p);
-      }));
-      if(path.length>=2){
-        const cum=[0];
-        for(let i=1;i<path.length;i++) cum.push(cum[i-1]+map.distance(path[i-1],path[i]));
-        const total=cum[cum.length-1]||0;
-        const idxAt=dd=>{let lo=0,hi=cum.length-1;while(lo<hi){const m=(lo+hi)>>1;cum[m]<dd?lo=m+1:hi=m;}return lo;};
-        const at=dd=>{const i=idxAt(dd);if(i<1)return path[0];
-          const seg=cum[i]-cum[i-1],t=seg>0?(dd-cum[i-1])/seg:0,a=path[i-1],b=path[i];
-          return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];};
-        const step=Math.max(80,total/16);
-        for(let d=step;d<total;d+=step){
-          const c=at(d), a=at(Math.max(0,d-14)), b=at(Math.min(total,d+14));
-          const ax=X(a[1]),ay=Y(a[0]),bx=X(b[1]),by=Y(b[0]);
-          if(ax===bx&&ay===by) continue;
-          ctx.save();
-          ctx.translate(X(c[1]),Y(c[0]));ctx.rotate(Math.atan2(by-ay,bx-ax));
-          drawArrowTri(ctx,6*sc);
-          ctx.restore();
-        }
+    // 7) 方向箭頭：沿整條路線（含筆畫間的連接虛線）標示前進方向，避開轉角節點處
+    if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
+      const step = Math.max(80, S.totalM / 14), minNodeDist = 12;
+      for(let targetD = step; targetD < S.totalM - 15; targetD += step){
+        let d = targetD;
+        let lo = 0, hi = S.cum.length - 1;
+        while(lo < hi){ const m = (lo + hi) >> 1; S.cum[m] < d ? lo = m + 1 : hi = m; }
+        const i = lo;
+        if(i < 1) continue;
+        const segFrom = S.cum[i-1], segTo = S.cum[i], segLen = segTo - segFrom;
+        if(segLen < minNodeDist * 2) continue;
+        if(d - segFrom < minNodeDist) d = segFrom + minNodeDist;
+        else if(segTo - d < minNodeDist) d = segTo - minNodeDist;
+
+        const a = S.path[i-1], b = S.path[i];
+        const t = (d - segFrom) / segLen;
+        const c = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        const aHead = [a[0] + (b[0] - a[0]) * Math.max(0, t - 0.05), a[1] + (b[1] - a[1]) * Math.max(0, t - 0.05)];
+        const bHead = [a[0] + (b[0] - a[0]) * Math.min(1, t + 0.05), a[1] + (b[1] - a[1]) * Math.min(1, t + 0.05)];
+
+        const ax = X(aHead[1]), ay = Y(aHead[0]), bx = X(bHead[1]), by = Y(bHead[0]);
+        if(ax === bx && ay === by) continue;
+        ctx.save();
+        ctx.translate(X(c[1]), Y(c[0]));
+        ctx.rotate(Math.atan2(by - ay, bx - ax));
+        drawArrowTri(ctx, 6 * sc);
+        ctx.restore();
       }
     }
     // 8) 起終點：綠圈▶＝起點、紅圈■＝終點（與地圖上同一套）
@@ -1632,20 +1660,32 @@ async function renderPreview(){
       if(frac>=1) head=null;
     }
   }
-  if(opt.arrows){
-    const path=[];S.result.segments.forEach(sg=>sg.pts.forEach(p=>{const last=path.length?path[path.length-1]:null;if(!last||last[0]!==p[0]||last[1]!==p[1])path.push(p);}));
-    if(path.length>=2){
-      const cum=[0];for(let i=1;i<path.length;i++)cum.push(cum[i-1]+map.distance(path[i-1],path[i]));
-      const total=cum[cum.length-1]||0;
-      const iAt=dd=>{let lo=0,hi=cum.length-1;while(lo<hi){const mm=(lo+hi)>>1;cum[mm]<dd?lo=mm+1:hi=mm;}return lo;};
-      const at=dd=>{const i=iAt(dd);if(i<1)return path[0];const seg=cum[i]-cum[i-1],t=seg>0?(dd-cum[i-1])/seg:0,a=path[i-1],b=path[i];return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];};
-      const step=Math.max(80,total/16);
-      for(let d=step;d<total;d+=step){
-        const c=at(d),a=at(Math.max(0,d-14)),b=at(Math.min(total,d+14));
-        const ax=X(a[1]),ay=Y(a[0]),bx=X(b[1]),by=Y(b[0]);if(ax===bx&&ay===by)continue;
-        ctx.save();ctx.translate(X(c[1]),Y(c[0]));ctx.rotate(Math.atan2(by-ay,bx-ax));
-        drawArrowTri(ctx,Math.max(4,6*lw));ctx.restore();
-      }
+  if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
+    const step = Math.max(80, S.totalM / 14), minNodeDist = 12;
+    for(let targetD = step; targetD < S.totalM - 15; targetD += step){
+      let d = targetD;
+      let lo = 0, hi = S.cum.length - 1;
+      while(lo < hi){ const m = (lo + hi) >> 1; S.cum[m] < d ? lo = m + 1 : hi = m; }
+      const i = lo;
+      if(i < 1) continue;
+      const segFrom = S.cum[i-1], segTo = S.cum[i], segLen = segTo - segFrom;
+      if(segLen < minNodeDist * 2) continue;
+      if(d - segFrom < minNodeDist) d = segFrom + minNodeDist;
+      else if(segTo - d < minNodeDist) d = segTo - minNodeDist;
+
+      const a = S.path[i-1], b = S.path[i];
+      const t = (d - segFrom) / segLen;
+      const c = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      const aHead = [a[0] + (b[0] - a[0]) * Math.max(0, t - 0.05), a[1] + (b[1] - a[1]) * Math.max(0, t - 0.05)];
+      const bHead = [a[0] + (b[0] - a[0]) * Math.min(1, t + 0.05), a[1] + (b[1] - a[1]) * Math.min(1, t + 0.05)];
+
+      const ax = X(aHead[1]), ay = Y(aHead[0]), bx = X(bHead[1]), by = Y(bHead[0]);
+      if(ax === bx && ay === by) continue;
+      ctx.save();
+      ctx.translate(X(c[1]), Y(c[0]));
+      ctx.rotate(Math.atan2(by - ay, bx - ax));
+      drawArrowTri(ctx, Math.max(4, 6 * lw));
+      ctx.restore();
     }
   }
   if(opt.marks){
