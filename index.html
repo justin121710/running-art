@@ -140,27 +140,26 @@
     background:var(--panel3);color:var(--text);font-size:16px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
 
-  /* 群組 3：路線預覽與高程變化圖 */
-  .grp-3{flex:1.5 1 340px;display:flex;flex-direction:column;gap:8px;min-width:0;justify-content:space-between}
-  .prev{background:var(--panel2);border-radius:11px;padding:10px 14px;
-    display:flex;align-items:center;gap:14px;flex:0 0 auto}
-  .prev .lbl{flex:0 0 auto;font-size:12px;color:var(--dim);white-space:nowrap;font-weight:500}
-  .prev .pv-col{flex:1 1 auto;display:flex;flex-direction:column;gap:6px;min-width:0}
-  .prev .pv-info{display:flex;align-items:baseline;justify-content:space-between;white-space:nowrap}
-  .prev .pv-info b{font-size:14px;font-weight:600;white-space:nowrap}
-  .prev .pv-info .unit{font-size:11.5px;color:var(--dim);white-space:nowrap}
-  /* 拉桿：點點 18px， margin-top 給 6px 留白空間 */
-  #pvSlider{width:100%;margin:6px 0 2px;-webkit-appearance:none;appearance:none;height:6px;
-    border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);outline:none;
-    display:block;box-sizing:border-box;vertical-align:middle}
-  #pvSlider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;
-    border-radius:50%;background:#4169E1;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
-    cursor:pointer;margin-top:-6px;box-sizing:border-box}
-  #pvSlider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#4169E1;
-    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;box-sizing:border-box}
+  /* 群組 3：路線預覽 ＝ 高程變化圖。
+     兩者本來就共用同一個進度值和同一條「距離」橫軸，所以直接把高程圖當成拉桿：
+     在圖上拖曳就等於拖時間軸。少一列高度，而且 58px 高的圖比 18px 的拉桿鈕好按太多。 */
+  .grp-3{flex:1.5 1 340px;display:flex;flex-direction:column;gap:8px;min-width:0;justify-content:center}
+  .pv-row{display:flex;align-items:center;gap:12px;min-width:0}
+  .pv-info{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+    flex:0 0 auto;white-space:nowrap;line-height:1.25}
+  .pv-info b{font-size:14px;font-weight:600;white-space:nowrap}
+  .pv-info .unit{font-size:11.5px;color:var(--dim);white-space:nowrap}
   #pvPlay{flex:0 0 36px;width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
+  /* 窄螢幕：播放鍵和讀數擠在同一列會把圖壓到不到 200px 寬，手指根本拖不準。
+     改成讀數移到播放鍵旁邊，圖自己獨佔一整列。 */
+  @media (max-width:560px){
+    .pv-row{flex-wrap:wrap;gap:8px}
+    #pvPlay{order:1}
+    .pv-info{order:2;flex-direction:row;align-items:baseline;gap:6px;margin-left:auto}
+    #elevChartArea{order:3;flex:1 0 100%;width:100%}
+  }
 
   /* 高程折線圖 (Elevation Profile Chart) - 對齊預覽拉桿兩側且文字不換行 */
   .elev-box{background:var(--panel2);border-radius:11px;padding:8px 14px;
@@ -168,8 +167,18 @@
   .elev-box .elev-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim);white-space:nowrap}
   .elev-box .elev-head span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .elev-box .elev-head b{color:var(--text);font-weight:600;font-size:12.5px;white-space:nowrap}
-  #elevChartArea{position:relative;width:100%;height:58px;margin:2px 0;box-sizing:border-box}
+  /* 這塊就是拉桿本體。touch-action:none 一定要有，否則手機上在圖上拖曳會
+     被當成捲動結果面板，根本拖不動跑者。 */
+  #elevChartArea{position:relative;width:100%;height:58px;margin:2px 0;box-sizing:border-box;
+    flex:1 1 auto;min-width:0;cursor:pointer;touch-action:none;border-radius:6px;
+    -webkit-user-select:none;user-select:none}
+  #elevChartArea:focus-visible{outline:2px solid #4169E1;outline-offset:2px}
   .elev-chart-svg{width:100%;height:100%;display:block;overflow:visible}
+  /* 沒有高程資料時（API 失敗）仍要能拖：退化成一條純軌道，不能整塊消失 */
+  .elev-track{position:absolute;left:0;right:0;top:50%;height:6px;margin-top:-3px;
+    border-radius:3px;background:#708090;opacity:.5}
+  .elev-track-run{position:absolute;left:0;top:0;bottom:0;width:0;
+    border-radius:3px;background:#4169E1;opacity:1}
   /* 高低點與標籤故意「不」畫在 SVG 裡：那個 viewBox 是 preserveAspectRatio="none"，
      實測橫向被拉伸 2 倍，<circle> 會變成扁橢圓、文字也被拉寬。改用百分比定位的
      HTML 疊層，字和圓點都不會變形，而且百分比會自己跟著寬度變化不必重畫。 */
@@ -402,25 +411,23 @@
       </div>
     </div>
 
-    <!-- 群組 3：【路線預覽、高程變化】 -->
+    <!-- 群組 3：路線預覽 ＝ 高程變化圖（同一個控制項，直接在圖上拖曳） -->
     <div class="grp-3">
-      <div class="prev">
-        <span class="lbl" data-en="Preview">路線預覽</span>
-        <div class="pv-col">
+      <div class="elev-box" id="elevBox">
+        <div class="elev-head">
+          <span data-en="Route preview · elevation">路線預覽 · 高程變化</span>
+          <b id="elevRangeText">– m</b>
+        </div>
+        <div class="pv-row">
+          <button id="pvPlay" aria-label="play">▶</button>
+          <div id="elevChartArea" tabindex="0" role="slider"
+               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+               aria-label="路線預覽進度"></div>
           <div class="pv-info">
             <b id="pvAt">0.00 km</b>
             <span class="unit" id="pvPct">0%</span>
           </div>
-          <input type="range" id="pvSlider" min="0" max="1000" value="0" step="1">
         </div>
-        <button id="pvPlay" aria-label="play">▶</button>
-      </div>
-      <div class="elev-box" id="elevBox" style="display:none">
-        <div class="elev-head">
-          <span data-en="Elevation Profile">高程變化 (距離 / 海拔高度)</span>
-          <b id="elevRangeText">– m</b>
-        </div>
-        <div id="elevChartArea"></div>
       </div>
     </div>
 
@@ -710,7 +717,8 @@ function positionGuide(){
   left = Math.max(12, Math.min(left, window.innerWidth - gwA - 12));
   g.style.left = left+'px'; g.style.top = top+'px';
 }
-window.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); updatePillPos(); alignElevChart(); });
+// 高程圖不再需要對齊拉桿（它自己就是拉桿），圖上元素也全用百分比定位，縮放不必重畫
+window.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); updatePillPos(); });
 function toast(t,ms=1500){
   if(EN()&&TOASTS_EN[t]) t=TOASTS_EN[t];   // 已知中文字串自動換英文
   el.toast.textContent=t;el.toast.classList.add('show');
@@ -1011,7 +1019,7 @@ function pvBuild(res){
   }
 
   pvArrows = L.layerGroup(arrows).addTo(map);
-  $('pvSlider').value = 0; pvSet(0);
+  pvSet(0);
 }
 const PV_PROJ_Z=18;
 function pvHeading(d){
@@ -1027,8 +1035,15 @@ function pvIndexAt(dist){
   while(lo<hi){const mid=(lo+hi)>>1; if(S.cum[mid]<dist) lo=mid+1; else hi=mid;}
   return lo;
 }
+/* 進度的唯一真實來源。以前存在 #pvSlider.value（0..1000）裡，
+   拉桿被高程圖取代後改存這裡，其他地方一律讀 S.pvFrac。 */
+S.pvFrac=0;
 function pvSet(frac){
-  if(!S.path||!S.path.length) return;
+  frac=Math.max(0,Math.min(1,frac));
+  S.pvFrac=frac;
+  const area=$('elevChartArea');
+  if(area) area.setAttribute('aria-valuenow',Math.round(frac*100));
+  if(!S.path||!S.path.length){ updateElevRunnerDot(frac); return; }
   const target=S.totalM*frac;
   const i=pvIndexAt(target);
   const shown=S.path.slice(0,Math.max(i+1,1));
@@ -1051,21 +1066,58 @@ function pvSet(frac){
     item.mk.getElement().style.display = (item.d <= target) ? 'none' : '';
   });
 
-  const pct=(frac*100).toFixed(1);
-  $('pvSlider').style.background=
-    `linear-gradient(to right,#4169E1 0%,#4169E1 ${pct}%,#708090 ${pct}%,#708090 100%)`;
-
   updateElevRunnerDot(frac);
 }
-$('pvSlider').oninput=e=>{
-  pvStop();pvSet(+e.target.value/1000);
-  // 拖曳中＝雙手舉高，放開一下子後回到站立
-  pvPose(true); clearTimeout(poseT); poseT=setTimeout(()=>pvPose(false),320);
-};
+
+/* ---- 在高程圖上拖曳＝拉時間軸 ---- */
+function pvFracFromEvent(e){
+  const r=$('elevChartArea').getBoundingClientRect();
+  if(!r.width) return 0;
+  return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+}
+(()=>{
+  const area=$('elevChartArea');
+  let dragging=false;
+  const scrub=e=>{
+    pvSet(pvFracFromEvent(e));
+    pvPose(true); clearTimeout(poseT); poseT=setTimeout(()=>pvPose(false),320);
+  };
+  area.addEventListener('pointerdown',e=>{
+    if(!S.result) return;
+    dragging=true;
+    pvStop();                       // 拖曳優先於播放
+    // 抓不到指標就算了，照樣要能拖——不能讓它擋掉後面的 scrub
+    try{ area.setPointerCapture(e.pointerId); }catch(_){}
+    scrub(e);
+    e.preventDefault();             // 避免手機上變成選取／捲動
+  });
+  area.addEventListener('pointermove',e=>{ if(dragging) scrub(e); });
+  const end=e=>{
+    if(!dragging) return;
+    dragging=false;
+    try{ area.releasePointerCapture(e.pointerId); }catch(_){}
+    pvPose(false);
+  };
+  area.addEventListener('pointerup',end);
+  area.addEventListener('pointercancel',end);
+  // 鍵盤操作：原本用原生 range 時免費得到的，換成自訂控制項後要自己補回來
+  area.addEventListener('keydown',e=>{
+    if(!S.result) return;
+    const step=e.shiftKey?0.1:0.02;
+    let f=S.pvFrac;
+    if(e.key==='ArrowRight'||e.key==='ArrowUp') f+=step;
+    else if(e.key==='ArrowLeft'||e.key==='ArrowDown') f-=step;
+    else if(e.key==='Home') f=0;
+    else if(e.key==='End') f=1;
+    else return;
+    e.preventDefault(); pvStop(); pvSet(f);
+  });
+})();
+
 function pvStop(){if(pvTimer){clearInterval(pvTimer);pvTimer=null;$('pvPlay').textContent='▶';} pvPose(false);}
 $('pvPlay').onclick=()=>{
   if(pvTimer){pvStop();return;}
-  if(+$('pvSlider').value>=1000) $('pvSlider').value=0;
+  if(S.pvFrac>=1) pvSet(0);
   $('pvPlay').textContent='⏸';
   pvPose(true);   // 播放中＝奔跑（雙手舉高）
   pvTimer=setInterval(()=>{
@@ -1073,10 +1125,10 @@ $('pvPlay').onclick=()=>{
     // 等於把真實跑步時間壓縮成固定比例（約 1/120）播放。
     const vMps = S.pace>0 ? 1000/(S.pace*60) : 2.8;   // 真實跑步 m/s
     const stepM = vMps * 120 * 0.04;                   // 每 40ms 前進的公尺
-    const inc = S.totalM>0 ? (stepM/S.totalM)*1000 : 8;
-    let v=+$('pvSlider').value+inc;
-    if(v>=1000){v=1000;pvStop();}
-    $('pvSlider').value=v;pvSet(v/1000);
+    const inc = S.totalM>0 ? stepM/S.totalM : 0.008;
+    let f=S.pvFrac+inc;
+    if(f>=1){f=1;pvSet(f);pvStop();return;}
+    pvSet(f);
   },40);
 };
 
@@ -1139,30 +1191,21 @@ function pvClear(){
    加總正的落差＝爬升、負的＝下降。DEM 解析度較粗，城市路線通常起伏不大屬正常。 */
 let elevChartData = null;
 
-function alignElevChart(){
-  const slider = $('pvSlider');
-  const elevBox = $('elevBox');
-  const area = $('elevChartArea');
-  if(!slider || !elevBox || !area) return;
-  const sliderRect = slider.getBoundingClientRect();
-  const elevRect = elevBox.getBoundingClientRect();
-  if(sliderRect.width > 0 && elevRect.width > 0){
-    const leftOffset = Math.max(0, sliderRect.left - elevRect.left);
-    area.style.marginLeft = leftOffset.toFixed(1) + 'px';
-    area.style.width = sliderRect.width.toFixed(1) + 'px';
-  }
-}
-
 function renderElevChart(data){
   const area = $('elevChartArea');
   if(!area) return;
+  /* 高程 API 失敗時「不能」把整塊藏起來——它現在同時是路線預覽的拉桿，
+     藏掉就等於連預覽都不能拖了。改成退化為一條普通軌道，照樣可以拖。 */
   if(!data || !data.elevations || data.elevations.length < 2){
-    if($('elevBox')) $('elevBox').style.display = 'none';
+    elevChartData = null;
+    if($('elevRangeText')) $('elevRangeText').textContent = '–';
+    area.innerHTML = `
+      <div class="elev-track"><div class="elev-track-run" id="elevTrackRun"></div></div>
+      <div id="elevRunnerDot"></div>`;
+    updateElevRunnerDot(S.pvFrac || 0);
     return;
   }
-  if($('elevBox')) $('elevBox').style.display = 'flex';
   elevChartData = data;
-  alignElevChart();
 
   const elevations = data.elevations;
   let minE = Infinity, maxE = -Infinity, minIdx = 0, maxIdx = 0;
@@ -1199,6 +1242,8 @@ function renderElevChart(data){
   const maxLblY = maxPt.y < 16 ? maxPt.y + 13 : maxPt.y - 11;   // 峰頂太高就把字放下面
   const minLblY = minPt.y > H - 16 ? minPt.y - 13 : minPt.y + 11;
 
+  /* 已跑／未跑用一個 clipPath 切開，和地圖上的路線同一套語彙（暗＝還沒跑到）。
+     只更新那個 rect 的寬度就能重畫進度，不必每次重建整段 SVG。 */
   area.innerHTML = `
     <svg class="elev-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
       <defs>
@@ -1206,10 +1251,18 @@ function renderElevChart(data){
           <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.45"/>
           <stop offset="100%" stop-color="#00E5FF" stop-opacity="0.03"/>
         </linearGradient>
+        <clipPath id="elevRunClip">
+          <rect id="elevRunRect" x="0" y="0" width="0" height="${H}"/>
+        </clipPath>
       </defs>
-      <path d="${areaD}" fill="url(#elevGrad)"/>
-      <path d="${lineD}" fill="none" stroke="#00E5FF" stroke-width="2.2"
+      <path d="${areaD}" fill="url(#elevGrad)" opacity="0.28"/>
+      <path d="${lineD}" fill="none" stroke="#5b6b7a" stroke-width="2.2"
             vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>
+      <g clip-path="url(#elevRunClip)">
+        <path d="${areaD}" fill="url(#elevGrad)"/>
+        <path d="${lineD}" fill="none" stroke="#00E5FF" stroke-width="2.2"
+              vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
     </svg>
     <div class="elev-pt max" style="left:${pctX(maxPt).toFixed(2)}%;top:${pctY(maxPt.y).toFixed(2)}%"></div>
     <div class="elev-pt min" style="left:${pctX(minPt).toFixed(2)}%;top:${pctY(minPt.y).toFixed(2)}%"></div>
@@ -1218,13 +1271,24 @@ function renderElevChart(data){
     <div id="elevRunnerDot"></div>
   `;
 
-  updateElevRunnerDot(S.totalM > 0 && $('pvSlider') ? +$('pvSlider').value / 1000 : 0);
+  updateElevRunnerDot(S.pvFrac || 0);
 }
 
 function updateElevRunnerDot(frac){
-  if(!elevChartData || !elevChartData.elevations) return;
+  frac = Math.max(0, Math.min(1, frac || 0));
   const dot = $('elevRunnerDot');
   if(!dot) return;
+  const W = 340;
+  // 沒有高程資料時只推進純軌道的進度條，跑者點壓在軌道正中央
+  if(!elevChartData || !elevChartData.elevations){
+    const run = $('elevTrackRun');
+    if(run) run.style.width = (frac * 100).toFixed(2) + '%';
+    dot.style.left = (frac * 100).toFixed(2) + '%';
+    dot.style.top = '50%';
+    return;
+  }
+  const runRect = document.getElementById('elevRunRect');
+  if(runRect) runRect.setAttribute('width', (frac * W).toFixed(2));
   const elevations = elevChartData.elevations;
   let minE = Infinity, maxE = -Infinity;
   elevations.forEach(e => {
@@ -2330,7 +2394,7 @@ $('aPng').onclick=()=>{
   if(!S.result) return;
   $('pngModal').hidden=false;
   // 進度預設跟隨結果面板當前的拉桿位置
-  $('pngProg').value=(typeof S.totalM==='number'&&S.totalM>0)?(+$('pvSlider').value||1000):1000;
+  $('pngProg').value=(typeof S.totalM==='number'&&S.totalM>0&&S.pvFrac>0)?Math.round(S.pvFrac*1000):1000;
   $('pngProg').dispatchEvent(new Event('input'));   // 更新百分比文字、拉桿底色、預覽
 };
 $('pngCancel').onclick=()=>{ $('pngModal').hidden=true; };
