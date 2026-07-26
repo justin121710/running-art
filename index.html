@@ -136,9 +136,15 @@
   .go{flex:1;justify-content:center;background:var(--rt-ui);border-color:var(--rt-ui);
     color:var(--rt-ui-text);font-weight:600;font-size:14px}
   .go:disabled{background:var(--panel2);border-color:var(--border);color:var(--dim)}
-  /* 微調路徑工具列 */
+  /* 微調路徑工具列。這排壓在半透明的 dock 上，用 --panel2 幾乎看不出邊界，
+     所以這裡改用更實的底色 + 明顯的框線，讓它讀得出來是按鈕。 */
   .dock[hidden]{display:none}
-  #editDock .sm{flex:1;justify-content:center}
+  #editDock .sm{flex:1;justify-content:center;background:var(--panel3);
+    border:1.5px solid var(--border2);color:var(--text);font-weight:600;
+    font-size:13px;padding:11px 10px}
+  #editDock .sm svg{width:17px;height:17px}
+  #editDock .sm:hover:not(:disabled){border-color:var(--rt-ui)}
+  #editDock .sm:disabled{opacity:.4}
   .sm.on{background:var(--rt-ui);border-color:var(--rt-ui);color:var(--rt-ui-text)}
   .sm.danger{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:500}
   .sm.danger:disabled{background:var(--panel2);border-color:var(--border);color:var(--dim)}
@@ -245,22 +251,22 @@
   /* 群組 2：微調與編輯四按鈕 (2x2) */
   .grp-2{flex:1 1 180px;display:flex;flex-direction:column;justify-content:stretch;min-width:0}
   .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0;height:100%}
-  .tools button{background:var(--panel2);border:1px solid var(--border);border-radius:11px;
-    color:var(--text2);font-size:11.5px;font-weight:500;font-family:inherit;padding:8px 4px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:nowrap;cursor:pointer;height:100%}
-  .tools svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;
+  .tools button{background:var(--panel2);border:1px solid var(--border2);border-radius:11px;
+    color:var(--text);font-size:13.5px;font-weight:600;font-family:inherit;padding:10px 6px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;white-space:nowrap;cursor:pointer;height:100%}
+  .tools button:hover:not(:disabled){border-color:var(--rt-ui);color:var(--text)}
+  .tools svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;
     stroke-linecap:round;stroke-linejoin:round}
   .tools button:disabled{opacity:.32}
 
   /* 群組 4：下載按鈕（下載圖片在上、下載 GPX 在下） */
   .grp-4{flex:0.9 1 145px;display:flex;flex-direction:column;gap:8px;justify-content:stretch;min-width:0}
-  .grp-4 button{flex:1;padding:10px 12px;border-radius:11px;font-size:13.5px;
-    font-family:inherit;font-weight:600;border:1px solid var(--border);
-    display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;white-space:nowrap;height:calc(50% - 4px)}
-  .grp-4 .exp{background:var(--rt-ui);border-color:var(--rt-ui);color:var(--rt-ui-text)}
-  /* 次要動作用描邊，避免兩顆同色的大按鈕互搶 */
-  .grp-4 .pri{background:transparent;border-color:var(--border2);color:var(--text)}
-  .grp-4 svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;
+  .grp-4 button{flex:1;padding:11px 12px;border-radius:11px;font-size:15px;
+    font-family:inherit;font-weight:700;border:1px solid var(--rt-ui);
+    display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;white-space:nowrap;height:calc(50% - 4px)}
+  /* 下載圖片和下載 GPX 是同一類動作（把成果帶走），所以用同一種樣式 */
+  .grp-4 .exp,.grp-4 .pri{background:var(--rt-ui);color:var(--rt-ui-text)}
+  .grp-4 svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;
     stroke-linecap:round;stroke-linejoin:round}
 
   @media (max-width:960px){
@@ -521,7 +527,7 @@
         <div class="ratios lyrs">
           <button class="rt lyr on" data-layer="route" data-en="Route">路線</button>
           <button class="rt lyr on" data-layer="arrows" data-en="Arrows">箭頭</button>
-          <button class="rt lyr" data-layer="draw" data-en="Drawing">紅線</button>
+          <button class="rt lyr" data-layer="draw" data-en="Sketch">手繪線</button>
           <button class="rt lyr on" data-layer="marks" data-en="Marks">起訖點</button>
           <button class="rt lyr on" data-layer="basemap" data-en="Base map">地圖底圖</button>
           <button class="rt lyr on" data-layer="elevchart" data-en="Elev. Chart">高程圖</button>
@@ -632,8 +638,8 @@ const ARROW_STYLES={
 let arrowRadius=parseFloat(localStorage.getItem('runart_arrow_r'));
 if(!(arrowRadius>=0)) arrowRadius=0.10;
 
-let arrowStyle=localStorage.getItem('runart_arrow')||'chevron';
-if(!ARROW_STYLES[arrowStyle]) arrowStyle='chevron';
+let arrowStyle=localStorage.getItem('runart_arrow')||'dart';
+if(!ARROW_STYLES[arrowStyle]) arrowStyle='dart';
 
 /* 把折點換成小圓角。回傳一串 {t:'M'|'L'|'Q'|'Z'} 指令，
    Canvas 和 SVG 共用同一份結果，兩邊才不會長得不一樣。
@@ -1348,6 +1354,12 @@ function applyResult(res,withPreview=true){
     }
   });
   routeLayer=L.layerGroup(layers).addTo(map);
+  /* 「已跑」那條是獨立圖層，剛剛才重建底層的未跑路線 → 它現在壓在上面。
+     不拉回最前面的話，拖進度條會看起來完全沒反應（顏色被蓋掉）。
+     只有 withPreview=false 這條路徑會踩到：那時不會重建 pvDone，
+     所以順序不會自己修正。注意 pvDone 是 Polyline（有 bringToFront），
+     不是 LayerGroup（沒有）。 */
+  try{ if(pvDone && map.hasLayer(pvDone)) pvDone.bringToFront(); }catch(_){}
   S.km=res.total_m/1000;
   $('sDist').textContent=S.km.toFixed(2)+' km';
   $('sFit').textContent=Math.round(res.fit)+'%';
@@ -2168,96 +2180,10 @@ async function renderExportCanvas(opt){
   busy('查詢地點…');
   const place=showInfo?await getPlaceName(cLat,cLon):'';
 
-  /* 11) 資訊欄，分兩塊：上面是「地點/日期 + 數據」，下面是整條寬的高程圖。
-        高程圖從地圖區搬下來，地圖區才乾淨。兩塊各自可關。 */
-  const pad=36*sc;
-  if(showInfo){
-    ctx.fillStyle=TH.infoBg;ctx.fillRect(0,mapH,mapW,infoH);
-    ctx.fillStyle=TH.infoLine;ctx.fillRect(0,mapH,mapW,Math.max(2,2*sc));
-  }
-  if(showStats){
-    const top=mapH, rowY=top+statsH*0.23;
-    ctx.textBaseline='middle';
-    let placeX=pad;
-    if(place){
-      const ph=34*sc;
-      drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,P.ui,P['ui-text']);
-      placeX=pad+ph*0.9;
-      ctx.textAlign='left';ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(37*sc)}px ${F}`;
-      ctx.fillText(place,placeX,rowY);
-    }
-    ctx.textAlign='right';ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
-    ctx.fillText(localDate(),mapW-pad,rowY);
-    // 下排：只畫開啟的數據項（可含吻合度）
-    const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
-    const elevTxt=(S.elevGain!=null)?('↑'+S.elevGain+' ↓'+S.elevLoss+' m'):'–';
-    const labelMap={dist:tx('距離','Distance'),pace:tx('配速','Pace'),time:tx('時間','Time'),
-                    elev:tx('爬升','Elev.'),fit:tx('吻合度','Match')};
-    const valMap={dist:$('sDist').textContent, pace:pm+':'+String(ps).padStart(2,'0')+' /km',
-                  time:$('sTime').textContent, elev:elevTxt, fit:$('sFit').textContent};
-    const cells=dats.map(d=>[labelMap[d],valMap[d]]);
-    /* 欄寬按「內容實際多寬」分配，不是平均切。
-       平均切的問題：五項全開時每欄只有 201px，而「↑142 ↓138 m」就要 240px，
-       於是它被縮到很小、又幾乎頂到隔壁欄，整排看起來黏成一串。
-       改成量出每欄需要的寬度後才排版，長的欄多佔一點，短的欄讓出來，
-       字級就能維持在 46px，而且所有欄位共用同一個字級不會大小不一。 */
-    const gap=26*sc;
-    const avail=mapW-pad*2-gap*(cells.length-1);
-    /* 項目越多，字級起點放低一點。純靠自動縮放的話五項會剛好塞滿整個寬度、
-       欄距只剩最低限度的 26px，整排還是像一堵字牆；降一級之後多出來的空間
-       會變成欄距，反而更好讀。 */
-    let valFs=(cells.length>=5?38:cells.length===4?42:46)*sc, labelFs=25*sc;
-    ctx.font=`600 ${Math.round(valFs)}px ${F}`;
-    let widths=cells.map(c=>ctx.measureText(c[1]).width);
-    ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
-    widths=widths.map((w,i)=>Math.max(w,ctx.measureText(cells[i][0]).width));
-    let total=widths.reduce((a,b)=>a+b,0);
-    if(total>avail){                     // 真的塞不下才整排等比例縮小
-      const k=avail/total;
-      valFs*=k; labelFs*=k; widths=widths.map(w=>w*k); total=avail;
-    }
-    // 多出來的空間平均分到欄與欄之間，讓整排從左邊界鋪到右邊界
-    const extra=cells.length>1?(avail-total)/(cells.length-1):0;
-    ctx.textAlign='left';
-    let cx=pad;
-    cells.forEach((c,n)=>{
-      ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
-      ctx.fillText(c[0],cx,top+statsH*0.57);
-      ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(valFs)}px ${F}`;
-      ctx.fillText(c[1],cx,top+statsH*0.81);
-      cx+=widths[n]+gap+extra;
-    });
-  }
-
-  /* 11b) 高程區：整條寬的折線圖。上面留一行放標題和浮水印。 */
-  if(elevOn){
-    const bTop=mapH+statsH;
-    const headY=bTop+30*sc;
-    ctx.textBaseline='middle';
-    ctx.textAlign='left';
-    ctx.fillStyle=TH.textDim;
-    ctx.font=`400 ${Math.round(25*sc)}px ${F}`;
-    ctx.fillText(tx('高程變化','Elevation'),pad,headY);
-    // 浮水印跟標題同一行的右端，不必再佔地圖
-    ctx.textAlign='right';
-    ctx.globalAlpha=.75;
-    ctx.font=`600 ${Math.round(23*sc)}px ${F}`;
-    ctx.fillText('RUNNING ART',mapW-pad,headY);
-    ctx.globalAlpha=1;
-
-    const chTop=bTop+50*sc, chH=elevBandH-50*sc-22*sc;
-    drawElevProfileCanvas(ctx, pad, chTop, mapW-pad*2, chH, light,
-                          (opt.frac!=null)?opt.frac:1);
-  }else if(showStats){
-    // 沒有高程區時，浮水印放數據區右下角（地圖區維持乾淨）
-    ctx.textBaseline='alphabetic';
-    ctx.textAlign='right';
-    ctx.fillStyle=TH.textDim;
-    ctx.globalAlpha=.75;
-    ctx.font=`600 ${Math.round(23*sc)}px ${F}`;
-    ctx.fillText('RUNNING ART',mapW-pad,mapH+statsH-20*sc);
-    ctx.globalAlpha=1;
-  }
+  // 11) 資訊欄（數據區 + 高程區）。預覽和匯出共用同一個函式，版面才會完全一致。
+  drawInfoPanel(ctx,{mapW,mapH,statsH,elevBandH,infoH,sc,TH,P,F,
+                     dats,place,light,frac:(opt.frac!=null)?opt.frac:1,
+                     showStats,elevOn,showInfo});
 
   return {canvas:cv, w:W, h:H, tilesFailed};
 }
@@ -2375,6 +2301,7 @@ async function loadTileCached(z,x,y,style){
   return img;
 }
 let _prevToken=0;
+let _previewPlace='', _previewPlaceKey='';   // 預覽用的地點名稱（非同步查回來後重畫）
 async function renderPreview(){
   const P=PC();
   const cv=$('pngPrev'); if(!cv||!S.result) return;
@@ -2394,28 +2321,23 @@ async function renderPreview(){
   const infoH=statsH+elevBandH;
   const showInfo=infoH>0;
   const mapW=W, mapH=H-infoH;
-  const TH=light?{mapBg:'#e8ecf1',info:'#ffffff',line:'#dfe4ea',dim:'#cfd4db',tile:'light_all',tileBright:1}
-               :{mapBg:'#262a30',info:'#14171c',line:'#2b313b',dim:'#3a4048',tile:'dark_all',tileBright:2.3};
+  /* 預覽用和匯出完全相同的主題色與資訊欄函式，差別只有縮放係數 scale。
+     以前預覽自己有一組簡化的顏色、資訊欄只畫灰方塊示意，跟成品對不起來。 */
+  const TH=light?{
+    tile:'light_all', tileBright:1, mapBg:'#e8ecf1',
+    infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
+    overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
+  }:{
+    tile:'dark_all', tileBright:2.3, mapBg:'#262a30',
+    infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
+    overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
+  };
+  const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
   const ctx=cv.getContext('2d');
-  /* 預覽的資訊欄只畫灰色示意塊（真正的文字要等產生圖片才查得到地點），
-     但版面比例要和成品一致，否則預覽會騙人。 */
   function drawInfoBar(){
-    if(!showInfo) return;
-    ctx.fillStyle=TH.info;ctx.fillRect(0,mapH,W,infoH);
-    ctx.fillStyle=TH.line;ctx.fillRect(0,mapH,W,Math.max(1,infoH*0.012));
-    const pd=statsH?statsH*0.16:elevBandH*0.16;
-    if(showStats){
-      ctx.fillStyle=TH.dim;const n=opt.dats.length;
-      ctx.fillRect(pd,mapH+statsH*0.26,W*0.42,statsH*0.11);
-      for(let i=0;i<n;i++)
-        ctx.fillRect(pd+i*(W-pd*2)/n,mapH+statsH*0.62,(W-pd*2)/n-pd*0.4,statsH*0.16);
-    }
-    if(elevOn){
-      const bTop=mapH+statsH;
-      ctx.fillStyle=TH.dim;
-      ctx.fillRect(pd,bTop+elevBandH*0.10,W*0.22,elevBandH*0.07);
-      drawElevProfileCanvas(ctx, pd, bTop+elevBandH*0.24, W-pd*2, elevBandH*0.62, light, frac);
-    }
+    drawInfoPanel(ctx,{mapW:W,mapH,statsH,elevBandH,infoH,sc:scale,TH,P,F,
+                       dats:opt.dats,place:_previewPlace,light,frac,
+                       showStats,elevOn,showInfo});
   }
   ctx.clearRect(0,0,W,H);
   if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,mapH); }
@@ -2506,7 +2428,108 @@ async function renderPreview(){
   // 高程圖已經移到下方資訊欄（見 drawInfoBar），地圖區不再畫
   ctx.restore();
   drawInfoBar();
+
+  /* 地點名稱要連網查（Nominatim）。預覽不能等它，所以先用快取的值畫，
+     查回來之後再重畫一次。getPlaceName 自己有記憶體快取，不會重複請求。 */
+  if(showStats){
+    const cLat=(Math.min(...lats)+Math.max(...lats))/2;
+    const cLon=(Math.min(...lons)+Math.max(...lons))/2;
+    const key=lang+':'+cLat.toFixed(3)+','+cLon.toFixed(3);
+    if(_previewPlaceKey!==key){
+      _previewPlaceKey=key;
+      getPlaceName(cLat,cLon).then(n=>{
+        if(_previewPlaceKey!==key) return;    // 期間換了路線，這次結果作廢
+        if(n===_previewPlace) return;
+        _previewPlace=n;
+        renderPreview();
+      }).catch(()=>{});
+    }
+  }
 }
+/* 資訊欄：地點/日期 + 數據 + 高程圖。
+   匯出（1080px）和對話框預覽（300px 縮圖）呼叫同一份，差別只在 sc 這個縮放係數，
+   所以預覽看到的排版、字級比例、每個東西的位置就是成品的樣子。
+   以前預覽只畫幾個灰色方塊示意，跟成品對不起來。 */
+function drawInfoPanel(ctx,o){
+  const {mapW,mapH,statsH,elevBandH,infoH,sc,TH,P,F,dats,place,light,frac,
+         showStats,elevOn,showInfo}=o;
+  const pad=36*sc;
+  if(showInfo){
+    ctx.fillStyle=TH.infoBg;ctx.fillRect(0,mapH,mapW,infoH);
+    ctx.fillStyle=TH.infoLine;ctx.fillRect(0,mapH,mapW,Math.max(1,2*sc));
+  }
+  if(showStats){
+    const top=mapH, rowY=top+statsH*0.23;
+    ctx.textBaseline='middle';
+    let placeX=pad;
+    if(place){
+      const ph=34*sc;
+      drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,P.ui,P['ui-text']);
+      placeX=pad+ph*0.9;
+      ctx.textAlign='left';ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(37*sc)}px ${F}`;
+      ctx.fillText(place,placeX,rowY);
+    }
+    ctx.textAlign='right';ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
+    ctx.fillText(localDate(),mapW-pad,rowY);
+
+    const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
+    const elevTxt=(S.elevGain!=null)?('↑'+S.elevGain+' ↓'+S.elevLoss+' m'):'–';
+    const labelMap={dist:tx('距離','Distance'),pace:tx('配速','Pace'),time:tx('時間','Time'),
+                    elev:tx('爬升','Elev.'),fit:tx('吻合度','Match')};
+    const valMap={dist:$('sDist').textContent, pace:pm+':'+String(ps).padStart(2,'0')+' /km',
+                  time:$('sTime').textContent, elev:elevTxt, fit:$('sFit').textContent};
+    const cells=dats.map(d=>[labelMap[d],valMap[d]]);
+    /* 欄寬按「內容實際多寬」分配，不是平均切。
+       平均切的問題：五項全開時每欄只有 201px，而「↑142 ↓138 m」就要 240px，
+       於是它被縮到很小、又幾乎頂到隔壁欄，整排看起來黏成一串。 */
+    const gap=26*sc;
+    const avail=mapW-pad*2-gap*(cells.length-1);
+    /* 項目越多，字級起點放低一點。純靠自動縮放的話五項會剛好塞滿整個寬度、
+       欄距只剩最低限度，整排還是像一堵字牆。 */
+    let valFs=(cells.length>=5?38:cells.length===4?42:46)*sc, labelFs=25*sc;
+    ctx.font=`600 ${Math.round(valFs)}px ${F}`;
+    let widths=cells.map(c=>ctx.measureText(c[1]).width);
+    ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
+    widths=widths.map((w,i)=>Math.max(w,ctx.measureText(cells[i][0]).width));
+    let total=widths.reduce((a,b)=>a+b,0);
+    if(total>avail){                     // 真的塞不下才整排等比例縮小
+      const k=avail/total;
+      valFs*=k; labelFs*=k; widths=widths.map(w=>w*k); total=avail;
+    }
+    const extra=cells.length>1?(avail-total)/(cells.length-1):0;
+    ctx.textAlign='left';
+    let cx=pad;
+    cells.forEach((c,n)=>{
+      ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
+      ctx.fillText(c[0],cx,top+statsH*0.57);
+      ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(valFs)}px ${F}`;
+      ctx.fillText(c[1],cx,top+statsH*0.81);
+      cx+=widths[n]+gap+extra;
+    });
+  }
+
+  /* 高程區：整條寬的折線圖，上面留一行放標題和浮水印。 */
+  if(elevOn){
+    const bTop=mapH+statsH, headY=bTop+30*sc;
+    ctx.textBaseline='middle';
+    ctx.textAlign='left';ctx.fillStyle=TH.textDim;
+    ctx.font=`400 ${Math.round(25*sc)}px ${F}`;
+    ctx.fillText(tx('高程變化','Elevation'),pad,headY);
+    ctx.textAlign='right';ctx.globalAlpha=.75;
+    ctx.font=`600 ${Math.round(23*sc)}px ${F}`;
+    ctx.fillText('RUNNING ART',mapW-pad,headY);
+    ctx.globalAlpha=1;
+    drawElevProfileCanvas(ctx, pad, bTop+50*sc, mapW-pad*2, elevBandH-50*sc-22*sc, light, frac);
+  }else if(showStats){
+    // 沒有高程區時，浮水印放數據區右下角（地圖區維持乾淨）
+    ctx.textBaseline='alphabetic';ctx.textAlign='right';
+    ctx.fillStyle=TH.textDim;ctx.globalAlpha=.75;
+    ctx.font=`600 ${Math.round(23*sc)}px ${F}`;
+    ctx.fillText('RUNNING ART',mapW-pad,mapH+statsH-20*sc);
+    ctx.globalAlpha=1;
+  }
+}
+
 /* frac：跑者進度（0..1）。傳了就在折線上標出跑者當前所在的高度點。 */
 function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
   const P = PC();
