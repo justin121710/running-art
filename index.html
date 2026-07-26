@@ -170,6 +170,21 @@
   .elev-box .elev-head b{color:var(--text);font-weight:600;font-size:12.5px;white-space:nowrap}
   #elevChartArea{position:relative;width:100%;height:58px;margin:2px 0;box-sizing:border-box}
   .elev-chart-svg{width:100%;height:100%;display:block;overflow:visible}
+  /* 高低點與標籤故意「不」畫在 SVG 裡：那個 viewBox 是 preserveAspectRatio="none"，
+     實測橫向被拉伸 2 倍，<circle> 會變成扁橢圓、文字也被拉寬。改用百分比定位的
+     HTML 疊層，字和圓點都不會變形，而且百分比會自己跟著寬度變化不必重畫。 */
+  .elev-pt{position:absolute;width:9px;height:9px;border-radius:50%;box-sizing:border-box;
+    transform:translate(-50%,-50%);pointer-events:none;z-index:9}
+  .elev-pt.max{background:#00E5FF;border:2px solid var(--panel2);
+    box-shadow:0 0 0 1px rgba(0,229,255,.55)}
+  .elev-pt.min{background:#94a3b8;border:2px solid var(--panel2);
+    box-shadow:0 0 0 1px rgba(148,163,184,.55)}
+  /* 底色墊片讓標籤壓在折線／漸層上仍然看得清楚（原本會被線和跑者點蓋掉） */
+  .elev-lbl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;
+    font-size:9.5px;font-weight:700;line-height:1;padding:2px 5px;border-radius:5px;
+    background:var(--panel2);pointer-events:none;z-index:11}
+  .elev-lbl.max{color:#00E5FF}
+  .elev-lbl.min{color:var(--text2)}
   /* 跑者藍點縮小 50% (9px x 9px 完美正圓) */
   #elevRunnerDot{position:absolute;width:9px;height:9px;border-radius:50%;
     background:#4169E1;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
@@ -1175,6 +1190,15 @@ function renderElevChart(data){
   const minPt = pts[minIdx];
   const maxPt = pts[maxIdx];
 
+  /* 疊層用百分比定位，和 SVG 被拉伸後的位置完全對齊（同一個 viewBox 比例）。
+     標籤預設放在點的外側，太靠邊界就翻到另一側，避免被裁掉。
+     水平方向用 min()/max() 夾住，讓標籤貼著點但不會突出圖表左右緣。 */
+  const pctX = p => (p.x / W) * 100;
+  const pctY = y => (y / H) * 100;
+  const lblX = p => `max(30px, min(calc(100% - 30px), ${pctX(p).toFixed(2)}%))`;
+  const maxLblY = maxPt.y < 16 ? maxPt.y + 13 : maxPt.y - 11;   // 峰頂太高就把字放下面
+  const minLblY = minPt.y > H - 16 ? minPt.y - 13 : minPt.y + 11;
+
   area.innerHTML = `
     <svg class="elev-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
       <defs>
@@ -1184,12 +1208,13 @@ function renderElevChart(data){
         </linearGradient>
       </defs>
       <path d="${areaD}" fill="url(#elevGrad)"/>
-      <path d="${lineD}" fill="none" stroke="#00E5FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="${maxPt.x.toFixed(1)}" cy="${maxPt.y.toFixed(1)}" r="2.8" fill="#00E5FF"/>
-      <text x="${Math.max(26, Math.min(W - 26, maxPt.x)).toFixed(1)}" y="${Math.max(10, maxPt.y - 3).toFixed(1)}" fill="#00E5FF" font-size="9" font-weight="700" text-anchor="middle">▲${Math.round(maxE)}m</text>
-      <circle cx="${minPt.x.toFixed(1)}" cy="${minPt.y.toFixed(1)}" r="2.8" fill="#8b929c"/>
-      <text x="${Math.max(26, Math.min(W - 26, minPt.x)).toFixed(1)}" y="${Math.min(H - 1, minPt.y + 8.5).toFixed(1)}" fill="var(--dim)" font-size="8.5" font-weight="600" text-anchor="middle">▼${Math.round(minE)}m</text>
+      <path d="${lineD}" fill="none" stroke="#00E5FF" stroke-width="2.2"
+            vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
+    <div class="elev-pt max" style="left:${pctX(maxPt).toFixed(2)}%;top:${pctY(maxPt.y).toFixed(2)}%"></div>
+    <div class="elev-pt min" style="left:${pctX(minPt).toFixed(2)}%;top:${pctY(minPt.y).toFixed(2)}%"></div>
+    <div class="elev-lbl max" style="left:${lblX(maxPt)};top:${pctY(maxLblY).toFixed(2)}%">▲ ${Math.round(maxE)} m</div>
+    <div class="elev-lbl min" style="left:${lblX(minPt)};top:${pctY(minLblY).toFixed(2)}%">▼ ${Math.round(minE)} m</div>
     <div id="elevRunnerDot"></div>
   `;
 
@@ -1208,10 +1233,10 @@ function updateElevRunnerDot(frac){
   });
   const rangeE = Math.max(10, maxE - minE);
 
-  const padT = 14, padB = 8;
-  const area = $('elevChartArea');
-  if(!area) return;
-  const W = area.offsetWidth || 340, H = area.offsetHeight || 60;
+  /* 必須用和 renderElevChart 完全相同的 viewBox 幾何（H=60，不是容器的 58px），
+     否則跑者點會固定偏離折線約 1px——之前就是拿 offsetHeight 當 H 才對不準。
+     改用百分比後也不必再讀 offsetWidth，視窗縮放時位置自動跟著對。 */
+  const H = 60, padT = 14, padB = 8;
   const chartH = H - padT - padB;
 
   const idxFloat = Math.max(0, Math.min(1, frac)) * (elevations.length - 1);
@@ -1221,11 +1246,10 @@ function updateElevRunnerDot(frac){
   const e2 = elevations[Math.min(idx + 1, elevations.length - 1)];
   const e = e1 + (e2 - e1) * t;
 
-  const x = frac * W;
   const y = padT + chartH - ((e - minE) / rangeE) * chartH;
 
-  dot.style.left = x.toFixed(1) + 'px';
-  dot.style.top = y.toFixed(1) + 'px';
+  dot.style.left = (Math.max(0, Math.min(1, frac)) * 100).toFixed(2) + '%';
+  dot.style.top = ((y / H) * 100).toFixed(2) + '%';
 }
 
 let elevSeq=0;
@@ -1379,8 +1403,13 @@ function editBuild(){
     });
   }
   nodeLayer=L.layerGroup(marks,{pane:'markerPane'}).addTo(map);
+  /* 疊在路線之上靠的是 pane：markerPane(600) 本來就高於路線的 overlayPane(400)，
+     再用 renderer container 的 z-index 壓過 markerPane 內的起訖點圖釘。
+     這裡不要呼叫 nodeLayer.bringToFront() —— L.layerGroup 沒有這個方法（只有
+     L.featureGroup 有），會丟 TypeError。而且 editBuild 是在 Engine.editDelete()
+     的 .then() 裡呼叫的，丟出來的錯會被同一條 promise 的 .catch 接走，
+     於是「刪除其實成功了」卻跳出「刪除失敗」的提示，選取還被清掉。 */
   if(nodeRenderer && nodeRenderer._container) nodeRenderer._container.style.zIndex = '750';
-  if(nodeLayer) nodeLayer.bringToFront();
   editUI();
 }
 function editMark(i,on){
@@ -1837,7 +1866,8 @@ async function renderExportCanvas(opt){
   const elevH = 70 * sc, elevTop = mapH - 90 * sc;
   const elevOn = !!(opt.elevchart && elevChartData);
   if(elevOn){
-    drawElevProfileCanvas(ctx, 16 * sc, elevTop, Math.min(420 * sc, mapW - 32 * sc), elevH, light);
+    drawElevProfileCanvas(ctx, 16 * sc, elevTop, Math.min(420 * sc, mapW - 32 * sc), elevH, light,
+                          (opt.frac != null) ? opt.frac : 1);
   }
   ctx.restore();
 
@@ -1899,17 +1929,36 @@ async function renderExportCanvas(opt){
     const valMap={dist:$('sDist').textContent, pace:pm+':'+String(ps).padStart(2,'0')+' /km',
                   time:$('sTime').textContent, elev:elevTxt, fit:$('sFit').textContent};
     const cells=dats.map(d=>[labelMap[d],valMap[d]]);
-    const cw=(mapW-pad*2)/cells.length;
+    /* 欄寬按「內容實際多寬」分配，不是平均切。
+       平均切的問題：五項全開時每欄只有 201px，而「↑142 ↓138 m」就要 240px，
+       於是它被縮到很小、又幾乎頂到隔壁欄，整排看起來黏成一串。
+       改成量出每欄需要的寬度後才排版，長的欄多佔一點，短的欄讓出來，
+       字級就能維持在 46px，而且所有欄位共用同一個字級不會大小不一。 */
+    const gap=26*sc;
+    const avail=mapW-pad*2-gap*(cells.length-1);
+    /* 項目越多，字級起點放低一點。純靠自動縮放的話五項會剛好塞滿整個寬度、
+       欄距只剩最低限度的 26px，整排還是像一堵字牆；降一級之後多出來的空間
+       會變成欄距，反而更好讀。 */
+    let valFs=(cells.length>=5?38:cells.length===4?42:46)*sc, labelFs=25*sc;
+    ctx.font=`600 ${Math.round(valFs)}px ${F}`;
+    let widths=cells.map(c=>ctx.measureText(c[1]).width);
+    ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
+    widths=widths.map((w,i)=>Math.max(w,ctx.measureText(cells[i][0]).width));
+    let total=widths.reduce((a,b)=>a+b,0);
+    if(total>avail){                     // 真的塞不下才整排等比例縮小
+      const k=avail/total;
+      valFs*=k; labelFs*=k; widths=widths.map(w=>w*k); total=avail;
+    }
+    // 多出來的空間平均分到欄與欄之間，讓整排從左邊界鋪到右邊界
+    const extra=cells.length>1?(avail-total)/(cells.length-1):0;
     ctx.textAlign='left';
+    let cx=pad;
     cells.forEach((c,n)=>{
-      const cx=pad+cw*n;
-      ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(25*sc)}px ${F}`;
+      ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
       ctx.fillText(c[0],cx,top+infoH*0.57);
-      ctx.fillStyle=TH.textMain;
-      let fs=46*sc;ctx.font=`600 ${Math.round(fs)}px ${F}`;
-      const maxW=cw-10*sc;
-      if(ctx.measureText(c[1]).width>maxW){fs*=maxW/ctx.measureText(c[1]).width;ctx.font=`600 ${Math.round(fs)}px ${F}`;}
+      ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(valFs)}px ${F}`;
       ctx.fillText(c[1],cx,top+infoH*0.81);
+      cx+=widths[n]+gap+extra;
     });
   }
 
@@ -2139,18 +2188,19 @@ async function renderPreview(){
   if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
   // 用和匯出完全相同的常數（只差縮放係數），預覽才真的等於成品
   if(opt.elevchart && elevChartData){
-    drawElevProfileCanvas(ctx, 16 * lw, mapH - 90 * lw, Math.min(420 * lw, mapW - 32 * lw), 70 * lw, light);
+    drawElevProfileCanvas(ctx, 16 * lw, mapH - 90 * lw, Math.min(420 * lw, mapW - 32 * lw), 70 * lw, light, frac);
   }
   ctx.restore();
   drawInfoBar();
 }
-function drawElevProfileCanvas(ctx, x, y, w, h, light){
+/* frac：跑者進度（0..1）。傳了就在折線上標出跑者當前所在的高度點。 */
+function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
   if(!elevChartData || !elevChartData.elevations || elevChartData.elevations.length < 2) return;
   const elevations = elevChartData.elevations;
-  let minE = Infinity, maxE = -Infinity;
-  elevations.forEach(e => {
-    if(e < minE) minE = e;
-    if(e > maxE) maxE = e;
+  let minE = Infinity, maxE = -Infinity, minIdx = 0, maxIdx = 0;
+  elevations.forEach((e, i) => {
+    if(e < minE){ minE = e; minIdx = i; }
+    if(e > maxE){ maxE = e; maxIdx = i; }
   });
   const rangeE = Math.max(10, maxE - minE);
 
@@ -2194,17 +2244,72 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light){
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // 兩個標籤都靠 padT 上方那條帶子，右邊那個用 textAlign 收邊，避免寬度寫死而被裁掉
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#00E5FF';
-  ctx.font = `bold ${Math.max(6, 10 * u)}px sans-serif`;
-  ctx.fillText(`▲ ${Math.round(maxE)}m`, padL, padT - 3 * u);
+  /* 最高／最低點：以前只有兩行字釘在左上和右上角，跟實際位置無關，
+     看不出峰谷落在路線的哪一段。改成在折線上真的標出那兩個點，字跟著點走。 */
+  const at = idx => ({
+    px: padL + (idx / (elevations.length - 1)) * chartW,
+    py: padT + chartH - ((elevations[idx] - minE) / rangeE) * chartH
+  });
+  const dot = (p, fill) => {
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 3.4 * u, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.lineWidth = 1.6 * u;
+    ctx.strokeStyle = light ? 'rgba(255,255,255,.95)' : 'rgba(20,23,28,.95)';
+    ctx.stroke();
+  };
+  /* 標籤加一層底色墊片，壓在折線／漸層上才看得清楚；
+     水平位置夾在方框內，貼著點但不會被切掉。 */
+  const label = (p, text, color, above) => {
+    const fs = Math.max(7, 11 * u);
+    ctx.font = `bold ${fs}px sans-serif`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(text).width;
+    const padX = 3.5 * u, boxW = tw + padX * 2, boxH = fs + 3 * u;
+    let cx = p.px;
+    cx = Math.max(boxW / 2 + 2 * u, Math.min(w - boxW / 2 - 2 * u, cx));
+    let cy = above ? p.py - 9 * u : p.py + 9 * u;
+    cy = Math.max(boxH / 2 + 1 * u, Math.min(h - boxH / 2 - 1 * u, cy));
+    ctx.fillStyle = light ? 'rgba(255,255,255,0.92)' : 'rgba(12,15,19,0.92)';
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH, 4 * u);
+    else ctx.rect(cx - boxW / 2, cy - boxH / 2, boxW, boxH);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.fillText(text, cx, cy);
+  };
 
-  ctx.fillStyle = light ? '#64748b' : '#94a3b8';
-  ctx.font = `600 ${Math.max(6, 9 * u)}px sans-serif`;
-  ctx.textAlign = 'right';
-  ctx.fillText(`▼ ${Math.round(minE)}m`, w - padR, padT - 3 * u);
+  const maxP = at(maxIdx), minP = at(minIdx);
+  dot(maxP, '#00E5FF');
+  dot(minP, light ? '#64748b' : '#94a3b8');
+
+  // 跑者目前的高度：和地圖上的小人、拉桿是同一個 frac，位置才會一致
+  if(frac != null && frac > 0 && frac < 1){
+    const f = Math.max(0, Math.min(1, frac));
+    const idxF = f * (elevations.length - 1);
+    const i0 = Math.floor(idxF), t = idxF - i0;
+    const e1 = elevations[Math.min(i0, elevations.length - 1)];
+    const e2 = elevations[Math.min(i0 + 1, elevations.length - 1)];
+    const e = e1 + (e2 - e1) * t;
+    const rp = {
+      px: padL + f * chartW,
+      py: padT + chartH - ((e - minE) / rangeE) * chartH
+    };
+    ctx.beginPath();
+    ctx.arc(rp.px, rp.py, 4 * u, 0, Math.PI * 2);
+    ctx.fillStyle = '#4169E1';
+    ctx.fill();
+    ctx.lineWidth = 2 * u;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  }
+
+  // 峰頂靠近上緣就把字翻到下面，谷底靠近下緣就翻到上面
+  label(maxP, `▲ ${Math.round(maxE)} m`, '#00E5FF', maxP.py > padT + 12 * u);
+  label(minP, `▼ ${Math.round(minE)} m`, light ? '#475569' : '#cbd5e1',
+        minP.py > h - padB - 12 * u);
 
   ctx.restore();
 }
