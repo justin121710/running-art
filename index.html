@@ -42,6 +42,7 @@
     --rt-ui:#B8FF3C;          /* 介面主色 */
     --rt-ui-text:#111806;     /* 疊在主色上的文字 */
     --rt-on-accent:#10151A;   /* 疊在任何強調色填色上的圖形（圖釘符號、外框） */
+    --rt-ui-ink:#B8FF3C;      /* 疊在「淡色主色底」上的文字（色框按鈕的選取狀態） */
   }
   body.light{
     color-scheme:light;
@@ -57,7 +58,7 @@
     --rt-pending:#B6C0CB;
     --rt-connector:#8A94A0;
     --rt-draw:#1A2029;
-    --rt-guide:#98A2AE;
+    --rt-guide:#586470;   /* 對未跑線 3.28:1（原本 #98A2AE 只有 1.40:1，兩條線看起來一樣） */
     --rt-arrow:#1F2937;
     --rt-runner:#1F2937;
     --rt-runner-out:#FFFFFF;
@@ -71,6 +72,8 @@
     --rt-ui:#4D7C0F;
     --rt-ui-text:#FFFFFF;
     --rt-on-accent:#FFFFFF;
+    /* 淺色時主色本身當文字只有 4.05:1（底是它自己的 16% 淡色），要再壓深一階 */
+    --rt-ui-ink:#3C6109;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;overflow:hidden;
@@ -216,7 +219,7 @@
     overflow:hidden;text-overflow:ellipsis}
   /* 這塊就是拉桿本體。touch-action:none 一定要有，否則手機上在圖上拖曳會
      被當成捲動結果面板，根本拖不動跑者。 */
-  #elevChartArea{position:relative;width:100%;height:76px;margin:4px 0 6px;box-sizing:border-box;
+  #elevChartArea{position:relative;width:100%;height:92px;margin:4px 0 6px;box-sizing:border-box;
     min-width:0;cursor:pointer;touch-action:none;border-radius:6px;
     -webkit-user-select:none;user-select:none}
   #elevChartArea:focus-visible{outline:2px solid var(--rt-ui);outline-offset:2px}
@@ -260,7 +263,7 @@
   .tools button:disabled{opacity:.32}
 
   /* 群組 4：下載按鈕（下載圖片在上、下載 GPX 在下） */
-  .grp-4{flex:0.9 1 145px;display:flex;flex-direction:column;gap:8px;justify-content:stretch;min-width:0}
+  .grp-4{flex:1 1 180px;display:flex;flex-direction:column;gap:8px;justify-content:stretch;min-width:0}
   .grp-4 button{flex:1;padding:11px 12px;border-radius:11px;font-size:15px;
     font-family:inherit;font-weight:700;border:1px solid var(--rt-ui);
     display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;white-space:nowrap;height:calc(50% - 4px)}
@@ -303,12 +306,23 @@
     display:flex;flex-direction:column;align-items:center;gap:3px;
     cursor:pointer;white-space:nowrap;min-width:0}
   .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
-  .rt.on{background:var(--rt-ui);border-color:var(--rt-ui);color:var(--rt-ui-text)}
-  .rt.on i{color:rgba(255,255,255,.82)}
+  /* 這個對話框裡的多選鈕很多，全部填滿亮色在深色模式下太刺眼。
+     改成色框 + 淡淡的底（同「載入地圖範圍」的語彙），選取狀態一樣看得出來。 */
+  .rt.on{background:color-mix(in srgb,var(--rt-ui) 16%,transparent);
+    border-color:var(--rt-ui);border-width:1.6px;color:var(--rt-ui-ink);font-weight:600}
+  .rt.on i{color:var(--rt-ui-ink);opacity:.85}
   .lyrs .rt{flex:1 1 28%;font-size:12.5px;padding:8px 4px}
-  .mprog{width:100%;margin:2px 0 0;-webkit-appearance:none;appearance:none;height:6px;
-    border-radius:3px;background:linear-gradient(to right,var(--rt-done) 0%,var(--rt-pending) 0%);
-    outline:none;display:block}
+  /* input 的高度設成和滑塊一樣高，軌道另外用 runnable-track 定義，
+     滑塊才會真的和軸線置中（原本 input 只有 6px 高，滑塊靠負 margin 硬喬，會偏）。
+     進度用 --prog 變數傳進來，因為 JS 沒辦法直接設定虛擬元素的背景。 */
+  .mprog{width:100%;margin:2px 0 0;-webkit-appearance:none;appearance:none;
+    height:18px;background:transparent;outline:none;display:block}
+  .mprog::-webkit-slider-runnable-track{height:6px;border-radius:3px;
+    background:linear-gradient(to right,var(--rt-done) 0%,var(--rt-done) var(--prog,0%),
+                               var(--rt-pending) var(--prog,0%),var(--rt-pending) 100%)}
+  .mprog::-moz-range-track{height:6px;border-radius:3px;
+    background:linear-gradient(to right,var(--rt-done) 0%,var(--rt-done) var(--prog,0%),
+                               var(--rt-pending) var(--prog,0%),var(--rt-pending) 100%)}
   .mprog::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;
     border-radius:50%;background:var(--rt-done);border:2px solid var(--rt-on-accent);
     box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;margin-top:-6px;box-sizing:border-box}
@@ -530,16 +544,16 @@
           <button class="rt lyr" data-layer="draw" data-en="Sketch">手繪線</button>
           <button class="rt lyr on" data-layer="marks" data-en="Marks">起訖點</button>
           <button class="rt lyr on" data-layer="basemap" data-en="Base map">地圖底圖</button>
-          <button class="rt lyr on" data-layer="elevchart" data-en="Elev. Chart">高程圖</button>
           <button class="rt lyr on" data-layer="scale" data-en="Scale bar">比例尺</button>
         </div>
-        <div class="rlabel" data-en="Info data (all off = no info bar)">資訊欄數據（全關＝不顯示資訊欄）</div>
+        <div class="rlabel" data-en="Info panel (all off = no panel)">資訊欄（全關＝不顯示資訊欄）</div>
         <div class="ratios lyrs">
           <button class="rt dat on" data-dat="dist" data-en="Distance">距離</button>
           <button class="rt dat on" data-dat="pace" data-en="Pace">配速</button>
           <button class="rt dat on" data-dat="time" data-en="Time">時間</button>
           <button class="rt dat on" data-dat="elev" data-en="Elev.">爬升</button>
           <button class="rt dat" data-dat="fit" data-en="Match">吻合度</button>
+          <button class="rt lyr on" data-layer="elevchart" data-en="Elev. Chart">高程圖</button>
         </div>
         <div class="rlabel"><span data-en="Runner progress">跑者進度</span> · <span id="pngProgTxt">100%</span></div>
         <input type="range" id="pngProg" class="mprog" min="0" max="1000" value="1000" step="1">
@@ -594,7 +608,7 @@ function isLight(){return document.body.classList.contains('light');}
    getComputedStyle 不便宜，所以快取起來，只在換主題時失效重讀。 */
 const RT_KEYS=['done','pending','connector','draw','guide','arrow','runner','runner-out',
                'start','finish','elev','elev-dim','node','node-turn','node-sel',
-               'ui','ui-text','on-accent'];
+               'ui','ui-text','ui-ink','on-accent'];
 let _pal=null;
 function PC(){
   if(!_pal){
@@ -716,8 +730,7 @@ function setTheme(light,save=true){
   try{ if(S.curLine) S.curLine.setStyle({color:P.draw}); }catch(_){}
   try{ if(pvDone) pvDone.setStyle({color:P.done}); }catch(_){}
   try{ if(S.result) applyResult(S.result,false); }catch(_){}
-  try{ if(S.start&&startMk) startMk.setIcon(seIcon(true)); }catch(_){}
-  try{ if(S.end&&endMk) endMk.setIcon(seIcon(false)); }catch(_){}
+  try{ refreshSEMarkers(); }catch(_){}
   try{ if(S.editing) editBuild(); }catch(_){}
   try{ if(elevChartData) renderElevChart(elevChartData); }catch(_){}
   try{ pvRestyleArrows(); }catch(_){}   // 箭頭是固定的 divIcon，不重設就會留著舊配色
@@ -1080,6 +1093,42 @@ function seIcon(isStart){
     html:'<svg width="28" height="28" viewBox="0 0 24 24" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">'
       +'<circle cx="12" cy="12" r="10.4" fill="'+bg+'" stroke="'+fg+'" stroke-width="2.4"/>'+glyph+'</svg>'});
 }
+/* 起點和終點落在同一個位置時（繞一圈回到原點很常見），兩個圖釘會完全重疊、
+   只看得到後畫的那個。改成合成一顆：左半用起點、右半用終點。 */
+let _seUid=0;
+function seIconMerged(){
+  const P=PC(), fg=P['on-accent'];
+  const id='se'+(++_seUid);   // clipPath 的 id 在整份文件裡要唯一，否則會references 到別人的
+  return L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,14],
+    html:'<svg width="28" height="28" viewBox="0 0 24 24" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">'
+      +'<defs>'
+      +'<clipPath id="'+id+'L"><rect x="0" y="0" width="12" height="24"/></clipPath>'
+      +'<clipPath id="'+id+'R"><rect x="12" y="0" width="12" height="24"/></clipPath>'
+      +'</defs>'
+      +'<g clip-path="url(#'+id+'L)">'
+        +'<circle cx="12" cy="12" r="10.4" fill="'+P.start+'" stroke="'+fg+'" stroke-width="2.4"/>'
+        +'<path d="M9.5 7 L17 12 L9.5 17 Z" fill="'+fg+'"/></g>'
+      +'<g clip-path="url(#'+id+'R)">'
+        +'<circle cx="12" cy="12" r="10.4" fill="'+P.finish+'" stroke="'+fg+'" stroke-width="2.4"/>'
+        +'<rect x="8.3" y="8.3" width="7.4" height="7.4" rx="1.2" fill="'+fg+'"/></g>'
+      +'</svg>'});
+}
+// 起訖點是否落在同一處（吸附到同一個節點後座標會完全相同）
+function seSamePoint(){
+  return !!(S.start && S.end && map.distance(S.start,S.end) < 2);
+}
+/* 重畫起訖點圖釘。重疊時只放一顆合成的，否則各放各的。 */
+function refreshSEMarkers(){
+  if(startMk){startMk.remove();startMk=null;}
+  if(endMk){endMk.remove();endMk=null;}
+  const opt={interactive:false,zIndexOffset:900};
+  if(seSamePoint()){
+    startMk=L.marker(S.start,Object.assign({icon:seIconMerged()},opt)).addTo(map);
+    return;
+  }
+  if(S.start) startMk=L.marker(S.start,Object.assign({icon:seIcon(true)},opt)).addTo(map);
+  if(S.end)   endMk  =L.marker(S.end,  Object.assign({icon:seIcon(false)},opt)).addTo(map);
+}
 /* 把使用者點的位置吸附到最近的路網節點。
    點在建築物或公園中間的話，solve_route 反正也要把它拉到路上；
    當下就吸附的好處是使用者馬上看得到真正的起點在哪，不會以為自己選的是那個點。
@@ -1101,15 +1150,8 @@ map.on('click',async e=>{
   // 吸附後仍要在範圍內，否則寧可用原座標（邊緣點可能被吸到框外的節點）
   const use=inArea(ll)?ll:e.latlng;
   const moved=map.distance(e.latlng,use);
-  if(isStart){
-    if(startMk) startMk.remove();
-    startMk=L.marker(use,{icon:seIcon(true),interactive:false,zIndexOffset:900}).addTo(map);
-    S.start=use;
-  }else{
-    if(endMk) endMk.remove();
-    endMk=L.marker(use,{icon:seIcon(false),interactive:false,zIndexOffset:900}).addTo(map);
-    S.end=use;
-  }
+  if(isStart) S.start=use; else S.end=use;
+  refreshSEMarkers();
   toast(moved>=8
     ? tx((isStart?'起點':'終點')+'已吸附到最近的道路（'+Math.round(moved)+' 公尺）',
          (isStart?'Start':'Finish')+' snapped to the nearest road ('+Math.round(moved)+' m)')
@@ -1140,17 +1182,31 @@ $('btnClear').onclick=clearAll;
 /* ---------- 路線預覽（拉桿 + 方向） ---------- */
 let pvDone=null,pvHead=null,pvArrows=null,pvTimer=null,poseT=null;
 /* 預覽的「跑者」圖示：靜止＝站立、拖曳／播放中＝雙手舉高。SVG 自己畫，深淺底圖都清楚。 */
+/* 比例：軀幹要比「兩條腿 + 中間縫隙」還寬，脖子則明顯細。
+   所以不能像以前那樣整個人用同一個 stroke-width 畫完，得拆成粗細不同的幾段。
+   腿從 x=11.6 / 14.4 出發（不是同一點），中間才留得出縫。
+   軀幹 5.6 > 腿 2.3×2 + 縫 0.5 = 5.1。 */
 function personSVG(active){
   const arms = active
-    ? '<path d="M13 12.5 L6.5 6.5"/><path d="M13 12.5 L19.5 6.5"/>'   // 雙手舉高
-    : '<path d="M13 12.5 L8 18"/><path d="M13 12.5 L18 18"/>';        // 自然垂下
-  // 本體吃 --rt-runner，外框吃 --rt-runner-out（壓在亮色路線上要靠外框才分得出來），頭 r=3。
+    ? 'M13 13.2 L6.8 7.2 M13 13.2 L19.2 7.2'    // 雙手舉高
+    : 'M13 13.2 L8.2 18.4 M13 13.2 L17.8 18.4'; // 自然垂下
   const P=PC();
-  const body='<circle cx="13" cy="5.2" r="3"/><path d="M13 8 L13 19"/>'+arms
-            +'<path d="M13 19 L9 27"/><path d="M13 19 L17 27"/>';
+  /* 軀幹一定要用 butt cap：round 的話圓頭會往上凸出半個線寬（2.8 單位），
+     直接把細脖子整段吃掉，量出來脖子會和軀幹一樣粗。 */
+  const parts=[
+    {d:'M13 8.4 L13 11.4',  w:1.5, cap:'round'},   // 脖子（細）
+    {d:'M13 11.4 L13 19',   w:5.8, cap:'butt'},    // 軀幹（最粗）
+    {d:arms,                w:2.2, cap:'round'},   // 手臂
+    {d:'M11.8 19.4 L9.4 27',  w:2.1, cap:'round'}, // 左腿
+    {d:'M14.2 19.4 L16.6 27', w:2.1, cap:'round'}  // 右腿
+  ];
+  const layer=(color,extra)=>parts.map(p=>
+      '<path d="'+p.d+'" fill="none" stroke="'+color+'" stroke-width="'+(p.w+extra)
+      +'" stroke-linecap="'+p.cap+'" stroke-linejoin="round"/>').join('')
+    +'<circle cx="13" cy="5.4" r="'+(3+extra/2)+'" fill="'+color+'"/>';
   return '<svg width="28" height="32" viewBox="0 0 26 30" style="filter:drop-shadow(0 0 1.4px rgba(0,0,0,.5))">'
-    +'<g fill="none" stroke="'+P['runner-out']+'" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round">'+body+'</g>'
-    +'<g fill="'+P.runner+'" stroke="'+P.runner+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'+body+'</g>'
+    +layer(P['runner-out'],2.4)     // 外框：整個人加粗一圈墊在底下
+    +layer(P.runner,0)
     +'</svg>';
 }
 function personIcon(active){
@@ -1381,7 +1437,11 @@ let elevChartData = null;
    上下各留 EL_PADT / EL_PADB 的空白帶，專門給最高／最低標籤站，
    這樣「最高一定在上、最低一定在下」才不會頂到邊界被裁掉。
    改動這裡的話 updateElevRunnerDot 會跟著走（它讀同一組常數）。 */
-const EL_W = 340, EL_H = 76, EL_PADT = 20, EL_PADB = 20, EL_LBL_GAP = 11;
+/* EL_LBL_GAP 是標籤離點多遠；EL_LBL_EDGE 是標籤最少離上下緣多遠。
+   兩個要分開，否則「離點遠一點」會被「不要超出邊界」的夾擠回來——
+   上下的 PAD 就是專門空出來讓標籤站的，所以要比 GAP 大。 */
+const EL_W = 340, EL_H = 92, EL_PADT = 28, EL_PADB = 28,
+      EL_LBL_GAP = 15, EL_LBL_EDGE = 10;
 
 function renderElevChart(data){
   const P = PC();
@@ -1434,8 +1494,8 @@ function renderElevChart(data){
   const lblX = p => `max(30px, min(calc(100% - 30px), ${pctX(p).toFixed(2)}%))`;
   /* 最高固定在點的上方、最低固定在下方。上下各留了 EL_PADT/EL_PADB
      的空白帶，所以就算峰頂剛好頂到繪圖區上緣，標籤還是塞得下不會被裁。 */
-  const maxLblY = Math.max(EL_LBL_GAP, maxPt.y - EL_LBL_GAP);
-  const minLblY = Math.min(H - EL_LBL_GAP, minPt.y + EL_LBL_GAP);
+  const maxLblY = Math.max(EL_LBL_EDGE, maxPt.y - EL_LBL_GAP);
+  const minLblY = Math.min(H - EL_LBL_EDGE, minPt.y + EL_LBL_GAP);
 
   /* 已跑／未跑用一個 clipPath 切開，和地圖上的路線同一套語彙（暗＝還沒跑到）。
      只更新那個 rect 的寬度就能重畫進度，不必每次重建整段 SVG。 */
@@ -1520,9 +1580,29 @@ async function updateElevation(){
     if(!last||last[0]!==p[0]||last[1]!==p[1]) path.push(p);
   }));
   if(path.length<2){$('sElev').textContent='–';renderElevChart(null);return;}
-  const N=Math.min(100,path.length);
+  /* 依「距離」等距取樣，不是依索引。
+     路網節點的間距差很多（實測同一條路上有 8m 也有 300m 的段），照索引取樣的話
+     橫軸就不是距離軸——量過最壞情況：實際在 1283m 處的點會被畫在相當於 993m 的
+     位置，偏了 7.4%。而且跑者點是用「距離比例」定位的，兩者對不起來。
+     改成沿線等距內插後，橫軸才真的是距離，爬升／下降也不會被密集節點灌水。 */
+  const cum=[0];
+  for(let i=1;i<path.length;i++) cum.push(cum[i-1]+map.distance(path[i-1],path[i]));
+  const totalM=cum[cum.length-1];
+  const N=Math.min(100,Math.max(2,path.length));
   const samp=[];
-  for(let i=0;i<N;i++) samp.push(path[Math.round(i*(path.length-1)/(N-1))]);
+  if(totalM<=0){
+    for(let i=0;i<N;i++) samp.push(path[Math.min(i,path.length-1)]);
+  }else{
+    let j=1;
+    for(let i=0;i<N;i++){
+      const d=totalM*i/(N-1);
+      while(j<cum.length-1 && cum[j]<d) j++;
+      const seg=cum[j]-cum[j-1];
+      const t=seg>0?(d-cum[j-1])/seg:0;
+      const a=path[j-1], b=path[j];
+      samp.push([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]);
+    }
+  }
   const seq=++elevSeq;
   $('sElev').textContent=tx('計算中…','Calculating…');
   try{
@@ -1604,8 +1684,7 @@ $('aRev').onclick=()=>{
       applyResult(res);
       // 起終點對調：路線現在從原本的終點跑起
       const s=S.start;S.start=S.end;S.end=s;
-      if(startMk&&S.start) startMk.setLatLng(S.start);
-      if(endMk&&S.end) endMk.setLatLng(S.end);
+      refreshSEMarkers();   // 起訖點對調，重疊時左右半邊也要跟著換
       // 方向反轉＝爬升與下降互換，不必再打一次 API
       const g=S.elevGain;S.elevGain=S.elevLoss;S.elevLoss=g;
       if(S.elevGain!=null) $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
@@ -1926,20 +2005,65 @@ function drawPin(ctx,cx,tipY,h,color,inner){
 // footY 是腳底、對準路線上的當前位置。
 function drawRunnerCanvas(ctx,x,footY,u,light){
   const P=PC(), BODY=P.runner, OUT=P['runner-out'];
-  const headY=footY-24*u, hipY=footY-12*u, hr=3.4*u;
-  const limbs=()=>{ctx.beginPath();
-    ctx.moveTo(x,headY+hr);ctx.lineTo(x,hipY);              // 身體
-    ctx.moveTo(x,hipY-5*u);ctx.lineTo(x-5*u,hipY+u);        // 左手
-    ctx.moveTo(x,hipY-5*u);ctx.lineTo(x+5*u,hipY+u);        // 右手
-    ctx.moveTo(x,hipY);ctx.lineTo(x-4*u,footY);             // 左腿
-    ctx.moveTo(x,hipY);ctx.lineTo(x+4*u,footY);ctx.stroke();// 右腿
+  /* 比例和地圖上的 personSVG 一致：軀幹 5.6u 比「兩腿 2.3u×2 + 縫隙 0.5u」寬，
+     脖子只有 1.5u。所以每一段要各自設線寬，不能整個人一次畫完。 */
+  const headY=footY-24*u, hipY=footY-11*u, hr=3.0*u;
+  const parts=[
+    {w:1.5, cap:'round', seg:[[x,headY+hr],[x,headY+hr+3.0*u]]},     // 脖子
+    {w:5.8, cap:'butt',  seg:[[x,headY+hr+3.0*u],[x,hipY]]},         // 軀幹
+    {w:2.2, cap:'round', seg:[[x,hipY-5.4*u],[x-5*u,hipY+0.6*u]]},   // 左手
+    {w:2.2, cap:'round', seg:[[x,hipY-5.4*u],[x+5*u,hipY+0.6*u]]},   // 右手
+    {w:2.1, cap:'round', seg:[[x-1.2*u,hipY+0.4*u],[x-3.6*u,footY]]},// 左腿
+    {w:2.1, cap:'round', seg:[[x+1.2*u,hipY+0.4*u],[x+3.6*u,footY]]} // 右腿
+  ];
+  const layer=(color,extra)=>{
+    ctx.strokeStyle=color;
+    parts.forEach(p=>{
+      ctx.lineCap=p.cap;   // 軀幹必須 butt，否則圓頭會往上吃掉細脖子
+      ctx.lineWidth=(p.w+extra)*u;
+      ctx.beginPath();
+      ctx.moveTo(p.seg[0][0],p.seg[0][1]);
+      ctx.lineTo(p.seg[1][0],p.seg[1][1]);
+      ctx.stroke();
+    });
+    ctx.beginPath();ctx.arc(x,headY,hr+extra*u/2,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
   };
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
-  ctx.strokeStyle=OUT;ctx.lineWidth=5.4*u;limbs();
-  ctx.beginPath();ctx.arc(x,headY,hr+1.1*u,0,Math.PI*2);ctx.fillStyle=OUT;ctx.fill();
-  ctx.strokeStyle=BODY;ctx.lineWidth=3*u;limbs();
-  ctx.beginPath();ctx.arc(x,headY,hr,0,Math.PI*2);ctx.fillStyle=BODY;ctx.fill();
+  layer(OUT,2.4);   // 外框整個加粗一圈墊底
+  layer(BODY,0);
   ctx.restore();
+}
+
+/* 起訖點標記（匯出／預覽共用）。start 和 end 重疊時畫成一顆：
+   左半邊是起點、右半邊是終點，和地圖上的 seIconMerged 同一個語彙。 */
+function drawSEMarks(ctx,X,Y,r,lw,P){
+  const glyphStart=(x,y)=>{ctx.beginPath();
+    ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);
+    ctx.closePath();ctx.fill();};
+  const glyphEnd=(x,y)=>{const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);};
+  const disc=(x,y,fill,glyph)=>{
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.lineWidth=3*lw;ctx.strokeStyle=P['on-accent'];ctx.stroke();
+    ctx.fillStyle=P['on-accent'];glyph(x,y);
+  };
+  const same=S.start&&S.end&&map.distance(S.start,S.end)<2;
+  if(same){
+    const x=X(S.start.lng), y=Y(S.start.lat);
+    [['l',P.start,glyphStart],['r',P.finish,glyphEnd]].forEach(([side,fill,glyph])=>{
+      ctx.save();
+      ctx.beginPath();
+      // 多留 2*lw 讓外框描邊不會被裁掉
+      ctx.rect(side==='l'?x-r-2*lw:x, y-r-2*lw, r+2*lw, (r+2*lw)*2);
+      ctx.clip();
+      disc(x,y,fill,glyph);
+      ctx.restore();
+    });
+    return;
+  }
+  if(S.start) disc(X(S.start.lng),Y(S.start.lat),P.start,glyphStart);
+  if(S.end)   disc(X(S.end.lng),  Y(S.end.lat),  P.finish,glyphEnd);
 }
 
 /* 匯出／預覽的方向箭頭：在已 translate+rotate 的座標系畫指向 +X 的箭頭。
@@ -2119,24 +2243,7 @@ async function renderExportCanvas(opt){
     }
   }
   // 8) 起終點：綠圈▶＝起點、紅圈■＝終點（與地圖上同一套）
-  if(opt.marks){
-    const mark=(ll,isStart)=>{
-      if(!ll) return;
-      const x=X(ll.lng),y=Y(ll.lat),r=15*sc;
-      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-      ctx.fillStyle=isStart?P.start:P.finish;ctx.fill();
-      ctx.lineWidth=3*sc;ctx.strokeStyle=P['on-accent'];ctx.stroke();
-      ctx.fillStyle=P['on-accent'];
-      if(isStart){
-        ctx.beginPath();
-        ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);
-        ctx.closePath();ctx.fill();
-      }else{
-        const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);
-      }
-    };
-    mark(S.start,true);mark(S.end,false);
-  }
+  if(opt.marks) drawSEMarks(ctx,X,Y,15*sc,sc,P);
   // 小人畫在走過/未走過的分界（最上層，仍在地圖 clip 內）
   if(runnerHead){
     drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light);
@@ -2416,14 +2523,7 @@ async function renderPreview(){
       ctx.restore();
     }
   }
-  if(opt.marks){
-    const mk=(ll,isStart)=>{if(!ll)return;const x=X(ll.lng),y=Y(ll.lat),r=15*lw;
-      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=isStart?P.start:P.finish;ctx.fill();
-      ctx.lineWidth=3*lw;ctx.strokeStyle=P['on-accent'];ctx.stroke();ctx.fillStyle=P['on-accent'];
-      if(isStart){ctx.beginPath();ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);ctx.closePath();ctx.fill();}
-      else{const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);}};
-    mk(S.start,true);mk(S.end,false);
-  }
+  if(opt.marks) drawSEMarks(ctx,X,Y,15*lw,lw,P);
   if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
   // 高程圖已經移到下方資訊欄（見 drawInfoBar），地圖區不再畫
   ctx.restore();
@@ -2561,7 +2661,7 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
   const padL = 12 * u, padR = 12 * u;
   const padT = Math.max(14 * u, h * 0.26), padB = Math.max(12 * u, h * 0.24);
   const chartW = w - padL - padR, chartH = h - padT - padB;
-  const lblGap = Math.max(9 * u, h * 0.15);
+  const lblGap = Math.max(12 * u, h * 0.20);
 
   ctx.beginPath();
   elevations.forEach((e, idx) => {
@@ -2661,7 +2761,7 @@ document.querySelectorAll('.dat').forEach(b=>b.onclick=()=>{b.classList.toggle('
 $('pngProg').oninput=()=>{
   const pct=+$('pngProg').value/10;
   $('pngProgTxt').textContent=Math.round(pct)+'%';
-  $('pngProg').style.background=`linear-gradient(to right,${PC().done} 0%,${PC().done} ${pct}%,${PC().pending} ${pct}%,${PC().pending} 100%)`;
+  $('pngProg').style.setProperty('--prog',pct+'%');
   renderPreview();
 };
 $('aPng').onclick=()=>{
