@@ -188,10 +188,12 @@
     box-shadow:0 0 0 1px rgba(0,229,255,.55)}
   .elev-pt.min{background:#94a3b8;border:2px solid var(--panel2);
     box-shadow:0 0 0 1px rgba(148,163,184,.55)}
-  /* 底色墊片讓標籤壓在折線／漸層上仍然看得清楚（原本會被線和跑者點蓋掉） */
+  /* 不要底色墊片——那會擋住底下的高程折線。改用同底色的細描邊（光暈）把字襯出來：
+     只吃掉字筆畫周圍 1px，折線幾乎完整看得見，字又不會糊在線上。 */
   .elev-lbl{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;
-    font-size:9.5px;font-weight:700;line-height:1;padding:2px 5px;border-radius:5px;
-    background:var(--panel2);pointer-events:none;z-index:11}
+    font-size:9.5px;font-weight:700;line-height:1;pointer-events:none;z-index:11;
+    text-shadow:0 0 2px var(--panel2),0 0 2px var(--panel2),0 0 3px var(--panel2),
+                0 1px 1px var(--panel2),0 -1px 1px var(--panel2)}
   .elev-lbl.max{color:#00E5FF}
   .elev-lbl.min{color:var(--text2)}
   /* 跑者藍點縮小 50% (9px x 9px 完美正圓) */
@@ -2323,7 +2325,7 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
     ctx.strokeStyle = light ? 'rgba(255,255,255,.95)' : 'rgba(20,23,28,.95)';
     ctx.stroke();
   };
-  /* 標籤加一層底色墊片，壓在折線／漸層上才看得清楚；
+  /* 標籤不加底色方塊（那會蓋掉底下的折線），改用描邊當光暈把字襯出來。
      水平位置夾在方框內，貼著點但不會被切掉。 */
   const label = (p, text, color, above) => {
     const fs = Math.max(7, 11 * u);
@@ -2331,16 +2333,13 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     const tw = ctx.measureText(text).width;
-    const padX = 3.5 * u, boxW = tw + padX * 2, boxH = fs + 3 * u;
-    let cx = p.px;
-    cx = Math.max(boxW / 2 + 2 * u, Math.min(w - boxW / 2 - 2 * u, cx));
-    let cy = above ? p.py - 9 * u : p.py + 9 * u;
-    cy = Math.max(boxH / 2 + 1 * u, Math.min(h - boxH / 2 - 1 * u, cy));
-    ctx.fillStyle = light ? 'rgba(255,255,255,0.92)' : 'rgba(12,15,19,0.92)';
-    ctx.beginPath();
-    if(ctx.roundRect) ctx.roundRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH, 4 * u);
-    else ctx.rect(cx - boxW / 2, cy - boxH / 2, boxW, boxH);
-    ctx.fill();
+    let cx = Math.max(tw / 2 + 3 * u, Math.min(w - tw / 2 - 3 * u, p.px));
+    let cy = above ? p.py - 10 * u : p.py + 10 * u;
+    cy = Math.max(fs * 0.6 + 1 * u, Math.min(h - fs * 0.6 - 1 * u, cy));
+    ctx.lineWidth = Math.max(1.4, 2.6 * u);
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = light ? 'rgba(255,255,255,0.9)' : 'rgba(10,13,17,0.9)';
+    ctx.strokeText(text, cx, cy);
     ctx.fillStyle = color;
     ctx.fillText(text, cx, cy);
   };
