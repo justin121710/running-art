@@ -201,6 +201,63 @@
     .grp-4{flex-direction:row;gap:8px}
   }
 
+  /* ---- 匯出圖片對話框 ----
+     這整區的樣式曾經整批遺失，害得 .modal 是 position:static 沒有 z-index，
+     被 position:absolute 的 #map 整片蓋住 → 按「下載圖片」看起來完全沒反應。
+     動這裡之前先確認 .modal 仍然是 fixed/absolute + z-index。 */
+  .modal{position:absolute;inset:0;z-index:900;background:var(--scrim);
+    display:flex;align-items:center;justify-content:center;padding:16px}
+  .modal[hidden]{display:none}
+  .mbox{width:100%;max-width:720px;max-height:calc(100vh - 32px);overflow-y:auto;
+    background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+  .mtitle{font-size:15px;font-weight:600;margin-bottom:12px}
+  .mcols{display:flex;gap:16px;align-items:flex-start}
+  .mopts{flex:1 1 300px;min-width:0}
+  .mprevwrap{flex:0 0 264px;display:flex;align-items:flex-start;justify-content:center;
+    background:var(--panel3);border:1px solid var(--border);border-radius:12px;padding:10px}
+  /* 透明底圖（去背 PNG）在單色面板上看不出來，用棋盤格襯底才看得出哪裡是透明 */
+  .mprev{width:100%;max-width:244px;height:auto;display:block;border-radius:8px;
+    background-color:#9aa3ad;
+    background-image:linear-gradient(45deg,#7d858e 25%,transparent 25%,transparent 75%,#7d858e 75%),
+                     linear-gradient(45deg,#7d858e 25%,transparent 25%,transparent 75%,#7d858e 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px}
+  .rlabel{font-size:11.5px;color:var(--dim);margin:2px 2px 6px}
+  .ratios{display:flex;gap:6px;margin-bottom:12px}
+  .ratios.lyrs{flex-wrap:wrap}
+  .rt{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:11px;
+    color:var(--text2);font-size:13.5px;font-weight:500;font-family:inherit;padding:9px 2px;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    cursor:pointer;white-space:nowrap;min-width:0}
+  .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
+  .rt.on{background:#2563eb;border-color:#2563eb;color:#fff}
+  .rt.on i{color:rgba(255,255,255,.82)}
+  .lyrs .rt{flex:1 1 28%;font-size:12.5px;padding:8px 4px}
+  .mprog{width:100%;margin:2px 0 0;-webkit-appearance:none;appearance:none;height:6px;
+    border-radius:3px;background:linear-gradient(to right,#4169E1 0%,#708090 0%);
+    outline:none;display:block}
+  .mprog::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;
+    border-radius:50%;background:#4169E1;border:2px solid #fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;margin-top:-6px;box-sizing:border-box}
+  .mprog::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#4169E1;
+    border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;box-sizing:border-box}
+  .mact{display:flex;gap:8px;margin-top:14px}
+  .mact button{flex:1;padding:11px;border-radius:11px;font-size:13.5px;font-family:inherit;
+    font-weight:500;border:1px solid var(--border);background:var(--panel2);color:var(--text);
+    cursor:pointer;white-space:nowrap}
+  .mact .pri{background:#2563eb;border-color:#2563eb;color:#fff}
+  .mact button:disabled{opacity:.4}
+  /* 產生完成後的圖片預覽（給 Safari／手機長按儲存用） */
+  .mshot{display:block;width:100%;max-width:300px;margin:0 auto;border-radius:10px;
+    border:1px solid var(--border)}
+  .mhint{font-size:11.5px;color:var(--dim);margin:10px 2px 0;line-height:1.5}
+  @media (max-width:680px){
+    .mbox{padding:14px}
+    .mcols{flex-direction:column-reverse;gap:12px}
+    .mprevwrap{flex:none;width:100%}
+    .mprev{max-width:190px}
+    .mshot{max-width:210px}
+  }
+
   .toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:900;
     background:var(--glass);border:1px solid var(--border);border-radius:12px;color:var(--text);
     padding:15px 20px;font-size:13.5px;text-align:center;opacity:0;
@@ -426,6 +483,23 @@
   </div>
 </div>
 
+<!-- 產生完成後的結果對話框。
+     刻意不在 await 之後直接 a.click()：Safari／iOS 會判定已經離開使用者手勢，
+     把下載當成彈窗靜默擋掉。改成把成品顯示出來，由使用者「再點一下」真正儲存，
+     那一下才是有效的手勢。手機也可以直接長按圖片存到相簿。 -->
+<div class="modal" id="pngResult" hidden>
+  <div class="mbox" style="max-width:380px">
+    <div class="mtitle" data-en="Image ready">圖片已產生</div>
+    <img id="pngShot" class="mshot" alt="">
+    <div class="mhint" id="pngHint"></div>
+    <div class="mact">
+      <button id="pngClose" data-en="Close">關閉</button>
+      <button id="pngShare" hidden data-en="Share">分享</button>
+      <button class="pri" id="pngSave" data-en="Save image">儲存圖片</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <div class="busy" id="busy"><div class="spin"></div><span id="busyTxt"></span></div>
 
@@ -520,7 +594,9 @@ const PROG_EN={
  '下載路網（同時向多台伺服器請求）…':'Loading roads (querying several servers)…',
  '伺服器忙碌，重試中…':'Servers busy, retrying…','使用已下載的地圖…':'Using saved map…',
  '建立路網…':'Building road network…','對齊道路中…':'Snapping to roads…',
- '重新接路中…':'Re-routing…','產生圖片…':'Creating image…','查詢地點…':'Finding location…'
+ '重新接路中…':'Re-routing…','產生圖片…':'Creating image…','查詢地點…':'Finding location…',
+ '下載底圖…':'Loading base map…',
+ '底圖受限，改產生無底圖版本…':'Base map blocked — creating no-basemap version…'
 };
 const PACE_NAMES={zh:['競速','慢跑','輕鬆跑','快走'],en:['Fast','Jog','Easy','Brisk']};
 const EXP_LABELS={zh:['距離','配速','預估時間','總爬升／下降'],en:['Distance','Pace','Est. time','Total Elev.']};
@@ -1414,8 +1490,11 @@ $('aGpx').onclick=()=>{
   toast('GPX 已下載');
 };
 /* ---------- 匯出圖片 ----------
-   把底圖 tile 自己抓下來畫進 canvas（CARTO 有回 Access-Control-Allow-Origin: *，
-   所以 canvas 不會被污染，可以 toBlob 下載）。不依賴任何額外函式庫。 */
+   把底圖 tile 自己抓下來畫進 canvas。CARTO 通常會回 Access-Control-Allow-Origin: *，
+   但不能假設一定有（快取層、企業 proxy、離線重送都可能吃掉那個標頭），
+   少了它 canvas 就會被「污染 (tainted)」而 toBlob/toDataURL 直接丟 SecurityError。
+   所以圖磚一律走 fetch→blob 這條路（見 loadTile），並在匯出時做污染偵測 + 自動降級。
+   不依賴任何額外函式庫。 */
 const TILE_HOSTS=['a','b','c','d'];
 const TILE_SIZE=256;          // 一個 tile 代表的「世界像素」
 const INFO_H=250;             // 底部資訊欄高度（寬固定 1080）
@@ -1459,14 +1538,85 @@ function latToWorld(lat,z){
   const r=lat*Math.PI/180;
   return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*TILE_SIZE*Math.pow(2,z);
 }
-function loadTile(z,x,y,i,style){
-  return new Promise(res=>{
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=()=>res(img);
-    img.onerror=()=>res(null);   // 單一 tile 失敗就留底色，不要整張圖失敗
-    img.src=`https://${TILE_HOSTS[i%TILE_HOSTS.length]}.basemaps.cartocdn.com/${style}/${z}/${x}/${y}@2x.png`;
+function tileURL(z,x,y,i,style){
+  return `https://${TILE_HOSTS[i%TILE_HOSTS.length]}.basemaps.cartocdn.com/${style}/${z}/${x}/${y}@2x.png`;
+}
+/* 第一順位：fetch → blob → 解碼。blob 是同源資料，畫進 canvas 永遠不會污染它，
+   所以只要這條路走得通，匯出就一定不會踩到 tainted canvas。 */
+async function fetchTileBitmap(url){
+  const ctrl=new AbortController();
+  const tm=setTimeout(()=>ctrl.abort(),12000);   // 沒有 timeout 的話單顆慢 tile 會卡住整張圖
+  try{
+    const r=await fetch(url,{mode:'cors',credentials:'omit',signal:ctrl.signal});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const blob=await r.blob();
+    if(window.createImageBitmap) return await createImageBitmap(blob);
+    // 舊 Safari 沒有 createImageBitmap：改用 blob: URL 的 <img>，一樣是同源不污染
+    const u=URL.createObjectURL(blob);
+    try{
+      return await new Promise((res,rej)=>{
+        const im=new Image();
+        im.onload=()=>res(im);im.onerror=()=>rej(new Error('decode failed'));
+        im.src=u;
+      });
+    }finally{ setTimeout(()=>URL.revokeObjectURL(u),20000); }   // 太早 revoke 會讓還沒畫完的圖變空白
+  }finally{ clearTimeout(tm); }
+}
+// 第二順位：<img crossOrigin>。伺服器有回 ACAO 就同樣安全，順便繞過 fetch 被擋的情況。
+function corsTileImage(url){
+  return new Promise((res,rej)=>{
+    const im=new Image();
+    im.crossOrigin='anonymous';
+    im.onload=()=>res(im);im.onerror=()=>rej(new Error('img failed'));
+    im.src=url;
   });
+}
+/* 兩段式備援；兩條都失敗就回 null，那一格留底色。
+   刻意不退回「不設 crossOrigin 的 <img>」——那雖然畫得出來，但會污染 canvas
+   讓整張圖匯不出去。缺一格 tile 遠比整張匯出失敗好。 */
+async function loadTile(z,x,y,i,style){
+  const url=tileURL(z,x,y,i,style);
+  try{ return await fetchTileBitmap(url); }catch(_){}
+  try{ return await corsTileImage(url); }catch(_){}
+  return null;
+}
+
+/* ctx.filter 在舊版 Safari 沒有實作（設了會被無聲忽略），深色圖磚就不會被提亮。
+   偵測一次，不支援時改用「加法疊圖」模擬 brightness(k)：
+   正常畫 1 次 + 用 'lighter' 再疊 (k−1) 次，數學上等於逐通道乘 k 後截斷。 */
+const CTX_FILTER_OK=(()=>{
+  try{
+    const c=document.createElement('canvas').getContext('2d');
+    c.filter='brightness(2)';
+    return c.filter==='brightness(2)';
+  }catch(_){ return false; }
+})();
+/* 把圖磚畫上去並提亮。rectOf(job) 要回 {x,y,w,h}。 */
+function paintTiles(ctx,jobs,imgs,rectOf,bright){
+  const pass=(alpha,mode)=>{
+    ctx.save();
+    ctx.globalAlpha=alpha;ctx.globalCompositeOperation=mode;
+    jobs.forEach((j,n)=>{
+      if(!imgs[n]) return;                       // 這格載入失敗，留底色
+      const r=rectOf(j);
+      ctx.drawImage(imgs[n],r.x,r.y,r.w,r.h);
+    });
+    ctx.restore();
+  };
+  if(bright<=1.001){ pass(1,'source-over'); return; }
+  if(CTX_FILTER_OK){
+    ctx.save();
+    ctx.filter=`brightness(${bright}) contrast(0.92)`;
+    pass(1,'source-over');
+    ctx.restore();
+    return;
+  }
+  pass(1,'source-over');
+  for(let left=bright-1;left>0.001;){
+    const a=Math.min(1,left);
+    pass(a,'lighter');
+    left-=a;
+  }
 }
 // 匯出圖片的地圖大頭針（畫在資訊欄地點名稱左邊）
 function drawPin(ctx,cx,tipY,h,color){
@@ -1516,268 +1666,343 @@ function drawChevron(ctx,base){
   ctx.stroke();
 }
 
+/* 只負責「畫出」成品 canvas；抓圖磚、下載、錯誤處理都不在這裡。
+   拆開來的原因：底圖若造成 canvas 污染，exportPNG 需要能用 basemap:false 再畫一次。 */
+async function renderExportCanvas(opt){
+  const [W,H]=PNG_RATIOS[opt.ratio]||PNG_RATIOS['1:1'];
+  const sc=W/1080;                   // 寬固定 1080，sc=1；保留以便日後改寬
+  const dats=(opt.dats||['dist','pace','time','elev']).filter(Boolean);
+  const showInfo=dats.length>0;
+  const infoH=showInfo?INFO_H:0;     // 數據全關＝不畫資訊欄、地圖佔滿整張（配合透明背景做純路線圖）
+  const mapW=W, mapH=H-infoH;
+
+  // 圖片跟著 App 的深／淺色主題走
+  const light=isLight();
+  const TH=light?{
+    tile:'light_all', tileBright:1, mapBg:'#e8ecf1',
+    infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
+    overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
+  }:{
+    tile:'dark_all', tileBright:2.3, mapBg:'#262a30',
+    infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
+    overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
+  };
+
+  // 1) 要涵蓋的地理範圍
+  const pts=[];
+  if(opt.route) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
+  if(opt.draw)  S.strokes.forEach(s=>s.pts.forEach(p=>pts.push([p.lat,p.lng])));
+  if(!pts.length) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
+  if(opt.marks){
+    if(S.start) pts.push([S.start.lat,S.start.lng]);
+    if(S.end)   pts.push([S.end.lat,S.end.lng]);
+  }
+  const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
+
+  // 2) 在「世界像素(z0)」裡算，避免經緯度在 Mercator 上被拉伸
+  const wx0=lonToWorld(Math.min(...lons),0), wx1=lonToWorld(Math.max(...lons),0);
+  const wy0=latToWorld(Math.max(...lats),0), wy1=latToWorld(Math.min(...lats),0);
+  const cx=(wx0+wx1)/2, cy=(wy0+wy1)/2;
+  const dx=Math.max(wx1-wx0,1e-9)*1.16, dy=Math.max(wy1-wy0,1e-9)*1.16;  // 8% 邊界
+
+  // 3) 把路線「置中」塞進地圖區：保留路線真實比例，四周由底圖填滿。
+  //    比例是固定的（1:1／4:5／9:16），所以路線不會被壓扁，只是留白多寡不同。
+  const s=Math.min(mapW/dx, mapH/dy)*0.9;    // canvas px / z0世界px；0.9 留邊
+  const z=Math.max(1,Math.min(19,Math.floor(Math.log2(s))));
+  const K=s/Math.pow(2,z);                    // 落在 [1,2)，@2x tile 縮小繪製最清晰
+  const cxZ=cx*Math.pow(2,z), cyZ=cy*Math.pow(2,z);
+  const X=lon=>mapW/2+(lonToWorld(lon,z)-cxZ)*K;
+  const Y=lat=>mapH/2+(latToWorld(lat,z)-cyZ)*K;
+
+  const cv=document.createElement('canvas');
+  cv.width=W;cv.height=H;
+  const ctx=cv.getContext('2d');
+  let tilesFailed=false;
+  // 地圖區底色：basemap 開＝純色(稍後 tile 蓋滿)、關＝保持透明(做去背 PNG)
+  if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,mapW,mapH); }
+
+  // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）；opt.basemap 關閉時透明
+  ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
+  if(opt.basemap){
+    const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
+    const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
+    const jobs=[];let ji=0;
+    for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:ji++});
+    busy('下載底圖…');
+    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i,TH.tile)));
+    const ts=TILE_SIZE*K;
+    paintTiles(ctx,jobs,imgs,
+      j=>({x:mapW/2+(j.tx*TILE_SIZE-cxZ)*K, y:mapH/2+(j.ty*TILE_SIZE-cyZ)*K, w:ts+1, h:ts+1}),
+      TH.tileBright);
+    // 一格都沒抓到就等於沒有底圖：回報給呼叫端，讓它能提醒使用者而不是默默給張空白底
+    if(jobs.length && imgs.every(im=>!im)) tilesFailed=true;
+    busy('產生圖片…');
+  }
+
+  // 5) 手繪紅線。路線通常正好貼著它跑，所以紅線要畫得比路線寬、
+  //    當成路線底下透出來的光暈，否則會被藍線整條蓋掉、勾了也看不見。
+  ctx.lineJoin=ctx.lineCap='round';
+  if(opt.draw){
+    ctx.strokeStyle=light?'#000':'#fff';
+    ctx.lineWidth=(opt.route?15:5)*sc;
+    ctx.globalAlpha=.9;   // 別用半透明會暗成醬紅色，這裡只是壓一點點
+    S.strokes.forEach(st=>{
+      ctx.beginPath();
+      st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+      ctx.stroke();
+    });
+    ctx.globalAlpha=1;
+  }
+  // 6) 路線：先畫完整路線當「未走過」底層（draw 灰藍實線 #708090、連接段橘虛線），
+  //    再把「走過」的部分（到拉桿位置 frac）蓋成藍實線 #4169E1，並記住小人位置，
+  //    和地圖上的預覽一模一樣（小人走到哪、藍線就到哪）。
+  let runnerHead=null;
+  if(opt.route){
+    S.result.segments.forEach(sg=>{
+      const draw=sg.kind==='draw';
+      ctx.strokeStyle=draw?'#708090':'#cbd5e1';
+      ctx.lineWidth=(draw?10.5:2.5)*sc;
+      ctx.setLineDash(draw?[]:[10*sc,9*sc]);
+      ctx.beginPath();
+      sg.pts.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    const frac=(opt.frac!=null)?opt.frac:1;
+    if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
+      const target=S.totalM*frac;
+      let lo=0,hi=S.cum.length-1;while(lo<hi){const m=(lo+hi)>>1;S.cum[m]<target?lo=m+1:hi=m;}
+      const idx=lo;
+      const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
+      let head=S.path[Math.max(idx,0)];
+      if(idx>0){
+        const seg=S.cum[idx]-S.cum[idx-1],t=seg>0?(target-S.cum[idx-1])/seg:0;
+        const a=S.path[idx-1],b=S.path[idx];
+        head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+        shown[shown.length-1]=head;
+      }
+      ctx.strokeStyle='#4169E1';ctx.lineWidth=8*sc;ctx.setLineDash([]);
+      ctx.beginPath();
+      shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+      ctx.stroke();
+      if(frac<1) runnerHead=head;   // 跑完(100%)就不畫小人，避免杵在終點
+    }
+  }
+  // 7) 方向箭頭：每 200m 一個、<30m 跳過、走過路段不顯示，鮮青色 #00E5FF 粗線 >
+  if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
+    const frac = (opt.frac != null) ? opt.frac : 1;
+    const curD = S.totalM * frac;
+    const step = 200;
+    for(let targetD = step; targetD < S.totalM - 20; targetD += step){
+      if(targetD <= curD) continue;   // 已走過路段不顯示箭頭
+      const i = pvIndexAt(targetD);
+      if(i < 1) continue;
+      const a = S.path[i-1], b = S.path[i];
+      const segLen = S.cum[i] - S.cum[i-1];
+      if(segLen < 30) continue;   // 兩節點小於 30m 跳過
+      const mid = [(a[0] + b[0])/2, (a[1] + b[1])/2];
+      const ax = X(a[1]), ay = Y(a[0]), bx = X(b[1]), by = Y(b[0]);
+      if(ax === bx && ay === by) continue;
+      ctx.save();
+      ctx.translate(X(mid[1]), Y(mid[0]));
+      ctx.rotate(Math.atan2(by - ay, bx - ax));
+      drawChevron(ctx, 6 * sc);
+      ctx.restore();
+    }
+  }
+  // 8) 起終點：綠圈▶＝起點、紅圈■＝終點（與地圖上同一套）
+  if(opt.marks){
+    const mark=(ll,isStart)=>{
+      if(!ll) return;
+      const x=X(ll.lng),y=Y(ll.lat),r=15*sc;
+      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle=isStart?'#16a34a':'#dc2626';ctx.fill();
+      ctx.lineWidth=3*sc;ctx.strokeStyle='#fff';ctx.stroke();
+      ctx.fillStyle='#fff';
+      if(isStart){
+        ctx.beginPath();
+        ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);
+        ctx.closePath();ctx.fill();
+      }else{
+        const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);
+      }
+    };
+    mark(S.start,true);mark(S.end,false);
+  }
+  // 小人畫在走過/未走過的分界（最上層，仍在地圖 clip 內）
+  if(runnerHead){
+    drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light);
+  }
+  // 8.5) 高程圖圖層（若勾選）。畫在地圖區左下角。
+  const elevH = 70 * sc, elevTop = mapH - 90 * sc;
+  const elevOn = !!(opt.elevchart && elevChartData);
+  if(elevOn){
+    drawElevProfileCanvas(ctx, 16 * sc, elevTop, Math.min(420 * sc, mapW - 32 * sc), elevH, light);
+  }
+  ctx.restore();
+
+  // 9) 比例尺
+  const cLat=(Math.min(...lats)+Math.max(...lats))/2;
+  const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
+  const NICE=[10,20,50,100,200,500,1000,2000,5000];
+  let barM=NICE[0];
+  for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
+  // 高程圖也佔左下角，兩個疊在一起會糊成一團 → 有高程圖時比例尺往上讓開
+  const barPx=barM/mPerPx, bx=26*sc, tick=6*sc;
+  const by=elevOn ? elevTop-20*sc : mapH-26*sc;
+  const drawBar=()=>{ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
+    ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
+    ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();};
+  ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
+  ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
+  const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
+  ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='center';
+  const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
+  const barMid=bx+barPx/2;   // 距離文字置中於線段中間
+  ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
+  ctx.strokeText(barTxt,barMid,by-14*sc);
+  ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,barMid,by-14*sc);
+
+  // 品牌浮水印（地圖區右下角，不搶焦點）
+  ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
+  ctx.lineWidth=4*sc;ctx.strokeStyle=TH.overlayStroke;
+  ctx.strokeText('RUNNING ART',mapW-26*sc,mapH-24*sc);
+  ctx.globalAlpha=.92;ctx.fillStyle=TH.overlay;ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
+  ctx.globalAlpha=1;
+
+  // 10) 地點名稱（中山區, 台北市）—— 反向地理編碼，失敗就留空
+  const cLon=(Math.min(...lons)+Math.max(...lons))/2;
+  busy('查詢地點…');
+  const place=showInfo?await getPlaceName(cLat,cLon):'';
+
+  // 11) 資訊欄：地點+日期一列、開啟的數據一列。數據全關＝整個資訊欄不畫。
+  if(showInfo){
+    ctx.fillStyle=TH.infoBg;ctx.fillRect(0,mapH,mapW,infoH);
+    ctx.fillStyle=TH.infoLine;ctx.fillRect(0,mapH,mapW,Math.max(2,2*sc));
+    const pad=36*sc, top=mapH, rowY=top+infoH*0.23;
+    ctx.textBaseline='middle';
+    let placeX=pad;
+    if(place){
+      const ph=34*sc;
+      drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,'#ef4444');
+      placeX=pad+ph*0.9;
+      ctx.textAlign='left';ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(37*sc)}px ${F}`;
+      ctx.fillText(place,placeX,rowY);
+    }
+    ctx.textAlign='right';ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
+    ctx.fillText(localDate(),mapW-pad,rowY);
+    // 下排：只畫開啟的數據項（可含吻合度）
+    const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
+    const elevTxt=(S.elevGain!=null)?('↑'+S.elevGain+' ↓'+S.elevLoss+' m'):'–';
+    const labelMap={dist:tx('距離','Distance'),pace:tx('配速','Pace'),time:tx('時間','Time'),
+                    elev:tx('爬升','Elev.'),fit:tx('吻合度','Match')};
+    const valMap={dist:$('sDist').textContent, pace:pm+':'+String(ps).padStart(2,'0')+' /km',
+                  time:$('sTime').textContent, elev:elevTxt, fit:$('sFit').textContent};
+    const cells=dats.map(d=>[labelMap[d],valMap[d]]);
+    const cw=(mapW-pad*2)/cells.length;
+    ctx.textAlign='left';
+    cells.forEach((c,n)=>{
+      const cx=pad+cw*n;
+      ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(25*sc)}px ${F}`;
+      ctx.fillText(c[0],cx,top+infoH*0.57);
+      ctx.fillStyle=TH.textMain;
+      let fs=46*sc;ctx.font=`600 ${Math.round(fs)}px ${F}`;
+      const maxW=cw-10*sc;
+      if(ctx.measureText(c[1]).width>maxW){fs*=maxW/ctx.measureText(c[1]).width;ctx.font=`600 ${Math.round(fs)}px ${F}`;}
+      ctx.fillText(c[1],cx,top+infoH*0.81);
+    });
+  }
+
+  return {canvas:cv, w:W, h:H, tilesFailed};
+}
+
+/* canvas → Blob。canvas 若被跨域圖磚污染，toBlob 會丟 SecurityError
+   （有些瀏覽器是把 null 傳進 callback），兩種都要當成失敗。 */
+function canvasToBlob(cv){
+  return new Promise((resolve,reject)=>{
+    let done=false;
+    try{
+      cv.toBlob(b=>{
+        if(done) return;
+        done=true;
+        b?resolve(b):reject(new Error('toBlob returned null'));
+      },'image/png');
+    }catch(e){ if(!done){ done=true; reject(e); } }
+  });
+}
+/* 真正判斷 canvas 有沒有被污染。只讀 1 個 pixel，成本可忽略，
+   而且比等 toBlob 失敗更早、更明確。 */
+function canvasIsTainted(cv){
+  try{ cv.getContext('2d').getImageData(0,0,1,1); return false; }
+  catch(_){ return true; }
+}
+
+let _shotUrl='';      // 目前結果對話框正在顯示的 blob: URL
+let _shotBlob=null;   // 同一張圖的 Blob，分享用
+let _shotName='';
 async function exportPNG(opt){
   busy('產生圖片…');
   try{
-    const [W,H]=PNG_RATIOS[opt.ratio]||PNG_RATIOS['1:1'];
-    const sc=W/1080;                   // 寬固定 1080，sc=1；保留以便日後改寬
-    const dats=(opt.dats||['dist','pace','time','elev']).filter(Boolean);
-    const showInfo=dats.length>0;
-    const infoH=showInfo?INFO_H:0;     // 數據全關＝不畫資訊欄、地圖佔滿整張（配合透明背景做純路線圖）
-    const mapW=W, mapH=H-infoH;
+    let out=await renderExportCanvas(opt);
+    let degraded='';
 
-    // 圖片跟著 App 的深／淺色主題走
-    const light=isLight();
-    const TH=light?{
-      tile:'light_all', tileFilter:'none', mapBg:'#e8ecf1',
-      infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
-      overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
-    }:{
-      tile:'dark_all', tileFilter:'brightness(2.3) contrast(0.92)', mapBg:'#262a30',
-      infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
-      overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
-    };
-
-    // 1) 要涵蓋的地理範圍
-    const pts=[];
-    if(opt.route) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
-    if(opt.draw)  S.strokes.forEach(s=>s.pts.forEach(p=>pts.push([p.lat,p.lng])));
-    if(!pts.length) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
-    if(opt.marks){
-      if(S.start) pts.push([S.start.lat,S.start.lng]);
-      if(S.end)   pts.push([S.end.lat,S.end.lng]);
-    }
-    const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
-
-    // 2) 在「世界像素(z0)」裡算，避免經緯度在 Mercator 上被拉伸
-    const wx0=lonToWorld(Math.min(...lons),0), wx1=lonToWorld(Math.max(...lons),0);
-    const wy0=latToWorld(Math.max(...lats),0), wy1=latToWorld(Math.min(...lats),0);
-    const cx=(wx0+wx1)/2, cy=(wy0+wy1)/2;
-    const dx=Math.max(wx1-wx0,1e-9)*1.16, dy=Math.max(wy1-wy0,1e-9)*1.16;  // 8% 邊界
-
-    // 3) 把路線「置中」塞進地圖區：保留路線真實比例，四周由底圖填滿。
-    //    比例是固定的（1:1／4:5／9:16），所以路線不會被壓扁，只是留白多寡不同。
-    const s=Math.min(mapW/dx, mapH/dy)*0.9;    // canvas px / z0世界px；0.9 留邊
-    const z=Math.max(1,Math.min(19,Math.floor(Math.log2(s))));
-    const K=s/Math.pow(2,z);                    // 落在 [1,2)，@2x tile 縮小繪製最清晰
-    const cxZ=cx*Math.pow(2,z), cyZ=cy*Math.pow(2,z);
-    const X=lon=>mapW/2+(lonToWorld(lon,z)-cxZ)*K;
-    const Y=lat=>mapH/2+(latToWorld(lat,z)-cyZ)*K;
-
-    const cv=document.createElement('canvas');
-    cv.width=W;cv.height=H;
-    const ctx=cv.getContext('2d');
-    // 地圖區底色：basemap 開＝純色(稍後 tile 蓋滿)、關＝保持透明(做去背 PNG)
-    if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,mapW,mapH); }
-
-    // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）；opt.basemap 關閉時透明
-    ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
-    if(opt.basemap){
-      const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
-      const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
-      const jobs=[];let ji=0;
-      for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:ji++});
-      const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i,TH.tile)));
-      const ts=TILE_SIZE*K;
-      ctx.filter=TH.tileFilter;
-      jobs.forEach((j,n)=>{
-        if(!imgs[n]) return;
-        ctx.drawImage(imgs[n], mapW/2+(j.tx*TILE_SIZE-cxZ)*K, mapH/2+(j.ty*TILE_SIZE-cyZ)*K, ts+1, ts+1);
-      });
-      ctx.filter='none';
+    // 降級 1：底圖污染了 canvas → 拿掉底圖重畫一次，仍然給得出一張純向量 PNG
+    if(opt.basemap && canvasIsTainted(out.canvas)){
+      busy('底圖受限，改產生無底圖版本…');
+      out=await renderExportCanvas(Object.assign({},opt,{basemap:false}));
+      degraded=tx('底圖被瀏覽器的跨域限制擋住，已改成無底圖的透明背景版本。',
+                  'The base map was blocked by browser cross-origin rules, so this is the transparent no-basemap version.');
+    }else if(opt.basemap && out.tilesFailed){
+      degraded=tx('底圖圖磚下載失敗（可能是網路問題），路線本身不受影響。',
+                  'Base map tiles failed to download (network issue). The route itself is unaffected.');
     }
 
-    // 5) 手繪紅線。路線通常正好貼著它跑，所以紅線要畫得比路線寬、
-    //    當成路線底下透出來的光暈，否則會被藍線整條蓋掉、勾了也看不見。
-    ctx.lineJoin=ctx.lineCap='round';
-    if(opt.draw){
-      ctx.strokeStyle=light?'#000':'#fff';
-      ctx.lineWidth=(opt.route?15:5)*sc;
-      ctx.globalAlpha=.9;   // 別用半透明會暗成醬紅色，這裡只是壓一點點
-      S.strokes.forEach(st=>{
-        ctx.beginPath();
-        st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
-        ctx.stroke();
-      });
-      ctx.globalAlpha=1;
-    }
-    // 6) 路線：先畫完整路線當「未走過」底層（draw 灰藍實線 #708090、連接段橘虛線），
-    //    再把「走過」的部分（到拉桿位置 frac）蓋成藍實線 #4169E1，並記住小人位置，
-    //    和地圖上的預覽一模一樣（小人走到哪、藍線就到哪）。
-    let runnerHead=null;
-    if(opt.route){
-      S.result.segments.forEach(sg=>{
-        const draw=sg.kind==='draw';
-        ctx.strokeStyle=draw?'#708090':'#cbd5e1';
-        ctx.lineWidth=(draw?10.5:2.5)*sc;
-        ctx.setLineDash(draw?[]:[10*sc,9*sc]);
-        ctx.beginPath();
-        sg.pts.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
-        ctx.stroke();
-      });
-      ctx.setLineDash([]);
-      const frac=(opt.frac!=null)?opt.frac:1;
-      if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
-        const target=S.totalM*frac;
-        let lo=0,hi=S.cum.length-1;while(lo<hi){const m=(lo+hi)>>1;S.cum[m]<target?lo=m+1:hi=m;}
-        const idx=lo;
-        const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
-        let head=S.path[Math.max(idx,0)];
-        if(idx>0){
-          const seg=S.cum[idx]-S.cum[idx-1],t=seg>0?(target-S.cum[idx-1])/seg:0;
-          const a=S.path[idx-1],b=S.path[idx];
-          head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
-          shown[shown.length-1]=head;
-        }
-        ctx.strokeStyle='#4169E1';ctx.lineWidth=8*sc;ctx.setLineDash([]);
-        ctx.beginPath();
-        shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
-        ctx.stroke();
-        if(frac<1) runnerHead=head;   // 跑完(100%)就不畫小人，避免杵在終點
-      }
-    }
-    // 7) 方向箭頭：每 200m 一個、<30m 跳過、走過路段不顯示，鮮青色 #00E5FF 粗線 >
-    if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
-      const frac = (opt.frac != null) ? opt.frac : 1;
-      const curD = S.totalM * frac;
-      const step = 200;
-      for(let targetD = step; targetD < S.totalM - 20; targetD += step){
-        if(targetD <= curD) continue;   // 已走過路段不顯示箭頭
-        const i = pvIndexAt(targetD);
-        if(i < 1) continue;
-        const a = S.path[i-1], b = S.path[i];
-        const segLen = S.cum[i] - S.cum[i-1];
-        if(segLen < 30) continue;   // 兩節點小於 30m 跳過
-        const mid = [(a[0] + b[0])/2, (a[1] + b[1])/2];
-        const ax = X(a[1]), ay = Y(a[0]), bx = X(b[1]), by = Y(b[0]);
-        if(ax === bx && ay === by) continue;
-        ctx.save();
-        ctx.translate(X(mid[1]), Y(mid[0]));
-        ctx.rotate(Math.atan2(by - ay, bx - ax));
-        drawChevron(ctx, 6 * sc);
-        ctx.restore();
-      }
-    }
-    // 8) 起終點：綠圈▶＝起點、紅圈■＝終點（與地圖上同一套）
-    if(opt.marks){
-      const mark=(ll,isStart)=>{
-        if(!ll) return;
-        const x=X(ll.lng),y=Y(ll.lat),r=15*sc;
-        ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
-        ctx.fillStyle=isStart?'#16a34a':'#dc2626';ctx.fill();
-        ctx.lineWidth=3*sc;ctx.strokeStyle='#fff';ctx.stroke();
-        ctx.fillStyle='#fff';
-        if(isStart){
-          ctx.beginPath();
-          ctx.moveTo(x-r*0.30,y-r*0.42);ctx.lineTo(x+r*0.48,y);ctx.lineTo(x-r*0.30,y+r*0.42);
-          ctx.closePath();ctx.fill();
-        }else{
-          const s2=r*0.66;ctx.fillRect(x-s2/2,y-s2/2,s2,s2);
-        }
-      };
-      mark(S.start,true);mark(S.end,false);
-    }
-    // 小人畫在走過/未走過的分界（最上層，仍在地圖 clip 內）
-    if(runnerHead){
-      drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light);
-    }
-    // 8.5) 高程圖圖層（若勾選）
-    if(opt.elevchart && elevChartData){
-      drawElevProfileCanvas(ctx, 16 * sc, mapH - 90 * sc, Math.min(420 * sc, mapW - 32 * sc), 70 * sc, light);
-    }
-    ctx.restore();
-
-    // 9) 比例尺
-    const cLat=(Math.min(...lats)+Math.max(...lats))/2;
-    const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
-    const NICE=[10,20,50,100,200,500,1000,2000,5000];
-    let barM=NICE[0];
-    for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
-    const barPx=barM/mPerPx, bx=26*sc, by=mapH-26*sc, tick=6*sc;
-    const drawBar=()=>{ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
-      ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
-      ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();};
-    ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
-    ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
-    const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
-    ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='center';
-    const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
-    const barMid=bx+barPx/2;   // 距離文字置中於線段中間
-    ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
-    ctx.strokeText(barTxt,barMid,by-14*sc);
-    ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,barMid,by-14*sc);
-
-    // 品牌浮水印（地圖區右下角，不搶焦點）
-    ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
-    ctx.lineWidth=4*sc;ctx.strokeStyle=TH.overlayStroke;
-    ctx.strokeText('RUNNING ART',mapW-26*sc,mapH-24*sc);
-    ctx.globalAlpha=.92;ctx.fillStyle=TH.overlay;ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
-    ctx.globalAlpha=1;
-
-    // 10) 地點名稱（中山區, 台北市）—— 反向地理編碼，失敗就留空
-    const cLon=(Math.min(...lons)+Math.max(...lons))/2;
-    busy('查詢地點…');
-    const place=showInfo?await getPlaceName(cLat,cLon):'';
-
-    // 11) 資訊欄：地點+日期一列、開啟的數據一列。數據全關＝整個資訊欄不畫。
-    if(showInfo){
-      ctx.fillStyle=TH.infoBg;ctx.fillRect(0,mapH,mapW,infoH);
-      ctx.fillStyle=TH.infoLine;ctx.fillRect(0,mapH,mapW,Math.max(2,2*sc));
-      const pad=36*sc, top=mapH, rowY=top+infoH*0.23;
-      ctx.textBaseline='middle';
-      let placeX=pad;
-      if(place){
-        const ph=34*sc;
-        drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,'#ef4444');
-        placeX=pad+ph*0.9;
-        ctx.textAlign='left';ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(37*sc)}px ${F}`;
-        ctx.fillText(place,placeX,rowY);
-      }
-      ctx.textAlign='right';ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
-      ctx.fillText(localDate(),mapW-pad,rowY);
-      // 下排：只畫開啟的數據項（可含吻合度）
-      const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
-      const elevTxt=(S.elevGain!=null)?('↑'+S.elevGain+' ↓'+S.elevLoss+' m'):'–';
-      const labelMap={dist:tx('距離','Distance'),pace:tx('配速','Pace'),time:tx('時間','Time'),
-                      elev:tx('爬升','Elev.'),fit:tx('吻合度','Match')};
-      const valMap={dist:$('sDist').textContent, pace:pm+':'+String(ps).padStart(2,'0')+' /km',
-                    time:$('sTime').textContent, elev:elevTxt, fit:$('sFit').textContent};
-      const cells=dats.map(d=>[labelMap[d],valMap[d]]);
-      const cw=(mapW-pad*2)/cells.length;
-      ctx.textAlign='left';
-      cells.forEach((c,n)=>{
-        const cx=pad+cw*n;
-        ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(25*sc)}px ${F}`;
-        ctx.fillText(c[0],cx,top+infoH*0.57);
-        ctx.fillStyle=TH.textMain;
-        let fs=46*sc;ctx.font=`600 ${Math.round(fs)}px ${F}`;
-        const maxW=cw-10*sc;
-        if(ctx.measureText(c[1]).width>maxW){fs*=maxW/ctx.measureText(c[1]).width;ctx.font=`600 ${Math.round(fs)}px ${F}`;}
-        ctx.fillText(c[1],cx,top+infoH*0.81);
-      });
+    let blob;
+    try{
+      blob=await canvasToBlob(out.canvas);
+    }catch(e){
+      // 降級 2：toBlob 掛了但畫面沒被污染（記憶體不足等），退回 toDataURL
+      let durl='';
+      try{ durl=out.canvas.toDataURL('image/png'); }catch(_){}
+      if(!durl) throw new Error(tx('這張圖無法轉存，請取消勾選「地圖底圖」後再試一次。',
+                                   'This image could not be encoded. Try turning off the base map layer.'));
+      blob=await (await fetch(durl)).blob();
     }
 
-    // 12) 下載圖片
-    let downloadUrl = '';
-    try {
-      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
-      if(blob) downloadUrl = URL.createObjectURL(blob);
-    } catch(_) {}
-    if(!downloadUrl){
-      try { downloadUrl = cv.toDataURL('image/png'); }
-      catch(e) { throw new Error('地圖底圖跨域受限，請嘗試取消勾選「地圖底圖」後重新匯出。'); }
-    }
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = 'RunningArt_' + localDate() + '.png';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    if(downloadUrl.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
-    toast(tx('圖片已下載（'+mapW+'×'+(mapH+infoH)+'）','Image saved ('+mapW+'×'+(mapH+infoH)+')'),2500);
+    showExportResult(blob,out.w,out.h,degraded);
   }catch(err){
-    toast(tx('產生圖片失敗：','Image export failed: ')+err.message,3200);
+    toast(tx('產生圖片失敗：','Image export failed: ')+err.message,3600);
   }finally{ busy(''); }
+}
+
+/* 把成品交給使用者。關鍵是「不在這裡自動觸發下載」：
+   非同步結束後的 a.click() 在 Safari／iOS 會被當成非使用者手勢的彈窗而靜默擋掉。
+   由使用者按「儲存圖片」，那個 click 才是有效手勢。 */
+function showExportResult(blob,w,h,note){
+  if(_shotUrl) URL.revokeObjectURL(_shotUrl);
+  _shotBlob=blob;
+  _shotUrl=URL.createObjectURL(blob);
+  _shotName='RunningArt_'+localDate()+'.png';
+  $('pngShot').src=_shotUrl;
+  const size=w+'×'+h;
+  const canShare=!!(navigator.canShare&&navigator.share&&
+    (()=>{ try{ return navigator.canShare({files:[new File([blob],_shotName,{type:'image/png'})]}); }
+           catch(_){ return false; } })());
+  $('pngShare').hidden=!canShare;
+  const hints=[size];
+  hints.push(canShare?tx('可按「分享」存到相簿，或長按圖片儲存。',
+                         'Use Share to save to your photos, or long-press the image.')
+                    :tx('手機也可以長按上面的圖片儲存。',
+                         'On a phone you can also long-press the image to save it.'));
+  if(note) hints.push('⚠ '+note);
+  $('pngHint').textContent=hints.join('　·　');
+  $('pngResult').hidden=false;
+}
+function closeExportResult(){
+  $('pngResult').hidden=true;
+  $('pngShot').removeAttribute('src');
+  if(_shotUrl) URL.revokeObjectURL(_shotUrl);
+  _shotUrl='';_shotBlob=null;
 }
 let pngRatio='1:1';
 // 匯出對話框的即時預覽：不抓底圖 tile（純色底示意），只即時反映勾選的圖層、
@@ -1796,30 +2021,27 @@ const layerOn=name=>{const b=document.querySelector('.lyr[data-layer="'+name+'"]
 const datOn=name=>{const b=document.querySelector('.dat[data-dat="'+name+'"]');return b&&b.classList.contains('on')?name:null;};
 // 匯出預覽的底圖 tile 快取：同一顆 tile 只抓一次，之後 toggle/拖桿都用快取重畫。
 const _tileCache={};
-function loadTileCached(z,x,y,style){
+async function loadTileCached(z,x,y,style){
   const k=z+'/'+x+'/'+y+'/'+style;
-  if(k in _tileCache) return Promise.resolve(_tileCache[k]);
-  return new Promise(res=>{
-    const img=new Image();img.crossOrigin='anonymous';
-    img.onload=()=>{_tileCache[k]=img;res(img);};
-    img.onerror=()=>{_tileCache[k]=null;res(null);};
-    img.src=`https://${TILE_HOSTS[((x%4)+(y%4))%TILE_HOSTS.length]}.basemaps.cartocdn.com/${style}/${z}/${x}/${y}@2x.png`;
-  });
+  if(k in _tileCache) return _tileCache[k];
+  const img=await loadTile(z,x,y,(x%4)+(y%4),style);   // 與匯出共用同一套安全載入
+  _tileCache[k]=img;
+  return img;
 }
 let _prevToken=0;
 async function renderPreview(){
   const cv=$('pngPrev'); if(!cv||!S.result) return;
   const myTok=++_prevToken;
   const opt={route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
-             marks:layerOn('marks'),basemap:layerOn('basemap'),
+             marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n))};
   const frac=+$('pngProg').value/1000;
   const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
   const W=cv.width, scale=W/RW, H=Math.round(RH*scale); cv.height=H;
   const showInfo=opt.dats.length>0, lw=W/1080, light=isLight();
   const infoH=showInfo?INFO_H*scale:0, mapW=W, mapH=H-infoH;
-  const TH=light?{mapBg:'#e8ecf1',info:'#ffffff',line:'#dfe4ea',dim:'#cfd4db',tile:'light_all',tileFilter:'none'}
-               :{mapBg:'#262a30',info:'#14171c',line:'#2b313b',dim:'#3a4048',tile:'dark_all',tileFilter:'brightness(2.3) contrast(0.92)'};
+  const TH=light?{mapBg:'#e8ecf1',info:'#ffffff',line:'#dfe4ea',dim:'#cfd4db',tile:'light_all',tileBright:1}
+               :{mapBg:'#262a30',info:'#14171c',line:'#2b313b',dim:'#3a4048',tile:'dark_all',tileBright:2.3};
   const ctx=cv.getContext('2d');
   function drawInfoBar(){
     if(!showInfo) return;
@@ -1850,9 +2072,11 @@ async function renderPreview(){
     const imgs=await Promise.all(jobs.map(j=>loadTileCached(z,j.tx,j.ty,TH.tile)));
     if(myTok!==_prevToken) return;   // 期間有更新的呼叫，放棄這次繪製
     ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
-    const ts=TILE_SIZE*K;ctx.filter=TH.tileFilter;
-    jobs.forEach((j,n)=>{if(imgs[n])ctx.drawImage(imgs[n],mapW/2+(j.tx*TILE_SIZE-cxZ)*K,mapH/2+(j.ty*TILE_SIZE-cyZ)*K,ts+1,ts+1);});
-    ctx.filter='none';ctx.restore();
+    const ts=TILE_SIZE*K;
+    paintTiles(ctx,jobs,imgs,
+      j=>({x:mapW/2+(j.tx*TILE_SIZE-cxZ)*K, y:mapH/2+(j.ty*TILE_SIZE-cyZ)*K, w:ts+1, h:ts+1}),
+      TH.tileBright);
+    ctx.restore();
   }else{
     const gs=Math.max(12,mapW/14);
     for(let yy=0;yy<mapH;yy+=gs)for(let xx=0;xx<mapW;xx+=gs)
@@ -1913,8 +2137,9 @@ async function renderPreview(){
     mk(S.start,true);mk(S.end,false);
   }
   if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
+  // 用和匯出完全相同的常數（只差縮放係數），預覽才真的等於成品
   if(opt.elevchart && elevChartData){
-    drawElevProfileCanvas(ctx, 16 * lw, mapH - 75 * lw, Math.min(360 * lw, mapW - 32 * lw), 60 * lw, light);
+    drawElevProfileCanvas(ctx, 16 * lw, mapH - 90 * lw, Math.min(420 * lw, mapW - 32 * lw), 70 * lw, light);
   }
   ctx.restore();
   drawInfoBar();
@@ -1932,13 +2157,18 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light){
   ctx.save();
   ctx.translate(x, y);
 
+  /* 內部尺寸全部跟著方框高度縮放（u=1 對應匯出時的 70px 高）。
+     以前是寫死的 10px 字 / 2.2px 線寬，所以同一份程式在 1080px 的匯出圖上細如髮絲、
+     在 300px 的預覽縮圖上又大得爆框。 */
+  const u = h / 70;
+
   ctx.fillStyle = light ? 'rgba(255,255,255,0.85)' : 'rgba(20,23,28,0.85)';
   ctx.beginPath();
-  if(ctx.roundRect) ctx.roundRect(0, 0, w, h, 8);
+  if(ctx.roundRect) ctx.roundRect(0, 0, w, h, 8 * u);
   else ctx.rect(0, 0, w, h);
   ctx.fill();
 
-  const padL = 10, padR = 10, padT = 16, padB = 8;
+  const padL = 10 * u, padR = 10 * u, padT = 16 * u, padB = 8 * u;
   const chartW = w - padL - padR, chartH = h - padT - padB;
 
   ctx.beginPath();
@@ -1950,7 +2180,7 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light){
   });
 
   ctx.strokeStyle = '#00E5FF';
-  ctx.lineWidth = 2.2;
+  ctx.lineWidth = Math.max(0.6, 2.2 * u);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.stroke();
@@ -1964,13 +2194,17 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light){
   ctx.fillStyle = grad;
   ctx.fill();
 
+  // 兩個標籤都靠 padT 上方那條帶子，右邊那個用 textAlign 收邊，避免寬度寫死而被裁掉
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#00E5FF';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.fillText(`▲ ${Math.round(maxE)}m`, padL, padT - 3);
+  ctx.font = `bold ${Math.max(6, 10 * u)}px sans-serif`;
+  ctx.fillText(`▲ ${Math.round(maxE)}m`, padL, padT - 3 * u);
 
   ctx.fillStyle = light ? '#64748b' : '#94a3b8';
-  ctx.font = '600 9px sans-serif';
-  ctx.fillText(`▼ ${Math.round(minE)}m`, w - padR - 36, padT - 3);
+  ctx.font = `600 ${Math.max(6, 9 * u)}px sans-serif`;
+  ctx.textAlign = 'right';
+  ctx.fillText(`▼ ${Math.round(minE)}m`, w - padR, padT - 3 * u);
 
   ctx.restore();
 }
@@ -1998,10 +2232,34 @@ $('pngCancel').onclick=()=>{ $('pngModal').hidden=true; };
 $('pngGo').onclick=()=>{
   $('pngModal').hidden=true;
   exportPNG({ratio:pngRatio,route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
-             marks:layerOn('marks'),basemap:layerOn('basemap'),
+             marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n)),
              frac:+$('pngProg').value/1000});
 };
+$('pngClose').onclick=closeExportResult;
+// 這個 click 本身就是使用者手勢，所以 a.click() 不會被 Safari 的彈窗攔截器擋掉
+$('pngSave').onclick=()=>{
+  if(!_shotUrl) return;
+  const a=document.createElement('a');
+  a.href=_shotUrl;a.download=_shotName;
+  document.body.appendChild(a);a.click();a.remove();
+  toast(tx('圖片已儲存','Image saved'),2000);
+};
+// iOS 上「分享」才是存進相簿的正規路徑，比下載到「檔案」好用
+$('pngShare').onclick=async()=>{
+  if(!_shotBlob) return;
+  try{
+    await navigator.share({files:[new File([_shotBlob],_shotName,{type:'image/png'})],
+                           title:'Running Art'});
+  }catch(e){
+    if(e&&e.name==='AbortError') return;   // 使用者自己取消分享，不是錯誤
+    toast(tx('分享失敗，請改用「儲存圖片」或長按圖片。',
+             'Share failed — use Save image or long-press the image.'),3000);
+  }
+};
+// 點對話框外的暗色區域＝關閉
+$('pngResult').onclick=e=>{ if(e.target===$('pngResult')) closeExportResult(); };
+$('pngModal').onclick=e=>{ if(e.target===$('pngModal')) $('pngModal').hidden=true; };
 
 el.sheet.querySelector('.grip').onclick=()=>{S.sheetUp=false;el.sheet.classList.remove('up');refresh();};
 el.pill.onclick=()=>{
