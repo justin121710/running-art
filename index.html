@@ -24,8 +24,9 @@
        原則：進度用明度階（done 亮／pending 暗）而不是兩個不相干的色相；
        整組只留一個高彩度色，給「當下位置」相關的東西。 */
     --rt-done:#B8FF3C;        /* 已跑過的路線 */
-    --rt-pending:#374049;     /* 還沒跑到的路線 */
-    --rt-connector:#59636F;   /* 連接段虛線 */
+    --rt-pending:#6E7A88;     /* 還沒跑到的路線。實測提亮後的圖磚街道亮度 p85≈43，
+                                 原本的 #374049 只有 1.34:1 對比會融進地圖，這個是 3.24:1 */
+    --rt-connector:#FFFFFF;   /* 連接段虛線：深色底圖上用白色最清楚 */
     --rt-draw:#E8EEF4;        /* 正在畫的手繪線（地圖上，要顯眼） */
     --rt-guide:#59636F;       /* 產生路線後透出來的手繪線（要退到背景） */
     --rt-arrow:#FFFFFF;       /* 方向箭頭 */
@@ -108,7 +109,7 @@
     transition:opacity .25s,transform .25s}
   .guide.hide{opacity:0;transform:translateY(6px);pointer-events:none}
   .guide .n{width:21px;height:21px;flex:none;border-radius:50%;background:var(--rt-ui);
-    color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+    color:var(--rt-ui-text);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
   .guide p{margin:0;font-size:13px;line-height:1.45;color:var(--text2)}
   .guide b{color:var(--text);font-weight:500}
 
@@ -188,33 +189,29 @@
      兩者本來就共用同一個進度值和同一條「距離」橫軸，所以直接把高程圖當成拉桿：
      在圖上拖曳就等於拖時間軸。少一列高度，而且 58px 高的圖比 18px 的拉桿鈕好按太多。 */
   .grp-3{flex:1.5 1 340px;display:flex;flex-direction:column;gap:8px;min-width:0;justify-content:center}
-  .pv-row{display:flex;align-items:center;gap:12px;min-width:0}
-  .pv-info{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
-    flex:0 0 auto;white-space:nowrap;line-height:1.25}
+  .pv-row{display:flex;align-items:center;gap:10px;min-width:0}
+  .pv-info{display:flex;align-items:baseline;gap:6px;flex:0 0 auto;white-space:nowrap}
   .pv-info b{font-size:14px;font-weight:600;white-space:nowrap}
   .pv-info .unit{font-size:11.5px;color:var(--dim);white-space:nowrap}
+  /* 最高／最低推到最右邊，和左邊的距離讀數分開 */
+  #elevRangeText{margin-left:auto;font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
   #pvPlay{flex:0 0 36px;width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
-  /* 窄螢幕：播放鍵和讀數擠在同一列會把圖壓到不到 200px 寬，手指根本拖不準。
-     改成讀數移到播放鍵旁邊，圖自己獨佔一整列。 */
-  @media (max-width:560px){
-    .pv-row{flex-wrap:wrap;gap:8px}
-    #pvPlay{order:1}
-    .pv-info{order:2;flex-direction:row;align-items:baseline;gap:6px;margin-left:auto}
-    #elevChartArea{order:3;flex:1 0 100%;width:100%}
+  @media (max-width:420px){
+    #elevRangeText{font-size:11px}
   }
 
   /* 高程折線圖 (Elevation Profile Chart) - 對齊預覽拉桿兩側且文字不換行 */
   .elev-box{background:var(--panel2);border-radius:11px;padding:8px 14px;
     display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto;justify-content:center}
-  .elev-box .elev-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--dim);white-space:nowrap}
-  .elev-box .elev-head span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .elev-box .elev-head b{color:var(--text);font-weight:600;font-size:12.5px;white-space:nowrap}
+  /* 標題單獨一行、靠左上，和其他面板一致 */
+  .elev-box .elev-head{font-size:12px;color:var(--dim);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
   /* 這塊就是拉桿本體。touch-action:none 一定要有，否則手機上在圖上拖曳會
      被當成捲動結果面板，根本拖不動跑者。 */
-  #elevChartArea{position:relative;width:100%;height:58px;margin:2px 0;box-sizing:border-box;
-    flex:1 1 auto;min-width:0;cursor:pointer;touch-action:none;border-radius:6px;
+  #elevChartArea{position:relative;width:100%;height:76px;margin:4px 0 6px;box-sizing:border-box;
+    min-width:0;cursor:pointer;touch-action:none;border-radius:6px;
     -webkit-user-select:none;user-select:none}
   #elevChartArea:focus-visible{outline:2px solid var(--rt-ui);outline-offset:2px}
   .elev-chart-svg{width:100%;height:100%;display:block;overflow:visible}
@@ -462,19 +459,17 @@
     <!-- 群組 3：路線預覽 ＝ 高程變化圖（同一個控制項，直接在圖上拖曳） -->
     <div class="grp-3">
       <div class="elev-box" id="elevBox">
-        <div class="elev-head">
-          <span data-en="Route preview · elevation">路線預覽 · 高程變化</span>
-          <b id="elevRangeText">– m</b>
-        </div>
+        <div class="elev-head"><span data-en="Route preview · elevation">路線預覽 · 高程變化</span></div>
+        <div id="elevChartArea" tabindex="0" role="slider"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+             aria-label="路線預覽進度"></div>
         <div class="pv-row">
           <button id="pvPlay" aria-label="play">▶</button>
-          <div id="elevChartArea" tabindex="0" role="slider"
-               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
-               aria-label="路線預覽進度"></div>
           <div class="pv-info">
             <b id="pvAt">0.00 km</b>
             <span class="unit" id="pvPct">0%</span>
           </div>
+          <b id="elevRangeText">– m</b>
         </div>
       </div>
     </div>
@@ -530,6 +525,7 @@
           <button class="rt lyr on" data-layer="marks" data-en="Marks">起訖點</button>
           <button class="rt lyr on" data-layer="basemap" data-en="Base map">地圖底圖</button>
           <button class="rt lyr on" data-layer="elevchart" data-en="Elev. Chart">高程圖</button>
+          <button class="rt lyr on" data-layer="scale" data-en="Scale bar">比例尺</button>
         </div>
         <div class="rlabel" data-en="Info data (all off = no info bar)">資訊欄數據（全關＝不顯示資訊欄）</div>
         <div class="ratios lyrs">
@@ -576,7 +572,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
-<script src="engine.js?v=20260724h"></script>
+<script src="engine.js?v=20260726a"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 
@@ -603,6 +599,13 @@ function PC(){
   return _pal;
 }
 function palInvalidate(){ _pal=null; }
+/* #RRGGBB → rgba(...)。Canvas 的漸層要帶透明度，但配色是用 hex 存的。 */
+function hexA(hex,a){
+  const h=(hex||'').trim().replace('#','');
+  if(h.length<6) return 'rgba(128,128,128,'+a+')';
+  return 'rgba('+parseInt(h.slice(0,2),16)+','+parseInt(h.slice(2,4),16)+','
+         +parseInt(h.slice(4,6),16)+','+a+')';
+}
 
 /* ---------- 方向箭頭造型 ----------
    幾何只寫一次，地圖的 SVG 圖示和匯出的 Canvas 都從這裡長出來——
@@ -610,32 +613,69 @@ function palInvalidate(){ _pal=null; }
    座標是正規化的：箭頭指向 +X，大致落在 ±1 之內，實際大小由 base 決定。
    w 是描邊粗細，同樣以 base 為單位。 */
 const ARROW_STYLES={
-  chevron:{ name:'單箭頭', en:'Chevron', paths:[
-    {d:'M -0.70 -0.70 L 0.70 0 L -0.70 0.70', mode:'stroke', w:0.45}]},
-  double:{ name:'雙箭頭', en:'Double', paths:[
-    {d:'M -0.98 -0.60 L -0.20 0 L -0.98 0.60', mode:'stroke', w:0.36},
-    {d:'M -0.05 -0.60 L 0.73 0 L -0.05 0.60', mode:'stroke', w:0.36}]},
-  triangle:{ name:'實心三角', en:'Triangle', paths:[
-    {d:'M -0.55 -0.76 L 0.86 0 L -0.55 0.76 Z', mode:'fill'}]},
-  dart:{ name:'後掠飛鏢', en:'Dart', paths:[
-    {d:'M 0.95 0 L -0.72 -0.84 L -0.34 0 L -0.72 0.84 Z', mode:'fill'}]},
-  streak:{ name:'速度尾線', en:'Streak', paths:[
-    {d:'M -0.22 -0.66 L 0.64 0 L -0.22 0.66', mode:'stroke', w:0.42},
-    {d:'M -1.02 0 L -0.56 0', mode:'stroke', w:0.28}]}
+  chevron:{ name:'單箭頭', en:'Chevron', shapes:[
+    {pts:[[-0.70,-0.70],[0.70,0],[-0.70,0.70]], closed:false, mode:'stroke', w:0.42}]},
+  double:{ name:'雙箭頭', en:'Double', shapes:[
+    {pts:[[-0.98,-0.60],[-0.20,0],[-0.98,0.60]], closed:false, mode:'stroke', w:0.34},
+    {pts:[[-0.05,-0.60],[0.73,0],[-0.05,0.60]], closed:false, mode:'stroke', w:0.34}]},
+  triangle:{ name:'實心三角', en:'Triangle', shapes:[
+    {pts:[[-0.55,-0.76],[0.86,0],[-0.55,0.76]], closed:true, mode:'fill'}]},
+  dart:{ name:'後掠飛鏢', en:'Dart', shapes:[
+    {pts:[[0.95,0],[-0.72,-0.84],[-0.34,0],[-0.72,0.84]], closed:true, mode:'fill'}]},
+  streak:{ name:'速度尾線', en:'Streak', shapes:[
+    {pts:[[-0.22,-0.66],[0.64,0],[-0.22,0.66]], closed:false, mode:'stroke', w:0.40},
+    {pts:[[-1.02,0],[-0.56,0]], closed:false, mode:'stroke', w:0.26}]}
 };
+/* 轉角圓角半徑（正規化單位，箭頭本身大約 ±1）。
+   小 = 銳利。用「幾何上把轉角換成一段二次貝茲」來做，而不是靠 lineJoin:'round'
+   —— 後者的圓角半徑等於線寬的一半，改不動，箭頭尖端會鈍掉。 */
+let arrowRadius=parseFloat(localStorage.getItem('runart_arrow_r'));
+if(!(arrowRadius>=0)) arrowRadius=0.10;
+
 let arrowStyle=localStorage.getItem('runart_arrow')||'chevron';
 if(!ARROW_STYLES[arrowStyle]) arrowStyle='chevron';
 
-function arrowPaths(){ return (ARROW_STYLES[arrowStyle]||ARROW_STYLES.chevron).paths; }
+/* 把折點換成小圓角。回傳一串 {t:'M'|'L'|'Q'|'Z'} 指令，
+   Canvas 和 SVG 共用同一份結果，兩邊才不會長得不一樣。
+   開放折線的頭尾不倒角（那是端點不是轉角）。 */
+function arrowGeom(shape,r){
+  const pts=shape.pts, n=pts.length, closed=!!shape.closed, out=[];
+  const sub=(a,b)=>[a[0]-b[0],a[1]-b[1]];
+  const len=v=>Math.hypot(v[0],v[1])||1e-9;
+  const at=(b,v,k)=>[b[0]+v[0]/len(v)*k, b[1]+v[1]/len(v)*k];
+  let started=false;
+  for(let i=0;i<n;i++){
+    const B=pts[i];
+    const corner=closed || (i>0 && i<n-1);
+    if(!corner){ out.push({t:started?'L':'M',p:B}); started=true; continue; }
+    const A=pts[(i-1+n)%n], C=pts[(i+1)%n];
+    const vA=sub(A,B), vC=sub(C,B);
+    const d=Math.min(r, len(vA)/2, len(vC)/2);
+    out.push({t:started?'L':'M', p:at(B,vA,d)}); started=true;
+    out.push({t:'Q', c:B, p:at(B,vC,d)});
+  }
+  if(closed) out.push({t:'Z'});
+  return out;
+}
+function arrowShapes(){ return (ARROW_STYLES[arrowStyle]||ARROW_STYLES.chevron).shapes; }
+function arrowSVGPath(shape,r){
+  return arrowGeom(shape,r).map(g=>
+    g.t==='Z' ? 'Z'
+    : g.t==='Q' ? `Q ${g.c[0].toFixed(4)} ${g.c[1].toFixed(4)} ${g.p[0].toFixed(4)} ${g.p[1].toFixed(4)}`
+    : `${g.t} ${g.p[0].toFixed(4)} ${g.p[1].toFixed(4)}`).join(' ');
+}
+
 
 // 地圖上的箭頭圖示：viewBox 用正規化座標，所以 d 不用重算，換大小只改 size
 function arrowIcon(dir,size){
   const s=size||26, col=PC().arrow;
-  const inner=arrowPaths().map(p=>
-    p.mode==='fill'
-      ? '<path d="'+p.d+'" fill="'+col+'" stroke="'+col+'" stroke-width="0.14" stroke-linejoin="round"/>'
-      : '<path d="'+p.d+'" fill="none" stroke="'+col+'" stroke-width="'+p.w+'"'
-        +' stroke-linecap="round" stroke-linejoin="round"/>').join('');
+  const inner=arrowShapes().map(sh=>{
+    const d=arrowSVGPath(sh,arrowRadius);
+    return sh.mode==='fill'
+      ? '<path d="'+d+'" fill="'+col+'" stroke="'+col+'" stroke-width="0.08" stroke-linejoin="miter"/>'
+      : '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="'+sh.w+'"'
+        +' stroke-linecap="round" stroke-linejoin="miter"/>';
+  }).join('');
   return L.divIcon({className:'',iconSize:[s,s],iconAnchor:[s/2,s/2],
     html:'<svg width="'+s+'" height="'+s+'" viewBox="-1.5 -1.5 3 3" '
         +'style="transform:rotate('+dir+'deg);overflow:visible;'
@@ -1034,20 +1074,41 @@ function seIcon(isStart){
     html:'<svg width="28" height="28" viewBox="0 0 24 24" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">'
       +'<circle cx="12" cy="12" r="10.4" fill="'+bg+'" stroke="'+fg+'" stroke-width="2.4"/>'+glyph+'</svg>'});
 }
-map.on('click',e=>{
+/* 把使用者點的位置吸附到最近的路網節點。
+   點在建築物或公園中間的話，solve_route 反正也要把它拉到路上；
+   當下就吸附的好處是使用者馬上看得到真正的起點在哪，不會以為自己選的是那個點。
+   引擎還沒載好或還沒下載路網時就沿用原座標，不擋住操作。 */
+async function snapLatLng(ll){
+  try{
+    const n=await Engine.snapToNode(ll.lat,ll.lng);
+    if(n) return L.latLng(n[0],n[1]);
+  }catch(_){}
+  return ll;
+}
+map.on('click',async e=>{
   if(S.editing) return;   // 微調模式的點選由 pointerup 處理
-  if((S.mode==='start'||S.mode==='end')&&!inArea(e.latlng)){
-    toast('起點／終點要在藍色框線內');return;
-  }
-  if(S.mode==='start'){
+  const isStart=S.mode==='start', isEnd=S.mode==='end';
+  if(!isStart&&!isEnd) return;
+  if(!inArea(e.latlng)){ toast('起點／終點要在藍色框線內');return; }
+
+  const ll=await snapLatLng(e.latlng);
+  // 吸附後仍要在範圍內，否則寧可用原座標（邊緣點可能被吸到框外的節點）
+  const use=inArea(ll)?ll:e.latlng;
+  const moved=map.distance(e.latlng,use);
+  if(isStart){
     if(startMk) startMk.remove();
-    startMk=L.marker(e.latlng,{icon:seIcon(true),interactive:false,zIndexOffset:900}).addTo(map);
-    S.start=e.latlng;toast('起點已設定');refresh();
-  }else if(S.mode==='end'){
+    startMk=L.marker(use,{icon:seIcon(true),interactive:false,zIndexOffset:900}).addTo(map);
+    S.start=use;
+  }else{
     if(endMk) endMk.remove();
-    endMk=L.marker(e.latlng,{icon:seIcon(false),interactive:false,zIndexOffset:900}).addTo(map);
-    S.end=e.latlng;toast('終點已設定');refresh();
+    endMk=L.marker(use,{icon:seIcon(false),interactive:false,zIndexOffset:900}).addTo(map);
+    S.end=use;
   }
+  toast(moved>=8
+    ? tx((isStart?'起點':'終點')+'已吸附到最近的道路（'+Math.round(moved)+' 公尺）',
+         (isStart?'Start':'Finish')+' snapped to the nearest road ('+Math.round(moved)+' m)')
+    : tx((isStart?'起點':'終點')+'已設定',(isStart?'Start':'Finish')+' set'));
+  refresh();
 });
 
 $('btnUndo').onclick=()=>{const s=S.strokes.pop();if(s)s.line.remove();refresh();};
@@ -1303,6 +1364,13 @@ function pvClear(){
    加總正的落差＝爬升、負的＝下降。DEM 解析度較粗，城市路線通常起伏不大屬正常。 */
 let elevChartData = null;
 
+/* 高程折線圖的座標系。SVG 是 preserveAspectRatio="none" 拉伸的，
+   所以這些是「虛擬單位」，不是像素——疊層用百分比換算回來（見 renderElevChart）。
+   上下各留 EL_PADT / EL_PADB 的空白帶，專門給最高／最低標籤站，
+   這樣「最高一定在上、最低一定在下」才不會頂到邊界被裁掉。
+   改動這裡的話 updateElevRunnerDot 會跟著走（它讀同一組常數）。 */
+const EL_W = 340, EL_H = 76, EL_PADT = 20, EL_PADB = 20, EL_LBL_GAP = 11;
+
 function renderElevChart(data){
   const P = PC();
   const area = $('elevChartArea');
@@ -1330,7 +1398,7 @@ function renderElevChart(data){
 
   if($('elevRangeText')) $('elevRangeText').textContent = tx('最高 ','Max ') + Math.round(maxE) + tx(' m / 最低 ',' m / Min ') + Math.round(minE) + ' m';
 
-  const W = 340, H = 60, padT = 14, padB = 8;
+  const W = EL_W, H = EL_H, padT = EL_PADT, padB = EL_PADB;
   const chartW = W, chartH = H - padT - padB;
 
   const pts = elevations.map((e, idx) => {
@@ -1352,8 +1420,10 @@ function renderElevChart(data){
   const pctX = p => (p.x / W) * 100;
   const pctY = y => (y / H) * 100;
   const lblX = p => `max(30px, min(calc(100% - 30px), ${pctX(p).toFixed(2)}%))`;
-  const maxLblY = maxPt.y < 16 ? maxPt.y + 13 : maxPt.y - 11;   // 峰頂太高就把字放下面
-  const minLblY = minPt.y > H - 16 ? minPt.y - 13 : minPt.y + 11;
+  /* 最高固定在點的上方、最低固定在下方。上下各留了 EL_PADT/EL_PADB
+     的空白帶，所以就算峰頂剛好頂到繪圖區上緣，標籤還是塞得下不會被裁。 */
+  const maxLblY = Math.max(EL_LBL_GAP, maxPt.y - EL_LBL_GAP);
+  const minLblY = Math.min(H - EL_LBL_GAP, minPt.y + EL_LBL_GAP);
 
   /* 已跑／未跑用一個 clipPath 切開，和地圖上的路線同一套語彙（暗＝還沒跑到）。
      只更新那個 rect 的寬度就能重畫進度，不必每次重建整段 SVG。 */
@@ -1391,7 +1461,7 @@ function updateElevRunnerDot(frac){
   frac = Math.max(0, Math.min(1, frac || 0));
   const dot = $('elevRunnerDot');
   if(!dot) return;
-  const W = 340;
+  const W = EL_W;
   // 沒有高程資料時只推進純軌道的進度條，跑者點壓在軌道正中央
   if(!elevChartData || !elevChartData.elevations){
     const run = $('elevTrackRun');
@@ -1413,7 +1483,7 @@ function updateElevRunnerDot(frac){
   /* 必須用和 renderElevChart 完全相同的 viewBox 幾何（H=60，不是容器的 58px），
      否則跑者點會固定偏離折線約 1px——之前就是拿 offsetHeight 當 H 才對不準。
      改用百分比後也不必再讀 offsetWidth，視窗縮放時位置自動跟著對。 */
-  const H = 60, padT = 14, padB = 8;
+  const H = EL_H, padT = EL_PADT, padB = EL_PADB;
   const chartH = H - padT - padB;
 
   const idxFloat = Math.max(0, Math.min(1, frac)) * (elevations.length - 1);
@@ -1704,7 +1774,9 @@ $('aGpx').onclick=()=>{
    不依賴任何額外函式庫。 */
 const TILE_HOSTS=['a','b','c','d'];
 const TILE_SIZE=256;          // 一個 tile 代表的「世界像素」
-const INFO_H=250;             // 底部資訊欄高度（寬固定 1080）
+const INFO_H=250;             // 資訊欄「數據區」高度（寬固定 1080）
+const ELEV_BAND_H=230;        // 資訊欄「高程區」高度。高程圖從地圖搬到這裡，
+                              // 地圖區就只剩路線本身（外加可選的比例尺）
 // 社群媒體常見比例。寬一律 1080，資訊欄固定在最底部，地圖區 = 寬 × (高−資訊欄)。
 const PNG_RATIOS={'1:1':[1080,1080],'4:5':[1080,1350],'9:16':[1080,1920]};
 
@@ -1826,7 +1898,7 @@ function paintTiles(ctx,jobs,imgs,rectOf,bright){
   }
 }
 // 匯出圖片的地圖大頭針（畫在資訊欄地點名稱左邊）
-function drawPin(ctx,cx,tipY,h,color){
+function drawPin(ctx,cx,tipY,h,color,inner){
   const r=h*0.34, cy=tipY-h+r;
   ctx.save();
   ctx.fillStyle=color;
@@ -1834,7 +1906,7 @@ function drawPin(ctx,cx,tipY,h,color){
   ctx.beginPath();
   ctx.moveTo(cx-r*0.72,cy+r*0.52);ctx.lineTo(cx+r*0.72,cy+r*0.52);ctx.lineTo(cx,tipY);
   ctx.closePath();ctx.fill();
-  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,r*0.42,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=inner||'#fff';ctx.beginPath();ctx.arc(cx,cy,r*0.42,0,Math.PI*2);ctx.fill();
   ctx.restore();
 }
 
@@ -1864,22 +1936,22 @@ function drawRunnerCanvas(ctx,x,footY,u,light){
 function drawChevron(ctx,base){
   const col=PC().arrow;
   ctx.save();
-  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.setLineDash([]);
-  arrowPaths().forEach(p=>{
+  // 轉角是幾何倒角做的，lineJoin 保持 miter 才不會又被圓一次
+  ctx.lineCap='round'; ctx.lineJoin='miter'; ctx.setLineDash([]);
+  arrowShapes().forEach(sh=>{
     ctx.beginPath();
-    const t=p.d.split(/\s+/);
-    for(let i=0;i<t.length;){
-      const c=t[i++];
-      if(c==='M') ctx.moveTo(+t[i++]*base, +t[i++]*base);
-      else if(c==='L') ctx.lineTo(+t[i++]*base, +t[i++]*base);
-      else if(c==='Z') ctx.closePath();
-    }
-    if(p.mode==='fill'){
+    arrowGeom(sh,arrowRadius).forEach(g=>{
+      if(g.t==='M') ctx.moveTo(g.p[0]*base,g.p[1]*base);
+      else if(g.t==='L') ctx.lineTo(g.p[0]*base,g.p[1]*base);
+      else if(g.t==='Q') ctx.quadraticCurveTo(g.c[0]*base,g.c[1]*base,g.p[0]*base,g.p[1]*base);
+      else if(g.t==='Z') ctx.closePath();
+    });
+    if(sh.mode==='fill'){
       ctx.fillStyle=col; ctx.fill();
-      // 補一圈細描邊，讓填色造型的尖角在縮圖尺寸下不會被抗鋸齒吃掉
-      ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,0.14*base); ctx.stroke();
+      // 補一圈細描邊，讓填色造型在縮圖尺寸下不會被抗鋸齒吃掉
+      ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,0.08*base); ctx.stroke();
     }else{
-      ctx.strokeStyle=col; ctx.lineWidth=Math.max(2, p.w*base); ctx.stroke();
+      ctx.strokeStyle=col; ctx.lineWidth=Math.max(2, sh.w*base); ctx.stroke();
     }
   });
   ctx.restore();
@@ -1892,8 +1964,12 @@ async function renderExportCanvas(opt){
   const [W,H]=PNG_RATIOS[opt.ratio]||PNG_RATIOS['1:1'];
   const sc=W/1080;                   // 寬固定 1080，sc=1；保留以便日後改寬
   const dats=(opt.dats||['dist','pace','time','elev']).filter(Boolean);
-  const showInfo=dats.length>0;
-  const infoH=showInfo?INFO_H:0;     // 數據全關＝不畫資訊欄、地圖佔滿整張（配合透明背景做純路線圖）
+  const showStats=dats.length>0;
+  const elevOn=!!(opt.elevchart && elevChartData);
+  const statsH=showStats?INFO_H*sc:0;
+  const elevBandH=elevOn?ELEV_BAND_H*sc:0;
+  const infoH=statsH+elevBandH;      // 兩塊都關＝不畫資訊欄、地圖佔滿整張（配合透明背景做純路線圖）
+  const showInfo=infoH>0;
   const mapW=W, mapH=H-infoH;
 
   // 圖片跟著 App 的深／淺色主題走
@@ -2053,59 +2129,59 @@ async function renderExportCanvas(opt){
   if(runnerHead){
     drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light);
   }
-  // 8.5) 高程圖圖層（若勾選）。畫在地圖區左下角。
-  const elevH = 70 * sc, elevTop = mapH - 90 * sc;
-  const elevOn = !!(opt.elevchart && elevChartData);
-  if(elevOn){
-    drawElevProfileCanvas(ctx, 16 * sc, elevTop, Math.min(420 * sc, mapW - 32 * sc), elevH, light,
-                          (opt.frac != null) ? opt.frac : 1);
-  }
+  // 高程圖已經搬到下方資訊欄，地圖區只留路線本身
   ctx.restore();
 
-  // 9) 比例尺
+  // 9) 比例尺（可關）。地圖區現在只剩它一個疊加物。
   const cLat=(Math.min(...lats)+Math.max(...lats))/2;
-  const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
-  const NICE=[10,20,50,100,200,500,1000,2000,5000];
-  let barM=NICE[0];
-  for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
-  // 高程圖也佔左下角，兩個疊在一起會糊成一團 → 有高程圖時比例尺往上讓開
-  const barPx=barM/mPerPx, bx=26*sc, tick=6*sc;
-  const by=elevOn ? elevTop-20*sc : mapH-26*sc;
-  const drawBar=()=>{ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
-    ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
-    ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();};
-  ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
-  ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
   const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
-  ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='center';
-  const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
-  const barMid=bx+barPx/2;   // 距離文字置中於線段中間
-  ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
-  ctx.strokeText(barTxt,barMid,by-14*sc);
-  ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,barMid,by-14*sc);
-
-  // 品牌浮水印（地圖區右下角，不搶焦點）
-  ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
-  ctx.lineWidth=4*sc;ctx.strokeStyle=TH.overlayStroke;
-  ctx.strokeText('RUNNING ART',mapW-26*sc,mapH-24*sc);
-  ctx.globalAlpha=.92;ctx.fillStyle=TH.overlay;ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
-  ctx.globalAlpha=1;
+  if(opt.scale!==false){
+    const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
+    const NICE=[10,20,50,100,200,500,1000,2000,5000];
+    let barM=NICE[0];
+    for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
+    const barPx=barM/mPerPx, bx=26*sc, tick=6*sc, by=mapH-26*sc;
+    const drawBar=()=>{ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
+      ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
+      ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();};
+    ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
+    ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
+    ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='center';
+    const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
+    const barMid=bx+barPx/2;   // 距離文字置中於線段中間
+    ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
+    ctx.strokeText(barTxt,barMid,by-14*sc);
+    ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,barMid,by-14*sc);
+  }
+  // 沒有資訊欄時（純去背路線圖）浮水印沒地方放，只好留在地圖右下角
+  if(!showInfo){
+    ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
+    ctx.textBaseline='alphabetic';
+    ctx.lineWidth=4*sc;ctx.strokeStyle=TH.overlayStroke;
+    ctx.strokeText('RUNNING ART',mapW-26*sc,mapH-24*sc);
+    ctx.globalAlpha=.92;ctx.fillStyle=TH.overlay;ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
+    ctx.globalAlpha=1;
+  }
 
   // 10) 地點名稱（中山區, 台北市）—— 反向地理編碼，失敗就留空
   const cLon=(Math.min(...lons)+Math.max(...lons))/2;
   busy('查詢地點…');
   const place=showInfo?await getPlaceName(cLat,cLon):'';
 
-  // 11) 資訊欄：地點+日期一列、開啟的數據一列。數據全關＝整個資訊欄不畫。
+  /* 11) 資訊欄，分兩塊：上面是「地點/日期 + 數據」，下面是整條寬的高程圖。
+        高程圖從地圖區搬下來，地圖區才乾淨。兩塊各自可關。 */
+  const pad=36*sc;
   if(showInfo){
     ctx.fillStyle=TH.infoBg;ctx.fillRect(0,mapH,mapW,infoH);
     ctx.fillStyle=TH.infoLine;ctx.fillRect(0,mapH,mapW,Math.max(2,2*sc));
-    const pad=36*sc, top=mapH, rowY=top+infoH*0.23;
+  }
+  if(showStats){
+    const top=mapH, rowY=top+statsH*0.23;
     ctx.textBaseline='middle';
     let placeX=pad;
     if(place){
       const ph=34*sc;
-      drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,P.ui);
+      drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,P.ui,P['ui-text']);
       placeX=pad+ph*0.9;
       ctx.textAlign='left';ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(37*sc)}px ${F}`;
       ctx.fillText(place,placeX,rowY);
@@ -2146,11 +2222,41 @@ async function renderExportCanvas(opt){
     let cx=pad;
     cells.forEach((c,n)=>{
       ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
-      ctx.fillText(c[0],cx,top+infoH*0.57);
+      ctx.fillText(c[0],cx,top+statsH*0.57);
       ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(valFs)}px ${F}`;
-      ctx.fillText(c[1],cx,top+infoH*0.81);
+      ctx.fillText(c[1],cx,top+statsH*0.81);
       cx+=widths[n]+gap+extra;
     });
+  }
+
+  /* 11b) 高程區：整條寬的折線圖。上面留一行放標題和浮水印。 */
+  if(elevOn){
+    const bTop=mapH+statsH;
+    const headY=bTop+30*sc;
+    ctx.textBaseline='middle';
+    ctx.textAlign='left';
+    ctx.fillStyle=TH.textDim;
+    ctx.font=`400 ${Math.round(25*sc)}px ${F}`;
+    ctx.fillText(tx('高程變化','Elevation'),pad,headY);
+    // 浮水印跟標題同一行的右端，不必再佔地圖
+    ctx.textAlign='right';
+    ctx.globalAlpha=.75;
+    ctx.font=`600 ${Math.round(23*sc)}px ${F}`;
+    ctx.fillText('RUNNING ART',mapW-pad,headY);
+    ctx.globalAlpha=1;
+
+    const chTop=bTop+50*sc, chH=elevBandH-50*sc-22*sc;
+    drawElevProfileCanvas(ctx, pad, chTop, mapW-pad*2, chH, light,
+                          (opt.frac!=null)?opt.frac:1);
+  }else if(showStats){
+    // 沒有高程區時，浮水印放數據區右下角（地圖區維持乾淨）
+    ctx.textBaseline='alphabetic';
+    ctx.textAlign='right';
+    ctx.fillStyle=TH.textDim;
+    ctx.globalAlpha=.75;
+    ctx.font=`600 ${Math.round(23*sc)}px ${F}`;
+    ctx.fillText('RUNNING ART',mapW-pad,mapH+statsH-20*sc);
+    ctx.globalAlpha=1;
   }
 
   return {canvas:cv, w:W, h:H, tilesFailed};
@@ -2275,22 +2381,41 @@ async function renderPreview(){
   const myTok=++_prevToken;
   const opt={route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
              marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
+             scale:layerOn('scale'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n))};
   const frac=+$('pngProg').value/1000;
   const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
   const W=cv.width, scale=W/RW, H=Math.round(RH*scale); cv.height=H;
-  const showInfo=opt.dats.length>0, lw=W/1080, light=isLight();
-  const infoH=showInfo?INFO_H*scale:0, mapW=W, mapH=H-infoH;
+  const lw=W/1080, light=isLight();
+  const showStats=opt.dats.length>0;
+  const elevOn=!!(opt.elevchart && elevChartData);
+  const statsH=showStats?INFO_H*scale:0;
+  const elevBandH=elevOn?ELEV_BAND_H*scale:0;
+  const infoH=statsH+elevBandH;
+  const showInfo=infoH>0;
+  const mapW=W, mapH=H-infoH;
   const TH=light?{mapBg:'#e8ecf1',info:'#ffffff',line:'#dfe4ea',dim:'#cfd4db',tile:'light_all',tileBright:1}
                :{mapBg:'#262a30',info:'#14171c',line:'#2b313b',dim:'#3a4048',tile:'dark_all',tileBright:2.3};
   const ctx=cv.getContext('2d');
+  /* 預覽的資訊欄只畫灰色示意塊（真正的文字要等產生圖片才查得到地點），
+     但版面比例要和成品一致，否則預覽會騙人。 */
   function drawInfoBar(){
     if(!showInfo) return;
     ctx.fillStyle=TH.info;ctx.fillRect(0,mapH,W,infoH);
     ctx.fillStyle=TH.line;ctx.fillRect(0,mapH,W,Math.max(1,infoH*0.012));
-    ctx.fillStyle=TH.dim;const pd=infoH*0.16, n=opt.dats.length;
-    ctx.fillRect(pd,mapH+infoH*0.26,W*0.42,infoH*0.11);
-    for(let i=0;i<n;i++) ctx.fillRect(pd+i*(W-pd*2)/n,mapH+infoH*0.62,(W-pd*2)/n-pd*0.4,infoH*0.16);
+    const pd=statsH?statsH*0.16:elevBandH*0.16;
+    if(showStats){
+      ctx.fillStyle=TH.dim;const n=opt.dats.length;
+      ctx.fillRect(pd,mapH+statsH*0.26,W*0.42,statsH*0.11);
+      for(let i=0;i<n;i++)
+        ctx.fillRect(pd+i*(W-pd*2)/n,mapH+statsH*0.62,(W-pd*2)/n-pd*0.4,statsH*0.16);
+    }
+    if(elevOn){
+      const bTop=mapH+statsH;
+      ctx.fillStyle=TH.dim;
+      ctx.fillRect(pd,bTop+elevBandH*0.10,W*0.22,elevBandH*0.07);
+      drawElevProfileCanvas(ctx, pd, bTop+elevBandH*0.24, W-pd*2, elevBandH*0.62, light, frac);
+    }
   }
   ctx.clearRect(0,0,W,H);
   if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,mapH); }
@@ -2378,10 +2503,7 @@ async function renderPreview(){
     mk(S.start,true);mk(S.end,false);
   }
   if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
-  // 用和匯出完全相同的常數（只差縮放係數），預覽才真的等於成品
-  if(opt.elevchart && elevChartData){
-    drawElevProfileCanvas(ctx, 16 * lw, mapH - 90 * lw, Math.min(420 * lw, mapW - 32 * lw), 70 * lw, light, frac);
-  }
+  // 高程圖已經移到下方資訊欄（見 drawInfoBar），地圖區不再畫
   ctx.restore();
   drawInfoBar();
 }
@@ -2411,8 +2533,12 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
   else ctx.rect(0, 0, w, h);
   ctx.fill();
 
-  const padL = 10 * u, padR = 10 * u, padT = 16 * u, padB = 8 * u;
+  /* 上下留給最高／最低標籤的空白帶用比例算，方框變高時標籤才不會黏在邊上。
+     和 App 內的 EL_PADT/EL_PADB 是同一個用意。 */
+  const padL = 12 * u, padR = 12 * u;
+  const padT = Math.max(14 * u, h * 0.26), padB = Math.max(12 * u, h * 0.24);
   const chartW = w - padL - padR, chartH = h - padT - padB;
+  const lblGap = Math.max(9 * u, h * 0.15);
 
   ctx.beginPath();
   elevations.forEach((e, idx) => {
@@ -2432,8 +2558,8 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
   ctx.lineTo(padL, padT + chartH);
   ctx.closePath();
   const grad = ctx.createLinearGradient(0, padT, 0, padT + chartH);
-  grad.addColorStop(0, 'rgba(0, 229, 255, 0.4)');
-  grad.addColorStop(1, 'rgba(0, 229, 255, 0.02)');
+  grad.addColorStop(0, hexA(P.elev, 0.40));
+  grad.addColorStop(1, hexA(P.elev, 0.02));
   ctx.fillStyle = grad;
   ctx.fill();
 
@@ -2461,7 +2587,7 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
     ctx.textAlign = 'center';
     const tw = ctx.measureText(text).width;
     let cx = Math.max(tw / 2 + 3 * u, Math.min(w - tw / 2 - 3 * u, p.px));
-    let cy = above ? p.py - 10 * u : p.py + 10 * u;
+    let cy = above ? p.py - lblGap : p.py + lblGap;
     cy = Math.max(fs * 0.6 + 1 * u, Math.min(h - fs * 0.6 - 1 * u, cy));
     ctx.lineWidth = Math.max(1.4, 2.6 * u);
     ctx.lineJoin = 'round';
@@ -2496,10 +2622,9 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
     ctx.stroke();
   }
 
-  // 峰頂靠近上緣就把字翻到下面，谷底靠近下緣就翻到上面
-  label(maxP, `▲ ${Math.round(maxE)} m`, P.elev, maxP.py > padT + 12 * u);
-  label(minP, `▼ ${Math.round(minE)} m`, P['elev-dim'],
-        minP.py > h - padB - 12 * u);
+  // 最高固定在點的上方、最低固定在下方（上下的空白帶就是為此保留的）
+  label(maxP, `▲ ${Math.round(maxE)} m`, P.elev, true);
+  label(minP, `▼ ${Math.round(minE)} m`, P['elev-dim'], false);
 
   ctx.restore();
 }
@@ -2528,6 +2653,7 @@ $('pngGo').onclick=()=>{
   $('pngModal').hidden=true;
   exportPNG({ratio:pngRatio,route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
              marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
+             scale:layerOn('scale'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n)),
              frac:+$('pngProg').value/1000});
 };

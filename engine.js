@@ -426,6 +426,25 @@ _pack()
     return JSON.parse(await py.runPythonAsync(`_reverse()`));
   }
 
+  /* 把一個座標吸附到最近的路網節點。
+     使用者點起訖點時很難剛好點在節點上，點在建築物中間的話 solve_route
+     還是得先把它拉到路上，不如當下就吸附、順便讓使用者看到真正的起點在哪。
+     還沒下載路網（G 是 None）時回 null，呼叫端就沿用原座標。 */
+  async function snapToNode(lat, lon) {
+    await boot();
+    py.globals.set('_snap_lat', lat);
+    py.globals.set('_snap_lon', lon);
+    const out = await py.runPythonAsync(`
+if G is None or not G.number_of_nodes():
+    _snap_out = None
+else:
+    _snap_n = nearest_node(G, X=_snap_lon, Y=_snap_lat)
+    _snap_out = [float(G.nodes[_snap_n]['y']), float(G.nodes[_snap_n]['x'])]
+json.dumps(_snap_out)
+`);
+    return JSON.parse(out);
+  }
+
   /* 產生 GPX（沿用桌面版的輸出格式） */
   function toGPX(segments) {
     const now = new Date().toISOString();
@@ -441,5 +460,5 @@ ${body}
 </gpx>`;
   }
 
-  return { boot, loadArea, generate, editDelete, editUndo, reverseRoute, toGPX, setProgress };
+  return { boot, loadArea, generate, editDelete, editUndo, reverseRoute, snapToNode, toGPX, setProgress };
 })();
