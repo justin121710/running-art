@@ -201,6 +201,47 @@ def _nearby_junctions(lat, lon, radius_m, limit):
     return json.dumps(out[:limit])
 
 
+def _preview_move(si, n, new_id):
+    """算出「如果把這個節點搬到 new_id」路徑會長怎樣，但**不改動 SEGS**。
+
+    拖曳過程中每換一個候選路口就呼叫一次，所以絕對不能有副作用——
+    真正套用是放開手之後的 _edit_move。
+    """
+    if not (0 <= si < len(SEGS)):
+        return json.dumps({'ok': False})
+    arr = (SEGS[si].get('nodes') or [])
+    if not (0 <= n < len(arr)):
+        return json.dumps({'ok': False})
+    try:
+        target = type(next(iter(G.nodes)))(new_id)
+    except Exception:
+        target = new_id
+    if target not in Gw.nodes:
+        return json.dumps({'ok': False})
+
+    Gb = _bridge_graph()
+    left = arr[n - 1] if n > 0 else None
+    right = arr[n + 1] if n < len(arr) - 1 else None
+    head = robust_shortest_path(Gb, left, target) if left is not None else []
+    if left is not None and not head:
+        return json.dumps({'ok': False})
+    tail = robust_shortest_path(Gb, target, right) if right is not None else []
+    if right is not None and not tail:
+        return json.dumps({'ok': False})
+
+    if left is None and right is None:
+        mid = [target]
+    elif left is None:
+        mid = tail
+    elif right is None:
+        mid = head
+    else:
+        mid = head + tail[1:]
+
+    pts = road_polyline_from_nodes(Gw, mid)
+    return json.dumps({'ok': True, 'pts': [(float(a), float(b)) for a, b in pts]})
+
+
 def _edit_move(si, n, new_id):
     """把第 si 段的第 n 個節點搬到 new_id 這個路口，並沿真實道路重接兩側。
 
@@ -522,6 +563,15 @@ _pack()
       `_nearby_junctions(_nj_lat, _nj_lon, _nj_r, _nj_lim)`));
   }
 
+  /* 拖曳過程的即時預覽：只算出新路徑長怎樣，不會真的改動路線 */
+  async function previewMove(si, n, nodeId) {
+    await boot();
+    py.globals.set('_pv_si', si);
+    py.globals.set('_pv_n', n);
+    py.globals.set('_pv_id', String(nodeId));
+    return JSON.parse(await py.runPythonAsync(`_preview_move(_pv_si, _pv_n, _pv_id)`));
+  }
+
   /* 把路線上的某個節點搬到指定路口，只重接相鄰兩段 */
   async function editMove(si, n, nodeId) {
     await boot();
@@ -565,6 +615,6 @@ ${body}
 </gpx>`;
   }
 
-  return { boot, loadArea, generate, editDelete, editUndo, editMove, nearbyJunctions,
+  return { boot, loadArea, generate, editDelete, editUndo, editMove, previewMove, nearbyJunctions,
            reverseRoute, snapToNode, toGPX, setProgress };
 })();
