@@ -1199,14 +1199,14 @@ function personSVG(active){
     ? 'M13 13.2 L6.8 7.2 M13 13.2 L19.2 7.2'          // 雙手舉高
     : 'M10.8 12.6 L10.6 19.2 M15.2 12.6 L15.4 19.2';  // 貼身垂下（幾乎垂直）
   const legs = active
-    ? ['M11.8 19.4 L9.4 27','M14.2 19.4 L16.6 27']    // 跑步：張開
-    : ['M11.7 19.4 L11.7 27','M14.3 19.4 L14.3 27'];  // 立正：併攏站直
+    ? ['M11.15 19.4 L9.4 27','M14.85 19.4 L16.6 27']      // 跑步：張開
+    : ['M11.15 19.4 L11.15 27','M14.85 19.4 L14.85 27'];  // 立正：併攏站直
   const P=PC();
   /* 軀幹一定要用 butt cap：round 的話圓頭會往上凸出半個線寬（2.9 單位），
      直接把細脖子整段吃掉，量出來脖子會和軀幹一樣粗。 */
   const parts=[
-    {d:'M13 8.4 L13 11.4',  w:1.5, cap:'round'},   // 脖子（細）
-    {d:'M13 11.4 L13 19',   w:5.8, cap:'butt'},    // 軀幹（最粗）
+    {d:'M13 8.4 L13 9.9',   w:1.5, cap:'round'},   // 脖子（細、短）
+    {d:'M13 9.9 L13 19',    w:5.8, cap:'butt'},    // 軀幹（最粗）
     {d:arms,                w:2.2, cap:'round'},   // 手臂
     {d:legs[0],             w:2.1, cap:'round'},   // 左腿
     {d:legs[1],             w:2.1, cap:'round'}    // 右腿
@@ -2019,7 +2019,8 @@ function drawPin(ctx,cx,tipY,h,color,inner){
 // footY 是腳底、對準路線上的當前位置。
 function drawRunnerCanvas(ctx,x,footY,u,light,active){
   const P=PC(), BODY=P.runner, OUT=P['runner-out'];
-  /* 比例和地圖上的 personSVG 一致：軀幹 5.8u 比「兩腿 2.1u×2 + 縫隙」寬，脖子只有 1.5u。
+  /* 比例和地圖上的 personSVG 一致：軀幹 5.8u；兩腿心距 ±1.85u、腿寬 2.1u，
+     所以「左腿 + 縫隙 + 右腿」外緣正好是 ±2.9u ＝ 軀幹寬。脖子 1.5u 粗、1.5u 長。
      每一段要各自設線寬，不能整個人一次畫完。
      姿勢同樣兩種：active＝跑步（手舉高、腿張開），否則立正（手貼身側、兩腿併攏站直）。 */
   const headY=footY-24*u, hipY=footY-11*u, hr=3.0*u;
@@ -2028,11 +2029,11 @@ function drawRunnerCanvas(ctx,x,footY,u,light,active){
     : [[[x-2.2*u,hipY-5.4*u],[x-2.4*u,hipY+0.8*u]],
        [[x+2.2*u,hipY-5.4*u],[x+2.4*u,hipY+0.8*u]]];
   const legs = active
-    ? [[[x-1.2*u,hipY+0.4*u],[x-3.6*u,footY]], [[x+1.2*u,hipY+0.4*u],[x+3.6*u,footY]]]
-    : [[[x-1.3*u,hipY+0.4*u],[x-1.3*u,footY]], [[x+1.3*u,hipY+0.4*u],[x+1.3*u,footY]]];
+    ? [[[x-1.85*u,hipY+0.4*u],[x-3.6*u,footY]], [[x+1.85*u,hipY+0.4*u],[x+3.6*u,footY]]]
+    : [[[x-1.85*u,hipY+0.4*u],[x-1.85*u,footY]], [[x+1.85*u,hipY+0.4*u],[x+1.85*u,footY]]];
   const parts=[
-    {w:1.5, cap:'round', seg:[[x,headY+hr],[x,headY+hr+3.0*u]]},     // 脖子
-    {w:5.8, cap:'butt',  seg:[[x,headY+hr+3.0*u],[x,hipY]]},         // 軀幹
+    {w:1.5, cap:'round', seg:[[x,headY+hr],[x,headY+hr+1.5*u]]},     // 脖子（短）
+    {w:5.8, cap:'butt',  seg:[[x,headY+hr+1.5*u],[x,hipY]]},         // 軀幹
     {w:2.2, cap:'round', seg:arms[0]},                                // 左手
     {w:2.2, cap:'round', seg:arms[1]},                                // 右手
     {w:2.1, cap:'round', seg:legs[0]},                                // 左腿
