@@ -1216,41 +1216,72 @@ $('btnClear').onclick=clearAll;
 /* ---------- 路線預覽（拉桿 + 方向） ---------- */
 let pvDone=null,pvHead=null,pvArrows=null,pvTimer=null,poseT=null;
 /* 預覽的「跑者」圖示：靜止＝站立、拖曳／播放中＝雙手舉高。SVG 自己畫，深淺底圖都清楚。 */
-/* 比例：軀幹要比「兩條腿 + 中間縫隙」還寬，脖子則明顯細。
-   所以不能像以前那樣整個人用同一個 stroke-width 畫完，得拆成粗細不同的幾段。
-   腿從 x=11.6 / 14.4 出發（不是同一點），中間才留得出縫。
-   軀幹 5.6 > 腿 2.3×2 + 縫 0.5 = 5.1。 */
+/* ---- 跑者小人的幾何（地圖 SVG 與匯出 Canvas 共用同一份）----
+   單位 u，總高 24u（頭心到腳底）。採用「粗壯」比例。
+
+   幾個刻意的設計：
+   · 沒有脖子。圓頭 → 一段空隙（headGap）→ 平的軀幹頂，
+     所以軀幹一定要用 butt cap；用 round 的話圓端會往上凸出半個線寬（3.2u），
+     直接把空隙填滿、頭和身體會黏成一塊。
+   · 手臂接在軀幹頂面的肩膀處，而且**兩種姿勢共用同一個肩膀支點**——
+     跑步舉手就是繞著這個點轉，不會有手臂憑空長在腰上的感覺。
+   · 手臂用 round cap，端點是半圓，所以肩膀是圓的、不會出現尖角。
+     支點刻意比軀幹頂低 shoulderDrop，圓端才不會凸得太高。
+   · 兩腿：legX ± legW/2 的外緣正好是 ±3.2u ＝ 軀幹半寬，
+     中間縫隙 2×legX − legW = 0.8u。 */
+const RUNNER={
+  headR:3.2, headFromFoot:24, headGap:1.8,
+  hipFromFoot:10.5, torsoW:6.4,
+  /* shoulderDrop 要夠深：手臂的圓端會往上凸出半個線寬（1.5u），
+     太淺的話圓端會伸進頭下方的空隙裡，把「沒有脖子」的縫隙填掉。
+     1.3 之後實際空白帶還有 1.6u，縮到圖示大小仍看得見。 */
+  shoulderX:2.2, shoulderDrop:1.3, armW:3.0,
+  armHandXStand:2.8, armHandYStand:1.2,   // 立正：手落在髖部下方一點
+  armHandXRun:5.2, armHandRiseRun:2.3,    // 跑步：繞肩膀往上舉（別舉太高，會撞到頭）
+  legW:2.8, legX:1.8, legXRun:3.8
+};
+/* 回傳畫這個小人需要的所有線段（每段各自有線寬與端點樣式）＋頭的位置。 */
+function runnerParts(x,footY,u,active){
+  const R=RUNNER;
+  const headY=footY-R.headFromFoot*u, hr=R.headR*u;
+  const torsoTop=headY+hr+R.headGap*u;      // 空隙之後才是平的身體頂
+  const hipY=footY-R.hipFromFoot*u;
+  const shY=torsoTop+R.shoulderDrop*u;      // 肩膀支點
+  const sx=R.shoulderX*u;
+  const arms=active
+    ? [[[x-sx,shY],[x-R.armHandXRun*u,shY-R.armHandRiseRun*u]],
+       [[x+sx,shY],[x+R.armHandXRun*u,shY-R.armHandRiseRun*u]]]
+    : [[[x-sx,shY],[x-R.armHandXStand*u,hipY+R.armHandYStand*u]],
+       [[x+sx,shY],[x+R.armHandXStand*u,hipY+R.armHandYStand*u]]];
+  const lx=R.legX*u, ly=hipY+0.4*u;
+  const legs=active
+    ? [[[x-lx,ly],[x-R.legXRun*u,footY]],[[x+lx,ly],[x+R.legXRun*u,footY]]]
+    : [[[x-lx,ly],[x-lx,footY]],[[x+lx,ly],[x+lx,footY]]];
+  return {headY,hr,parts:[
+    {w:R.torsoW, cap:'butt',  seg:[[x,torsoTop],[x,hipY]]},
+    {w:R.armW,   cap:'round', seg:arms[0]},
+    {w:R.armW,   cap:'round', seg:arms[1]},
+    {w:R.legW,   cap:'round', seg:legs[0]},
+    {w:R.legW,   cap:'round', seg:legs[1]}
+  ]};
+}
+
+/* 地圖上的跑者圖示。viewBox 用 1u = 1 單位，腳底放在 y=30 ＝ iconAnchor 的位置。 */
 function personSVG(active){
-  /* 兩種姿勢：
-     active（拖曳／播放中）＝ 跑步，手舉高、腿張開；
-     靜止 ＝ 立正，手貼著身體兩側垂直放下、兩腿併攏站直。 */
-  const arms = active
-    ? 'M13 13.2 L6.8 7.2 M13 13.2 L19.2 7.2'          // 雙手舉高
-    : 'M9.8 12.6 L9.6 19.4 M16.2 12.6 L16.4 19.4';    // 貼身垂下（幾乎垂直）
-  const legs = active
-    ? ['M11.15 19.4 L9.4 27','M14.85 19.4 L16.6 27']      // 跑步：張開
-    : ['M11.15 19.4 L11.15 27','M14.85 19.4 L14.85 27'];  // 立正：併攏站直
   const P=PC();
-  /* 軀幹一定要用 butt cap：round 的話圓頭會往上凸出半個線寬（2.9 單位），
-     直接把細脖子整段吃掉，量出來脖子會和軀幹一樣粗。 */
-  const parts=[
-    {d:'M13 8.4 L13 9.9',   w:1.5, cap:'round'},   // 脖子（細、短）
-    {d:'M13 9.9 L13 19',    w:5.8, cap:'butt'},    // 軀幹（最粗）
-    {d:arms,                w:2.6, cap:'round'},   // 手臂
-    {d:legs[0],             w:2.1, cap:'round'},   // 左腿
-    {d:legs[1],             w:2.1, cap:'round'}    // 右腿
-  ];
-  const layer=(color,extra)=>parts.map(p=>
-      '<path d="'+p.d+'" fill="none" stroke="'+color+'" stroke-width="'+(p.w+extra)
+  const g=runnerParts(15,30,1,active);
+  const layer=(color,extra)=>g.parts.map(p=>
+      '<path d="M'+p.seg[0][0]+' '+p.seg[0][1]+' L'+p.seg[1][0]+' '+p.seg[1][1]
+      +'" fill="none" stroke="'+color+'" stroke-width="'+(p.w+extra)
       +'" stroke-linecap="'+p.cap+'" stroke-linejoin="round"/>').join('')
-    +'<circle cx="13" cy="5.4" r="'+(3+extra/2)+'" fill="'+color+'"/>';
-  return '<svg width="28" height="32" viewBox="0 0 26 30" style="filter:drop-shadow(0 0 1.4px rgba(0,0,0,.5))">'
+    +'<circle cx="15" cy="'+g.headY+'" r="'+(g.hr+extra/2)+'" fill="'+color+'"/>';
+  return '<svg width="30" height="34" viewBox="0 0 30 34" style="filter:drop-shadow(0 0 1.4px rgba(0,0,0,.5))">'
     +layer(P['runner-out'],2.4)     // 外框：整個人加粗一圈墊在底下
     +layer(P.runner,0)
     +'</svg>';
 }
 function personIcon(active){
-  return L.divIcon({className:'',iconSize:[28,32],iconAnchor:[14,29],html:personSVG(active)});
+  return L.divIcon({className:'',iconSize:[30,34],iconAnchor:[15,30],html:personSVG(active)});
 }
 function pvPose(active){ S.pvActive=active; if(pvHead) pvHead.setIcon(personIcon(active)); }
 let S_arrowList = [];
@@ -2162,40 +2193,21 @@ function drawPin(ctx,cx,tipY,h,color,inner){
 // footY 是腳底、對準路線上的當前位置。
 function drawRunnerCanvas(ctx,x,footY,u,light,active){
   const P=PC(), BODY=P.runner, OUT=P['runner-out'];
-  /* 比例和地圖上的 personSVG 一致：軀幹 5.8u；兩腿心距 ±1.85u、腿寬 2.1u，
-     所以「左腿 + 縫隙 + 右腿」外緣正好是 ±2.9u ＝ 軀幹寬。脖子 1.5u 粗、1.5u 長。
-     每一段要各自設線寬，不能整個人一次畫完。
-     姿勢同樣兩種：active＝跑步（手舉高、腿張開），否則立正（手貼身側、兩腿併攏站直）。 */
-  const headY=footY-24*u, hipY=footY-11*u, hr=3.0*u;
-  const arms = active
-    ? [[[x,hipY-5.4*u],[x-5*u,hipY+0.6*u]], [[x,hipY-5.4*u],[x+5*u,hipY+0.6*u]]]
-    : [[[x-3.2*u,hipY-5.4*u],[x-3.4*u,hipY+1.0*u]],
-       [[x+3.2*u,hipY-5.4*u],[x+3.4*u,hipY+1.0*u]]];
-  const legs = active
-    ? [[[x-1.85*u,hipY+0.4*u],[x-3.6*u,footY]], [[x+1.85*u,hipY+0.4*u],[x+3.6*u,footY]]]
-    : [[[x-1.85*u,hipY+0.4*u],[x-1.85*u,footY]], [[x+1.85*u,hipY+0.4*u],[x+1.85*u,footY]]];
-  const parts=[
-    {w:1.5, cap:'round', seg:[[x,headY+hr],[x,headY+hr+1.5*u]]},     // 脖子（短）
-    {w:5.8, cap:'butt',  seg:[[x,headY+hr+1.5*u],[x,hipY]]},         // 軀幹
-    {w:2.6, cap:'round', seg:arms[0]},                                // 左手
-    {w:2.6, cap:'round', seg:arms[1]},                                // 右手
-    {w:2.1, cap:'round', seg:legs[0]},                                // 左腿
-    {w:2.1, cap:'round', seg:legs[1]}                                 // 右腿
-  ];
+  const g=runnerParts(x,footY,u,active);   // 幾何和地圖上的 personSVG 同一份
   const layer=(color,extra)=>{
     ctx.strokeStyle=color;
-    parts.forEach(p=>{
-      ctx.lineCap=p.cap;   // 軀幹必須 butt，否則圓頭會往上吃掉細脖子
+    g.parts.forEach(p=>{
+      ctx.lineCap=p.cap;   // 軀幹必須 butt，否則圓端會把頭下方的空隙填掉
       ctx.lineWidth=(p.w+extra)*u;
       ctx.beginPath();
       ctx.moveTo(p.seg[0][0],p.seg[0][1]);
       ctx.lineTo(p.seg[1][0],p.seg[1][1]);
       ctx.stroke();
     });
-    ctx.beginPath();ctx.arc(x,headY,hr+extra*u/2,0,Math.PI*2);
+    ctx.beginPath();ctx.arc(x,g.headY,g.hr+extra*u/2,0,Math.PI*2);
     ctx.fillStyle=color;ctx.fill();
   };
-  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
+  ctx.save();ctx.lineJoin='round';ctx.setLineDash([]);
   layer(OUT,2.4);   // 外框整個加粗一圈墊底
   layer(BODY,0);
   ctx.restore();
