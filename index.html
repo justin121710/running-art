@@ -306,6 +306,9 @@
     display:flex;flex-direction:column;align-items:center;gap:3px;
     cursor:pointer;white-space:nowrap;min-width:0}
   .rt i{font-style:normal;font-size:10.5px;color:var(--dim);font-weight:400}
+  /* 比例按鈕上的示意方框：直接用真實長寬比，比純文字好懂 */
+  .arbox{display:flex;align-items:center;justify-content:center;height:24px;margin-bottom:1px}
+  .arbox b{display:block;border:1.6px solid currentColor;border-radius:2.5px;opacity:.7}
   /* 這個對話框裡的多選鈕很多，全部填滿亮色在深色模式下太刺眼。
      改成色框 + 淡淡的底（同「載入地圖範圍」的語彙），選取狀態一樣看得出來。 */
   .rt.on{background:color-mix(in srgb,var(--rt-ui) 16%,transparent);
@@ -533,9 +536,9 @@
       <div class="mopts">
         <div class="rlabel" data-en="Ratio">比例</div>
         <div class="ratios">
-          <button class="rt on" data-ratio="1:1">1:1<i data-en="Square">正方形</i></button>
-          <button class="rt" data-ratio="4:5">4:5<i data-en="Portrait">直式貼文</i></button>
-          <button class="rt" data-ratio="9:16">9:16<i data-en="Story">限時動態</i></button>
+          <button class="rt on" data-ratio="1:1"><span class="arbox"><b style="width:22px;height:22px"></b></span>1:1<i data-en="Square">正方形</i></button>
+          <button class="rt" data-ratio="4:5"><span class="arbox"><b style="width:18px;height:22px"></b></span>4:5<i data-en="Portrait">直式貼文</i></button>
+          <button class="rt" data-ratio="9:16"><span class="arbox"><b style="width:13px;height:23px"></b></span>9:16<i data-en="Story">限時動態</i></button>
         </div>
         <div class="rlabel" data-en="Layers">圖層</div>
         <div class="ratios lyrs">
@@ -554,6 +557,8 @@
           <button class="rt dat on" data-dat="elev" data-en="Elev.">爬升</button>
           <button class="rt dat" data-dat="fit" data-en="Match">吻合度</button>
           <button class="rt lyr on" data-layer="elevchart" data-en="Elev. Chart">高程圖</button>
+          <button class="rt lyr on" data-layer="place" data-en="Place">地點</button>
+          <button class="rt lyr on" data-layer="date" data-en="Date">日期</button>
         </div>
         <div class="rlabel"><span data-en="Runner progress">跑者進度</span> · <span id="pngProgTxt">100%</span></div>
         <input type="range" id="pngProg" class="mprog" min="0" max="1000" value="1000" step="1">
@@ -1187,18 +1192,24 @@ let pvDone=null,pvHead=null,pvArrows=null,pvTimer=null,poseT=null;
    腿從 x=11.6 / 14.4 出發（不是同一點），中間才留得出縫。
    軀幹 5.6 > 腿 2.3×2 + 縫 0.5 = 5.1。 */
 function personSVG(active){
+  /* 兩種姿勢：
+     active（拖曳／播放中）＝ 跑步，手舉高、腿張開；
+     靜止 ＝ 立正，手貼著身體兩側垂直放下、兩腿併攏站直。 */
   const arms = active
-    ? 'M13 13.2 L6.8 7.2 M13 13.2 L19.2 7.2'    // 雙手舉高
-    : 'M13 13.2 L8.2 18.4 M13 13.2 L17.8 18.4'; // 自然垂下
+    ? 'M13 13.2 L6.8 7.2 M13 13.2 L19.2 7.2'          // 雙手舉高
+    : 'M10.8 12.6 L10.6 19.2 M15.2 12.6 L15.4 19.2';  // 貼身垂下（幾乎垂直）
+  const legs = active
+    ? ['M11.8 19.4 L9.4 27','M14.2 19.4 L16.6 27']    // 跑步：張開
+    : ['M11.7 19.4 L11.7 27','M14.3 19.4 L14.3 27'];  // 立正：併攏站直
   const P=PC();
-  /* 軀幹一定要用 butt cap：round 的話圓頭會往上凸出半個線寬（2.8 單位），
+  /* 軀幹一定要用 butt cap：round 的話圓頭會往上凸出半個線寬（2.9 單位），
      直接把細脖子整段吃掉，量出來脖子會和軀幹一樣粗。 */
   const parts=[
     {d:'M13 8.4 L13 11.4',  w:1.5, cap:'round'},   // 脖子（細）
     {d:'M13 11.4 L13 19',   w:5.8, cap:'butt'},    // 軀幹（最粗）
     {d:arms,                w:2.2, cap:'round'},   // 手臂
-    {d:'M11.8 19.4 L9.4 27',  w:2.1, cap:'round'}, // 左腿
-    {d:'M14.2 19.4 L16.6 27', w:2.1, cap:'round'}  // 右腿
+    {d:legs[0],             w:2.1, cap:'round'},   // 左腿
+    {d:legs[1],             w:2.1, cap:'round'}    // 右腿
   ];
   const layer=(color,extra)=>parts.map(p=>
       '<path d="'+p.d+'" fill="none" stroke="'+color+'" stroke-width="'+(p.w+extra)
@@ -1865,7 +1876,10 @@ $('aGpx').onclick=()=>{
    不依賴任何額外函式庫。 */
 const TILE_HOSTS=['a','b','c','d'];
 const TILE_SIZE=256;          // 一個 tile 代表的「世界像素」
-const INFO_H=250;             // 資訊欄「數據區」高度（寬固定 1080）
+/* 資訊欄的兩列各自可關，所以高度要分開算——兩列都關掉時整塊不佔位，
+   不然會留下一條空白。PLACE_ROW_H + STATS_ROW_H = 原本的 250。 */
+const PLACE_ROW_H=95;         // 地點 + 日期那一列
+const STATS_ROW_H=155;        // 數據那一列
 const ELEV_BAND_H=230;        // 資訊欄「高程區」高度。高程圖從地圖搬到這裡，
                               // 地圖區就只剩路線本身（外加可選的比例尺）
 // 社群媒體常見比例。寬一律 1080，資訊欄固定在最底部，地圖區 = 寬 × (高−資訊欄)。
@@ -2003,18 +2017,26 @@ function drawPin(ctx,cx,tipY,h,color,inner){
 
 // 匯出圖上的小人（canvas 版，對應地圖上的 personSVG）：本體＋反差色外框，
 // footY 是腳底、對準路線上的當前位置。
-function drawRunnerCanvas(ctx,x,footY,u,light){
+function drawRunnerCanvas(ctx,x,footY,u,light,active){
   const P=PC(), BODY=P.runner, OUT=P['runner-out'];
-  /* 比例和地圖上的 personSVG 一致：軀幹 5.6u 比「兩腿 2.3u×2 + 縫隙 0.5u」寬，
-     脖子只有 1.5u。所以每一段要各自設線寬，不能整個人一次畫完。 */
+  /* 比例和地圖上的 personSVG 一致：軀幹 5.8u 比「兩腿 2.1u×2 + 縫隙」寬，脖子只有 1.5u。
+     每一段要各自設線寬，不能整個人一次畫完。
+     姿勢同樣兩種：active＝跑步（手舉高、腿張開），否則立正（手貼身側、兩腿併攏站直）。 */
   const headY=footY-24*u, hipY=footY-11*u, hr=3.0*u;
+  const arms = active
+    ? [[[x,hipY-5.4*u],[x-5*u,hipY+0.6*u]], [[x,hipY-5.4*u],[x+5*u,hipY+0.6*u]]]
+    : [[[x-2.2*u,hipY-5.4*u],[x-2.4*u,hipY+0.8*u]],
+       [[x+2.2*u,hipY-5.4*u],[x+2.4*u,hipY+0.8*u]]];
+  const legs = active
+    ? [[[x-1.2*u,hipY+0.4*u],[x-3.6*u,footY]], [[x+1.2*u,hipY+0.4*u],[x+3.6*u,footY]]]
+    : [[[x-1.3*u,hipY+0.4*u],[x-1.3*u,footY]], [[x+1.3*u,hipY+0.4*u],[x+1.3*u,footY]]];
   const parts=[
     {w:1.5, cap:'round', seg:[[x,headY+hr],[x,headY+hr+3.0*u]]},     // 脖子
     {w:5.8, cap:'butt',  seg:[[x,headY+hr+3.0*u],[x,hipY]]},         // 軀幹
-    {w:2.2, cap:'round', seg:[[x,hipY-5.4*u],[x-5*u,hipY+0.6*u]]},   // 左手
-    {w:2.2, cap:'round', seg:[[x,hipY-5.4*u],[x+5*u,hipY+0.6*u]]},   // 右手
-    {w:2.1, cap:'round', seg:[[x-1.2*u,hipY+0.4*u],[x-3.6*u,footY]]},// 左腿
-    {w:2.1, cap:'round', seg:[[x+1.2*u,hipY+0.4*u],[x+3.6*u,footY]]} // 右腿
+    {w:2.2, cap:'round', seg:arms[0]},                                // 左手
+    {w:2.2, cap:'round', seg:arms[1]},                                // 右手
+    {w:2.1, cap:'round', seg:legs[0]},                                // 左腿
+    {w:2.1, cap:'round', seg:legs[1]}                                 // 右腿
   ];
   const layer=(color,extra)=>{
     ctx.strokeStyle=color;
@@ -2101,8 +2123,10 @@ async function renderExportCanvas(opt){
   const sc=W/1080;                   // 寬固定 1080，sc=1；保留以便日後改寬
   const dats=(opt.dats||['dist','pace','time','elev']).filter(Boolean);
   const showStats=dats.length>0;
+  const showPlace=opt.place!==false, showDate=opt.date!==false;
+  const placeRowOn=showPlace||showDate;
   const elevOn=!!(opt.elevchart && elevChartData);
-  const statsH=showStats?INFO_H*sc:0;
+  const statsH=(placeRowOn?PLACE_ROW_H*sc:0)+(showStats?STATS_ROW_H*sc:0);
   const elevBandH=elevOn?ELEV_BAND_H*sc:0;
   const infoH=statsH+elevBandH;      // 兩塊都關＝不畫資訊欄、地圖佔滿整張（配合透明背景做純路線圖）
   const showInfo=infoH>0;
@@ -2246,7 +2270,7 @@ async function renderExportCanvas(opt){
   if(opt.marks) drawSEMarks(ctx,X,Y,15*sc,sc,P);
   // 小人畫在走過/未走過的分界（最上層，仍在地圖 clip 內）
   if(runnerHead){
-    drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light);
+    drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light,false);
   }
   // 高程圖已經搬到下方資訊欄，地圖區只留路線本身
   ctx.restore();
@@ -2254,24 +2278,7 @@ async function renderExportCanvas(opt){
   // 9) 比例尺（可關）。地圖區現在只剩它一個疊加物。
   const cLat=(Math.min(...lats)+Math.max(...lats))/2;
   const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
-  if(opt.scale!==false){
-    const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
-    const NICE=[10,20,50,100,200,500,1000,2000,5000];
-    let barM=NICE[0];
-    for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
-    const barPx=barM/mPerPx, bx=26*sc, tick=6*sc, by=mapH-26*sc;
-    const drawBar=()=>{ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
-      ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
-      ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();};
-    ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
-    ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
-    ctx.font=`600 ${Math.round(30*sc)}px ${F}`;ctx.textBaseline='alphabetic';ctx.textAlign='center';
-    const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
-    const barMid=bx+barPx/2;   // 距離文字置中於線段中間
-    ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
-    ctx.strokeText(barTxt,barMid,by-14*sc);
-    ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,barMid,by-14*sc);
-  }
+  if(opt.scale!==false) drawScaleBar(ctx,{mapW,mapH,sc,z,K,cLat,TH,F});
   // 沒有資訊欄時（純去背路線圖）浮水印沒地方放，只好留在地圖右下角
   if(!showInfo){
     ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
@@ -2290,7 +2297,7 @@ async function renderExportCanvas(opt){
   // 11) 資訊欄（數據區 + 高程區）。預覽和匯出共用同一個函式，版面才會完全一致。
   drawInfoPanel(ctx,{mapW,mapH,statsH,elevBandH,infoH,sc,TH,P,F,
                      dats,place,light,frac:(opt.frac!=null)?opt.frac:1,
-                     showStats,elevOn,showInfo});
+                     showStats,elevOn,showInfo,showPlace,showDate,placeRowOn});
 
   return {canvas:cv, w:W, h:H, tilesFailed};
 }
@@ -2415,15 +2422,17 @@ async function renderPreview(){
   const myTok=++_prevToken;
   const opt={route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
              marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
-             scale:layerOn('scale'),
+             scale:layerOn('scale'),place:layerOn('place'),date:layerOn('date'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n))};
   const frac=+$('pngProg').value/1000;
   const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
   const W=cv.width, scale=W/RW, H=Math.round(RH*scale); cv.height=H;
   const lw=W/1080, light=isLight();
   const showStats=opt.dats.length>0;
+  const showPlace=opt.place!==false, showDate=opt.date!==false;
+  const placeRowOn=showPlace||showDate;
   const elevOn=!!(opt.elevchart && elevChartData);
-  const statsH=showStats?INFO_H*scale:0;
+  const statsH=(placeRowOn?PLACE_ROW_H*scale:0)+(showStats?STATS_ROW_H*scale:0);
   const elevBandH=elevOn?ELEV_BAND_H*scale:0;
   const infoH=statsH+elevBandH;
   const showInfo=infoH>0;
@@ -2444,7 +2453,7 @@ async function renderPreview(){
   function drawInfoBar(){
     drawInfoPanel(ctx,{mapW:W,mapH,statsH,elevBandH,infoH,sc:scale,TH,P,F,
                        dats:opt.dats,place:_previewPlace,light,frac,
-                       showStats,elevOn,showInfo});
+                       showStats,elevOn,showInfo,showPlace,showDate,placeRowOn});
   }
   ctx.clearRect(0,0,W,H);
   if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,mapH); }
@@ -2524,9 +2533,14 @@ async function renderPreview(){
     }
   }
   if(opt.marks) drawSEMarks(ctx,X,Y,15*lw,lw,P);
-  if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light);
+  if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light,false);
   // 高程圖已經移到下方資訊欄（見 drawInfoBar），地圖區不再畫
   ctx.restore();
+  // 比例尺和匯出用同一個函式，勾選「比例尺」在預覽上才看得到差別
+  if(opt.scale!==false){
+    const cLat=(Math.min(...lats)+Math.max(...lats))/2;
+    drawScaleBar(ctx,{mapW,mapH,sc:scale,z,K,cLat,TH,F});
+  }
   drawInfoBar();
 
   /* 地點名稱要連網查（Nominatim）。預覽不能等它，所以先用快取的值畫，
@@ -2546,31 +2560,62 @@ async function renderPreview(){
     }
   }
 }
+/* 比例尺。匯出和預覽共用——預覽以前根本沒畫，所以「比例尺」這個選項
+   在預覽上看不出任何差別。sc 是縮放係數，z/K 是該畫面的縮放層級與係數。 */
+function drawScaleBar(ctx,o){
+  const {mapW,mapH,sc,z,K,cLat,TH,F}=o;
+  const mPerPx=156543.03392*Math.cos(cLat*Math.PI/180)/Math.pow(2,z)/K;
+  const NICE=[10,20,50,100,200,500,1000,2000,5000];
+  let barM=NICE[0];
+  for(const v of NICE) if(v/mPerPx<=mapW*0.3) barM=v;
+  const barPx=barM/mPerPx, bx=26*sc, tick=6*sc, by=mapH-26*sc;
+  ctx.save();
+  ctx.textBaseline='alphabetic'; ctx.textAlign='center'; ctx.setLineDash([]);
+  const drawBar=()=>{ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+barPx,by);
+    ctx.moveTo(bx,by-tick);ctx.lineTo(bx,by+tick);
+    ctx.moveTo(bx+barPx,by-tick);ctx.lineTo(bx+barPx,by+tick);ctx.stroke();};
+  ctx.strokeStyle=TH.overlayStroke;ctx.lineWidth=6*sc;drawBar();
+  ctx.strokeStyle=TH.overlay;ctx.lineWidth=2.5*sc;drawBar();
+  ctx.font=`600 ${Math.max(7,Math.round(30*sc))}px ${F}`;
+  const barTxt=barM>=1000?(barM/1000)+' km':barM+' m';
+  const barMid=bx+barPx/2;   // 距離文字置中於線段中間
+  ctx.lineWidth=5*sc;ctx.strokeStyle=TH.overlayStroke;
+  ctx.strokeText(barTxt,barMid,by-14*sc);
+  ctx.fillStyle=TH.overlay;ctx.fillText(barTxt,barMid,by-14*sc);
+  ctx.restore();
+}
+
 /* 資訊欄：地點/日期 + 數據 + 高程圖。
    匯出（1080px）和對話框預覽（300px 縮圖）呼叫同一份，差別只在 sc 這個縮放係數，
    所以預覽看到的排版、字級比例、每個東西的位置就是成品的樣子。
    以前預覽只畫幾個灰色方塊示意，跟成品對不起來。 */
 function drawInfoPanel(ctx,o){
   const {mapW,mapH,statsH,elevBandH,infoH,sc,TH,P,F,dats,place,light,frac,
-         showStats,elevOn,showInfo}=o;
+         showStats,elevOn,showInfo,showPlace,showDate,placeRowOn}=o;
   const pad=36*sc;
   if(showInfo){
     ctx.fillStyle=TH.infoBg;ctx.fillRect(0,mapH,mapW,infoH);
     ctx.fillStyle=TH.infoLine;ctx.fillRect(0,mapH,mapW,Math.max(1,2*sc));
   }
-  if(showStats){
-    const top=mapH, rowY=top+statsH*0.23;
+  /* 兩列各自可關，所以位置用「絕對位移」算，不能再用 statsH 的比例——
+     地點列關掉時 statsH 會變小，用比例的話數據列會跟著跑掉。 */
+  if(placeRowOn){
+    const rowY=mapH+PLACE_ROW_H*sc*0.605;
     ctx.textBaseline='middle';
-    let placeX=pad;
-    if(place){
+    if(showPlace&&place){
       const ph=34*sc;
       drawPin(ctx,pad+ph*0.32,rowY+ph*0.5,ph,P.ui,P['ui-text']);
-      placeX=pad+ph*0.9;
       ctx.textAlign='left';ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(37*sc)}px ${F}`;
-      ctx.fillText(place,placeX,rowY);
+      ctx.fillText(place,pad+ph*0.9,rowY);
     }
-    ctx.textAlign='right';ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
-    ctx.fillText(localDate(),mapW-pad,rowY);
+    if(showDate){
+      ctx.textAlign='right';ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(28*sc)}px ${F}`;
+      ctx.fillText(localDate(),mapW-pad,rowY);
+    }
+  }
+  if(showStats){
+    const top=mapH+(placeRowOn?PLACE_ROW_H*sc:0);
+    ctx.textBaseline='middle';
 
     const pm=Math.floor(S.pace), ps=Math.round((S.pace-pm)*60);
     const elevTxt=(S.elevGain!=null)?('↑'+S.elevGain+' ↓'+S.elevLoss+' m'):'–';
@@ -2601,9 +2646,9 @@ function drawInfoPanel(ctx,o){
     let cx=pad;
     cells.forEach((c,n)=>{
       ctx.fillStyle=TH.textDim;ctx.font=`400 ${Math.round(labelFs)}px ${F}`;
-      ctx.fillText(c[0],cx,top+statsH*0.57);
+      ctx.fillText(c[0],cx,top+STATS_ROW_H*sc*0.306);
       ctx.fillStyle=TH.textMain;ctx.font=`600 ${Math.round(valFs)}px ${F}`;
-      ctx.fillText(c[1],cx,top+statsH*0.81);
+      ctx.fillText(c[1],cx,top+STATS_ROW_H*sc*0.694);
       cx+=widths[n]+gap+extra;
     });
   }
@@ -2625,7 +2670,7 @@ function drawInfoPanel(ctx,o){
     ctx.textBaseline='alphabetic';ctx.textAlign='right';
     ctx.fillStyle=TH.textDim;ctx.globalAlpha=.75;
     ctx.font=`600 ${Math.round(23*sc)}px ${F}`;
-    ctx.fillText('RUNNING ART',mapW-pad,mapH+statsH-20*sc);
+    ctx.fillText('RUNNING ART',mapW-pad,mapH+statsH-18*sc);
     ctx.globalAlpha=1;
   }
 }
@@ -2776,7 +2821,7 @@ $('pngGo').onclick=()=>{
   $('pngModal').hidden=true;
   exportPNG({ratio:pngRatio,route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
              marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
-             scale:layerOn('scale'),
+             scale:layerOn('scale'),place:layerOn('place'),date:layerOn('date'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n)),
              frac:+$('pngProg').value/1000});
 };
