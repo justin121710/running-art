@@ -21,6 +21,12 @@ RUNNING_ART/
 │   ├─ engine.js
 │   ├─ gpsart/*.py
 │   └─ .nojekyll            必要！否則 GitHub Pages 不會輸出 .py
+├─ docs/                    文件（見 docs/README.md 的閱讀順序）
+│   ├─ README.md            ★ 從這裡開始
+│   ├─ ARCHITECTURE.md      本檔：程式結構、演算邏輯
+│   ├─ UI_DESIGN.md         配色、圖示造型、匯出版面
+│   ├─ FEATURES.md          功能與踩過的坑
+│   └─ HANDOFF_PROMPT.md    交接用提示
 ├─ selftest_algorithms.py   行為基準測試
 ├─ fixture_graph.graphml    測試用固定路網
 ├─ baseline.json            已驗證的基準數值
@@ -142,7 +148,12 @@ python selftest_algorithms.py baseline
 | `Engine.loadArea(s,w,n,e)` | 下載該範圍路網並前處理 |
 | `Engine.generate(strokes,start,end)` | 對齊道路，回傳分段、總長、吻合度 |
 | `Engine.editDelete(picks)` | 微調：刪除選取的節點並沿道路重接 |
-| `Engine.editUndo()` | 微調：復原上一步 |
+| `Engine.editUndo()` | 微調：復原上一步（`editDelete` 與 `editMove` 共用同一個 HISTORY） |
+| `Engine.editMove(si,n,nodeId)` | 微調：把節點搬到指定路口，**只重接相鄰兩段** |
+| `Engine.previewMove(si,n,nodeId)` | 拖曳中的預覽：算出新路徑但**不改動 SEGS** |
+| `Engine.nearbyJunctions(lat,lon,r,limit)` | 查座標附近的路口（degree ≥ 3），依距離排序 |
+| `Engine.snapToNode(lat,lon)` | 把座標吸附到最近的路網節點（設起訖點用） |
+| `Engine.reverseRoute()` | 反轉整條路線方向 |
 | `Engine.toGPX(segments)` | 產生 GPX 字串 |
 | `Engine.setProgress(fn)` | 設定進度回呼 |
 
@@ -156,6 +167,9 @@ python selftest_algorithms.py baseline
 |---|---|
 | `_pack()` | 把 `SEGS` 轉成前端格式（座標、長度、吻合度、可編輯節點） |
 | `_edit_delete(picks)` | 刪節點 → 加入 banned → 繞過它們重接 → 檢查斷線 |
+| `_edit_move(si,n,new_id)` | 用 `robust_shortest_path` 重接 `左鄰→新路口→右鄰`，其餘不動 |
+| `_preview_move(si,n,new_id)` | 同上但只回座標、**不寫回 SEGS**（拖曳中會被反覆呼叫） |
+| `_nearby_junctions(lat,lon,r,limit)` | 掃全圖找 degree ≥ 3 且在半徑內的節點 |
 | `_edit_undo()` | 從 `HISTORY` 還原 |
 
 **兩個容易踩的地方**：
@@ -173,7 +187,10 @@ python selftest_algorithms.py baseline
 |---|---|
 | 引擎啟動 | 約 3 秒（首次） |
 | 下載路網（697 個路口） | 4.9 秒 |
-| 生成路線 | 1.8 秒 |
+| 下載路網（2929 節點，已快取） | 1.3 秒 |
+| 生成路線 | 1.8～3.8 秒 |
+| `snapToNode`（2929 節點） | 9～15 ms |
+| `editMove` / `previewMove` | 約 3～8 ms |
 
 ---
 
@@ -209,22 +226,13 @@ python selftest_algorithms.py baseline
    - **Open-Meteo Elevation**（`api.open-meteo.com/v1/elevation`）：查高程算爬升／下降，
      一次最多 100 點，前端會等距抽樣。
 
-### 深／淺色主題
+### 介面與造型
 
-CSS 用 `:root` 變數，`body.light` 覆寫；`setTheme(light)` 切換 class、
-換底圖圖層（`dark_all`↔`light_all`）、重染已下載範圍遮罩，並存 localStorage。
-匯出圖片讀 `isLight()` 選一組配色（底圖樣式、`brightness` 濾鏡、資訊欄顏色）。
-`@media (min-width:900px)` 是桌面版排版：操作列移左側、結果改右下浮空卡片。
+配色（`--rt-*` 變數）、跑者小人、方向箭頭、高程折線圖、匯出版面、
+深淺主題與 i18n 的細節都在 **`UI_DESIGN.md`**，這裡不重複。
 
-### 中／英文（i18n）
-
-靜態文字：HTML 元素加 `data-en="English"`，`applyLang()` 依 `lang` 在 `data-zh`
-（首次記錄的原文）與 `data-en` 之間切換 `textContent`。圖示＋文字的按鈕要把文字
-包在自己的 `<span>` 裡（否則會連 SVG 一起被 textContent 蓋掉）。
-動態文字：`toast()` 查 `TOASTS_EN`、`busy()` 查 `PROG_EN`（含 engine.js 透過
-onProgress 送來的進度字串）自動翻譯；有插值的字串用 `tx(zh,en)`。引導步驟、配速名稱、
-匯出資訊欄標籤各有對照表。地點名稱靠 Nominatim 的 `accept-language` 切換，快取 key
-要含 `lang`。
+一句話版本：**顏色只定義在 CSS 的 `--rt-*`，JS 透過 `PC()` 讀出來用。**
+Leaflet 圖層和 divIcon 的顏色是建立當下寫死的，所以 `setTheme()` 尾端要手動重染。
 
 3. **更新 `gpsart/` 要同時改 `engine.js` 的 `VERSION`**
    否則瀏覽器會沿用快取的舊演算法（`fetch('gpsart/x.py?v=VERSION')`）。
@@ -232,6 +240,23 @@ onProgress 送來的進度字串）自動翻譯；有插值的字串用 `tx(zh,e
    同樣的道理也適用於 `engine.js` 自己：`index.html` 用
    `<script src="engine.js?v=…">` 引用它，**改了 `engine.js` 就把這個 `v` 一起改掉**，
    否則瀏覽器會沿用快取的舊引擎。
+
+---
+
+## 六之二、高程取樣（前端，不在 gpsart 裡）
+
+`updateElevation()` 沿路線取 100 個點打 Open-Meteo 查高程。
+
+**取樣必須依「距離」等距，不能依陣列索引。** 路網節點的間距差很多
+（實測同一條路上有 8m 也有 300m 的段），照索引取樣的話橫軸就不是距離軸：
+量過最壞情況，**實際在 1283m 處的點會被畫在相當於 993m 的位置，偏了 7.4%**。
+而且跑者點是用「距離比例」定位的，兩者會對不起來。
+
+現在先算累積距離再沿線內插，橫軸才真的是距離，爬升／下降也不會被密集節點灌水。
+
+> 怎麼驗證高程圖是對的：①取樣點的累積距離應該等差；②進度拉到 50% 時
+> 跑者點應落在折線的水平中點；③標籤數字要等於 `elevChartData.elevations` 的 max/min；
+> ④拿幾個座標去別的高程來源對照（DEM 在市區誤差 ±5m 屬正常）。
 
 ---
 

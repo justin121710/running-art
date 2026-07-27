@@ -959,9 +959,12 @@ function boxEnd(e){
           x1:Math.max(a[0],e.clientX)-r.left, y1:Math.max(a[1],e.clientY)-r.top};
 }
 
+/* 讓膠囊浮在「目前這個」工具列上方。
+   以前寫死量 mainDock —— 但進微調模式後 mainDock 是 hidden、量到寬度 0 就直接 return，
+   膠囊停在 CSS 預設的 88px，而 editDock 有 108px 高，實測會壓到按鈕 32px。 */
 function updatePillPos(){
-  const dock = $('mainDock');
-  if(!dock) return;
+  const dock = (S.editing && !$('editDock').hidden) ? $('editDock') : $('mainDock');
+  if(!dock || dock.hidden) return;
   const d = dock.getBoundingClientRect();
   if(!d.width) return;
   const bottomDist = Math.max(88, Math.round(window.innerHeight - d.top + 14));
@@ -1799,6 +1802,7 @@ function editUI(){
   $('eUndo').disabled=!(S.result&&S.result.undo);
   el.pill.classList.remove('hide');
   el.pill.textContent=n?tx('已選 '+n+' 個節點',n+' selected'):tx(nodeMks.length+' 個可調整的節點',nodeMks.length+' editable nodes');
+  updatePillPos();   // editDock 比 mainDock 高，位置要重算才不會壓到按鈕
 }
 /* ---- 拖曳節點改路徑 ----
    只在「按住某個節點」時才去查它 20m 內的路口當候選點。
@@ -1991,6 +1995,7 @@ $('eDone').onclick=()=>{
   ghostClear();
   nodeMks=[];S.sel.clear();
   $('mainDock').hidden=false;$('editDock').hidden=true;
+  updatePillPos();
   pvBuild(S.result);
   S.sheetUp=true;el.sheet.classList.add('up');
   el.pill.classList.add('hide');
