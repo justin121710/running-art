@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Running Art</title>
+<link rel="icon" type="image/svg+xml" href="logo_dark.svg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   /* 深色（預設）與淺色主題都用這組變數，只有 body.light 覆寫。 */
@@ -91,19 +92,9 @@
     background:var(--glass);backdrop-filter:blur(8px);
     border:1px solid var(--border);border-radius:10px;padding:6px 12px 6px 8px;
     display:flex;align-items:center;gap:8px}
-  /* Logo。所有筆畫共用 round 端點，和 App 裡的路線／箭頭語彙一致。 */
-  .logo{width:26px;height:26px;flex:none;display:block}
-  .logo path,.logo circle{fill:none;stroke-linecap:round;stroke-linejoin:round}
-  .lg-grid path{stroke:var(--border2);stroke-width:1.6;opacity:.55}
-  .lg-route{stroke:var(--rt-ui);stroke-width:6}
-  .lg-arrow{stroke:var(--rt-ui);stroke-width:5}
-  .lg-start{stroke:var(--rt-ui);stroke-width:2.8}
-  .lg-pin{stroke:var(--rt-ui);stroke-width:2.8}
-  /* 跑者壓在青檸路線上，白對青檸對比不夠，所以先墊一圈底色外框 */
-  .lg-run-out circle{fill:var(--panel)}
-  .lg-run-out path{stroke:var(--panel);stroke-width:6.4}
-  .lg-run circle{fill:var(--text)}
-  .lg-run path{stroke:var(--text);stroke-width:3}
+  /* Logo 是外部 SVG 檔（logo_dark.svg / logo_bright.svg），依主題換 src。
+     兩個檔案本身都帶圓角方塊底色，所以不需要額外加背景。 */
+  .logo{width:26px;height:26px;flex:none;display:block;border-radius:6px}
   .btn-dl{display:flex;align-items:center;gap:6px;
     background:var(--glass);backdrop-filter:blur(8px);
     border:1px solid var(--border);color:var(--text);border-radius:10px;
@@ -400,31 +391,7 @@
 
 <div class="top">
   <div class="brand">
-  <!-- Logo：一條青檸路線從起點圓環出發、繞成一個 R、最後以方向箭頭收尾，
-       中間是白色跑者，右上是地點圖釘，底下是淡淡的街道格線。
-       用 CSS 變數上色，所以深淺主題都吃得到。 -->
-  <svg class="logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-    <g class="lg-grid">
-      <path d="M10 4V60M27 4V60M45 4V60M4 15H60M4 33H60M4 51H60"/>
-    </g>
-    <!-- 路線本體：一筆畫成 R -->
-    <path class="lg-route" d="M17 50.5V21q0-7 8-7h6q9 0 9 8.5T31 31h-5l11 10.5h5"/>
-    <!-- 終點方向箭頭 -->
-    <path class="lg-arrow" d="M42 36.5 47 41.5 42 46.5"/>
-    <!-- 起點圓環 -->
-    <circle class="lg-start" cx="17" cy="50.5" r="5"/>
-    <!-- 地點圖釘 -->
-    <path class="lg-pin" d="M52 19.5s-5-5.5-5-8.7a5 5 0 1 1 10 0c0 3.2-5 8.7-5 8.7z"/>
-    <!-- 跑者：先畫一圈反差色外框墊底，再畫本體 -->
-    <g class="lg-run-out">
-      <circle cx="25.5" cy="25" r="3.3"/>
-      <path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/>
-    </g>
-    <g class="lg-run">
-      <circle cx="25.5" cy="25" r="3.3"/>
-      <path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/>
-    </g>
-  </svg>
+  <img class="logo" id="brandLogo" src="logo_dark.svg" alt="" width="26" height="26">
   <span>Running Art</span>
 </div>
   <button class="btn-dl icon-btn push" id="btnLang" aria-label="Language">EN</button>
@@ -596,6 +563,7 @@
           <button class="rt lyr on" data-layer="marks" data-en="Marks">起訖點</button>
           <button class="rt lyr on" data-layer="basemap" data-en="Base map">地圖底圖</button>
           <button class="rt lyr on" data-layer="scale" data-en="Scale bar">比例尺</button>
+          <button class="rt lyr on" data-layer="logo" data-en="Logo">Logo</button>
         </div>
         <div class="rlabel" data-en="Info panel (all off = no panel)">資訊欄（全關＝不顯示資訊欄）</div>
         <div class="ratios lyrs">
@@ -650,32 +618,8 @@
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 
 
-/* ---------- Favicon ----------
-   用和左上角 logo 完全相同的形狀，只是換成寫死的顏色（data URI 吃不到 CSS 變數）
-   並補上深色底。分頁圖示只有 16～32px，所以格線和圖釘刻意拿掉，留下
-   「青檸 R + 起點圓環 + 箭頭」這三個最好辨認的元素。 */
-(function(){
-  const L='#B8FF3C', BG='#14171C', INK='#FFFFFF';
-  const svg=
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-    +'<rect width="64" height="64" rx="14" fill="'+BG+'"/>'
-    +'<g fill="none" stroke-linecap="round" stroke-linejoin="round">'
-    +'<path d="M17 50.5V21q0-7 8-7h6q9 0 9 8.5T31 31h-5l11 10.5h5" stroke="'+L+'" stroke-width="6"/>'
-    +'<path d="M42 36.5 47 41.5 42 46.5" stroke="'+L+'" stroke-width="5"/>'
-    +'<circle cx="17" cy="50.5" r="5" stroke="'+L+'" stroke-width="2.8"/>'
-    +'<g stroke="'+BG+'" stroke-width="6.4">'
-    +'<path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/></g>'
-    +'<circle cx="25.5" cy="25" r="4.9" fill="'+BG+'" stroke="none"/>'
-    +'<g stroke="'+INK+'" stroke-width="3">'
-    +'<path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/></g>'
-    +'<circle cx="25.5" cy="25" r="3.3" fill="'+INK+'" stroke="none"/>'
-    +'</g></svg>';
-  const link=document.createElement('link');
-  link.rel='icon';
-  link.type='image/svg+xml';
-  link.href='data:image/svg+xml,'+encodeURIComponent(svg);
-  document.head.appendChild(link);
-})();
+/* Favicon 用 logo_dark.svg：它自己帶深色圓角底，
+   在淺色與深色的瀏覽器分頁列上都看得清楚。 */
 
 /* ---------- 深／淺色主題 ---------- */
 // 底圖跟著換：深色用 CARTO dark_all，淺色用 light_all。
@@ -799,6 +743,7 @@ function applyBaseLayer(){
 function setTheme(light,save=true){
   document.body.classList.toggle('light',light);
   palInvalidate();          // --rt-* 換了一組值，快取要丟掉
+  try{ $('brandLogo').src = light ? 'logo_bright.svg' : 'logo_dark.svg'; }catch(_){}
   if(save) localStorage.setItem('runart_theme',light?'light':'dark');
   applyBaseLayer();
   // 小人外框跟主題重繪。try 包住：初始化時本函式會在 pvHead（let）
@@ -2510,8 +2455,10 @@ async function renderExportCanvas(opt){
   const cLat=(Math.min(...lats)+Math.max(...lats))/2;
   const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
   if(opt.scale!==false) drawScaleBar(ctx,{mapW,mapH,sc,z,K,cLat,TH,F});
-  // 沒有資訊欄時（純去背路線圖）浮水印沒地方放，只好留在地圖右下角
-  if(!showInfo){
+  if(opt.logo!==false) drawExportLogo(ctx,await loadLogoBitmap(light),mapW,mapH,sc);
+  /* 沒有資訊欄、又把 logo 關掉時，才用文字浮水印墊底——
+     否則文字會和右下角的 logo 疊在一起。 */
+  if(!showInfo && opt.logo===false){
     ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
     ctx.textBaseline='alphabetic';
     ctx.lineWidth=4*sc;ctx.strokeStyle=TH.overlayStroke;
@@ -2654,6 +2601,7 @@ async function renderPreview(){
   const opt={route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
              marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
              scale:layerOn('scale'),place:layerOn('place'),date:layerOn('date'),
+             logo:layerOn('logo'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n))};
   const frac=+$('pngProg').value/1000;
   const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
@@ -2772,6 +2720,10 @@ async function renderPreview(){
     const cLat=(Math.min(...lats)+Math.max(...lats))/2;
     drawScaleBar(ctx,{mapW,mapH,sc:scale,z,K,cLat,TH,F});
   }
+  if(opt.logo!==false){
+    const lg=await loadLogoBitmap(light);
+    if(myTok===_prevToken) drawExportLogo(ctx,lg,mapW,mapH,scale);
+  }
   drawInfoBar();
 
   /* 地點名稱要連網查（Nominatim）。預覽不能等它，所以先用快取的值畫，
@@ -2791,6 +2743,56 @@ async function renderPreview(){
     }
   }
 }
+/* ---------- 匯出圖片用的 Logo ----------
+   兩個檔案的 <svg> 是 width="100%" height="100%"，當成 <img> 載入時沒有明確的
+   內在尺寸，某些瀏覽器會算成 0 而畫不出來。所以先把文字抓下來、把百分比換成
+   viewBox 的實際尺寸，再包成 blob——blob 是同源的，畫進 canvas 也不會污染它
+   （和圖磚走同一套安全路徑）。 */
+const _logoCache={};
+async function loadLogoBitmap(light){
+  const file=light?'logo_bright.svg':'logo_dark.svg';
+  if(file in _logoCache) return _logoCache[file];
+  let out=null;
+  try{
+    const r=await fetch(file,{cache:'force-cache'});
+    if(r.ok){
+      let txt=await r.text();
+      const vb=(txt.match(/viewBox="([\d.\s-]+)"/)||[])[1];
+      const wh=vb?vb.trim().split(/\s+/):null;
+      if(wh&&wh.length===4)
+        txt=txt.replace(/(<svg[^>]*?)width="[^"]*"\s*height="[^"]*"/,
+                        '$1width="'+wh[2]+'" height="'+wh[3]+'"');
+      const blob=new Blob([txt],{type:'image/svg+xml'});
+      if(window.createImageBitmap){
+        try{ out=await createImageBitmap(blob); }catch(_){}
+      }
+      if(!out){
+        const u=URL.createObjectURL(blob);
+        try{
+          out=await new Promise((res,rej)=>{
+            const im=new Image();
+            im.onload=()=>res(im); im.onerror=()=>rej(new Error('svg decode'));
+            im.src=u;
+          });
+        }catch(_){}
+        finally{ setTimeout(()=>URL.revokeObjectURL(u),20000); }
+      }
+    }
+  }catch(_){}
+  _logoCache[file]=out;
+  return out;
+}
+/* 畫在地圖區右下角，和比例尺同一個 26u 邊距。
+   比例尺在左下（最寬到 mapW*0.3），logo 在右下，兩者不會撞到。 */
+function drawExportLogo(ctx,img,mapW,mapH,sc){
+  if(!img) return;
+  const size=84*sc, pad=26*sc;
+  ctx.save();
+  ctx.globalAlpha=.95;
+  ctx.drawImage(img, mapW-pad-size, mapH-pad-size, size, size);
+  ctx.restore();
+}
+
 /* 比例尺。匯出和預覽共用——預覽以前根本沒畫，所以「比例尺」這個選項
    在預覽上看不出任何差別。sc 是縮放係數，z/K 是該畫面的縮放層級與係數。 */
 function drawScaleBar(ctx,o){
@@ -3053,6 +3055,7 @@ $('pngGo').onclick=()=>{
   exportPNG({ratio:pngRatio,route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
              marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
              scale:layerOn('scale'),place:layerOn('place'),date:layerOn('date'),
+             logo:layerOn('logo'),
              dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n)),
              frac:+$('pngProg').value/1000});
 };
