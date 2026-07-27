@@ -35,7 +35,8 @@ sys.path.insert(0, '/')
 import json, math
 from gpsart.graphprep import graph_from_overpass_json, prepare_graph
 from gpsart.routing import (solve_route, stitch_nearby_strokes,
-                            reorder_closed_strokes, bridge_node_path_gaps)
+                            reorder_closed_strokes, bridge_node_path_gaps,
+                            robust_shortest_path)
 from gpsart.geometry import road_polyline_from_nodes, haversine
 from gpsart.graphutil import nearest_node
 
@@ -171,6 +172,88 @@ def _edit_delete(picks):
         _restore(snap)
         return json.dumps({'ok': False, 'reason': 'break'})
 
+    HISTORY.append(snap)
+    del HISTORY[:-40]
+    return _pack()
+
+
+def _nearby_junctions(lat, lon, radius_m, limit):
+    """回傳座標附近的「路口」節點（度數 >= 3）。
+
+    只留路口是刻意的：直路中間的節點只是幾何轉點，把路徑移過去
+    根本不會改變走法，列出來只會讓使用者白點一場。
+    """
+    if G is None or not G.number_of_nodes():
+        return json.dumps([])
+    out = []
+    for n in G.nodes:
+        d = G.degree(n)
+        if d < 3:
+            continue
+        y = G.nodes[n].get('y'); x = G.nodes[n].get('x')
+        if y is None or x is None:
+            continue
+        dist = haversine(lat, lon, float(y), float(x))
+        if dist <= radius_m:
+            out.append({'id': str(n), 'lat': float(y), 'lon': float(x),
+                        'd': round(dist, 1)})
+    out.sort(key=lambda r: r['d'])
+    return json.dumps(out[:limit])
+
+
+def _edit_move(si, n, new_id):
+    """把第 si 段的第 n 個節點搬到 new_id 這個路口，並沿真實道路重接兩側。
+
+    只重接相鄰的兩小段，不動整條路線——使用者拖一個點不該讓其他地方也跟著變。
+    """
+    if not (0 <= si < len(SEGS)):
+        return json.dumps({'ok': False, 'reason': 'seg'})
+    seg = SEGS[si]
+    arr = seg.get('nodes') or []
+    if not (0 <= n < len(arr)):
+        return json.dumps({'ok': False, 'reason': 'idx'})
+    try:
+        target = type(next(iter(G.nodes)))(new_id)
+    except Exception:
+        target = new_id
+    if target not in Gw.nodes:
+        return json.dumps({'ok': False, 'reason': 'missing'})
+
+    snap = _snapshot()
+    Gb = _bridge_graph()
+    left = arr[n - 1] if n > 0 else None
+    right = arr[n + 1] if n < len(arr) - 1 else None
+
+    head = []
+    if left is not None:
+        head = robust_shortest_path(Gb, left, target)
+        if not head:
+            _restore(snap)
+            return json.dumps({'ok': False, 'reason': 'unreachable'})
+    tail = []
+    if right is not None:
+        tail = robust_shortest_path(Gb, target, right)
+        if not tail:
+            _restore(snap)
+            return json.dumps({'ok': False, 'reason': 'unreachable'})
+
+    if left is None and right is None:
+        mid = [target]
+    elif left is None:
+        mid = tail
+    elif right is None:
+        mid = head
+    else:
+        mid = head + tail[1:]
+
+    lo = (n - 1) if left is not None else n
+    hi = (n + 1) if right is not None else n
+    arr[lo:hi + 1] = mid
+    seg['nodes'] = arr
+
+    if _has_break():
+        _restore(snap)
+        return json.dumps({'ok': False, 'reason': 'break'})
     HISTORY.append(snap)
     del HISTORY[:-40]
     return _pack()
@@ -426,6 +509,28 @@ _pack()
     return JSON.parse(await py.runPythonAsync(`_reverse()`));
   }
 
+
+  /* 查某個座標附近的路口（拖曳節點時顯示成候選點）。
+     只回路口是因為直路中間的幾何轉點移過去也不會改變走法。 */
+  async function nearbyJunctions(lat, lon, radiusM, limit) {
+    await boot();
+    py.globals.set('_nj_lat', lat);
+    py.globals.set('_nj_lon', lon);
+    py.globals.set('_nj_r', radiusM || 20);
+    py.globals.set('_nj_lim', limit || 40);
+    return JSON.parse(await py.runPythonAsync(
+      `_nearby_junctions(_nj_lat, _nj_lon, _nj_r, _nj_lim)`));
+  }
+
+  /* 把路線上的某個節點搬到指定路口，只重接相鄰兩段 */
+  async function editMove(si, n, nodeId) {
+    await boot();
+    py.globals.set('_mv_si', si);
+    py.globals.set('_mv_n', n);
+    py.globals.set('_mv_id', String(nodeId));
+    return JSON.parse(await py.runPythonAsync(`_edit_move(_mv_si, _mv_n, _mv_id)`));
+  }
+
   /* 把一個座標吸附到最近的路網節點。
      使用者點起訖點時很難剛好點在節點上，點在建築物中間的話 solve_route
      還是得先把它拉到路上，不如當下就吸附、順便讓使用者看到真正的起點在哪。
@@ -460,5 +565,6 @@ ${body}
 </gpx>`;
   }
 
-  return { boot, loadArea, generate, editDelete, editUndo, reverseRoute, snapToNode, toGPX, setProgress };
+  return { boot, loadArea, generate, editDelete, editUndo, editMove, nearbyJunctions,
+           reverseRoute, snapToNode, toGPX, setProgress };
 })();

@@ -597,7 +597,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
-<script src="engine.js?v=20260726a"></script>
+<script src="engine.js?v=20260727a"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 
@@ -1013,7 +1013,14 @@ const mc=map.getContainer();
 mc.addEventListener('pointerdown',e=>{
   if(S.editing){
     S.eDown=[e.clientX,e.clientY];
-    if(S.ebox) boxBegin(e);
+    if(S.ebox){ boxBegin(e); return; }
+    // 按在節點上＝可能要拖曳它。先記下來，等移動超過門檻才真的開始拖。
+    const hit=editHitNode(map.mouseEventToLatLng(e));
+    if(hit>=0){
+      S.eDragIdx=hit; S.eDragging=false;
+      map.dragging.disable();          // 拖節點時不要連地圖一起拖
+      ghostLoad(nodeMks[hit]);
+    }
     return;
   }
   if(S.boxing){
@@ -1029,7 +1036,12 @@ mc.addEventListener('pointerdown',e=>{
 });
 mc.addEventListener('pointermove',e=>{
   if(S.editing){
-    if(S.ebox) boxDrag(e);
+    if(S.ebox){ boxDrag(e); return; }
+    if(S.eDragIdx!=null&&S.eDown){
+      if(!S.eDragging&&Math.hypot(e.clientX-S.eDown[0],e.clientY-S.eDown[1])>8)
+        S.eDragging=true;
+      if(S.eDragging) ghostHighlight(map.mouseEventToLatLng(e));
+    }
     return;
   }
   if(S.boxing){
@@ -1052,6 +1064,13 @@ mc.addEventListener('pointerup',e=>{
       const r=boxEnd(e);
       if(r) editBoxSelect(r);
       return;
+    }
+    if(S.eDragIdx!=null){
+      const idx=S.eDragIdx, dragging=S.eDragging;
+      S.eDragIdx=null; S.eDragging=false;
+      map.dragging.enable();
+      if(dragging){ editDropNode(idx,map.mouseEventToLatLng(e)); return; }
+      ghostClear();
     }
     // 移動超過 8px 視為在拖曳地圖，不當成點選節點
     if(d&&Math.hypot(e.clientX-d[0],e.clientY-d[1])<=8) editPick(map.mouseEventToLatLng(e));
@@ -1774,6 +1793,94 @@ function editUI(){
   el.pill.classList.remove('hide');
   el.pill.textContent=n?tx('已選 '+n+' 個節點',n+' selected'):tx(nodeMks.length+' 個可調整的節點',nodeMks.length+' editable nodes');
 }
+/* ---- 拖曳節點改路徑 ----
+   只在「按住某個節點」時才去查它 20m 內的路口當候選點。
+   實測台北路網 4670 節點/km²，若把整條路線 20m 內的節點全部畫出來，
+   5km 路線會有約 934 個點——畫面會被蓋死、手指也點不準，所以限定在拖曳當下。
+   只取路口（度數>=3）：直路中間的節點只是幾何轉點，移過去不會改變走法。 */
+/* 先找 20m 內的路口；台北實測「真的在路上的節點」有 65% 在 20m 內一個路口都沒有，
+   所以找不到就自動放寬到 60m（實測 60m 時中位數 4 個、不會落空）。
+   一次最多顯示 12 個，免得路口密集處糊成一片。 */
+const GHOST_R=20, GHOST_R_MAX=60, GHOST_MAX=12;
+let ghostLayer=null, ghostList=[], ghostBest=-1, ghostSeq=0;
+
+function editHitNode(ll){
+  const p0=map.latLngToContainerPoint(ll);
+  let best=-1,bd=1e9;
+  nodeMks.forEach((d,i)=>{
+    const p=map.latLngToContainerPoint(d.ll);
+    const dist=Math.hypot(p.x-p0.x,p.y-p0.y);
+    if(dist<bd){bd=dist;best=i;}
+  });
+  return bd<=PICK_TOL_PX?best:-1;
+}
+function ghostStyle(on){
+  const P=PC();
+  return on
+    ? {radius:11,color:P['on-accent'],weight:2.5,fillColor:P.done,fillOpacity:1}
+    : {radius:7,color:P.done,weight:2,fillColor:P['on-accent'],fillOpacity:.55};
+}
+function ghostClear(){
+  if(ghostLayer){ghostLayer.remove();ghostLayer=null;}
+  ghostList=[];ghostBest=-1;
+}
+async function ghostLoad(node){
+  ghostClear();
+  const seq=++ghostSeq;
+  let js=[];
+  try{
+    js=await Engine.nearbyJunctions(node.ll[0],node.ll[1],GHOST_R,60);
+    // 濾掉「就是這個節點本身」的候選（距離幾乎為 0）
+    if(!js.filter(j=>j.d>1.5).length)
+      js=await Engine.nearbyJunctions(node.ll[0],node.ll[1],GHOST_R_MAX,60);
+  }catch(_){}
+  if(seq!==ghostSeq||S.eDragIdx==null) return;   // 已經放開或換了節點
+  ghostList=js.filter(j=>j.d>1.5).slice(0,GHOST_MAX);
+  if(!ghostList.length) return;
+  const marks=ghostList.map(j=>
+    L.circleMarker([j.lat,j.lon],Object.assign({pane:'markerPane',interactive:false},ghostStyle(false))));
+  ghostLayer=L.layerGroup(marks,{pane:'markerPane'}).addTo(map);
+  ghostList.forEach((j,i)=>{j.mk=marks[i];});
+}
+// 把最靠近指標的候選點放大，讓使用者知道放開會接到哪
+function ghostHighlight(ll){
+  if(!ghostList.length) return;
+  const p0=map.latLngToContainerPoint(ll);
+  let best=-1,bd=1e9;
+  ghostList.forEach((j,i)=>{
+    const p=map.latLngToContainerPoint([j.lat,j.lon]);
+    const d=Math.hypot(p.x-p0.x,p.y-p0.y);
+    if(d<bd){bd=d;best=i;}
+  });
+  if(bd>PICK_TOL_PX*1.6) best=-1;
+  if(best===ghostBest) return;
+  if(ghostBest>=0&&ghostList[ghostBest]) ghostList[ghostBest].mk.setStyle(ghostStyle(false));
+  if(best>=0) ghostList[best].mk.setStyle(ghostStyle(true));
+  ghostBest=best;
+}
+function editDropNode(idx,ll){
+  const target=ghostBest>=0?ghostList[ghostBest]:null;
+  ghostClear();
+  if(!target){ toast(tx('沒有可以接的路口，位置不變','No junction to snap to — unchanged'),1800); return; }
+  const d=nodeMks[idx];
+  busy('重新接路中…');
+  Engine.editMove(d.si,d.n,target.id)
+    .then(res=>{
+      busy('');
+      if(!res.ok){
+        toast(res.reason==='unreachable'
+          ? tx('接不過去（中間沒有可走的路）','No road connects to that junction')
+          : tx('這樣改會讓路線斷掉，已取消','That would break the route — cancelled'),3000);
+        return;
+      }
+      applyResult(res,false);
+      editBuild();
+      refresh();updateElevation();
+      toast(tx('路徑已改道','Path re-routed'),1500);
+    })
+    .catch(err=>{busy('');toast(tx('改道失敗：','Re-route failed: ')+err.message,3000);});
+}
+
 function editPick(ll){
   const p0=map.latLngToContainerPoint(ll);
   let best=-1,bd=1e9;
@@ -1803,7 +1910,7 @@ $('aEdit').onclick=()=>{
   $('mainDock').hidden=true;$('editDock').hidden=false;
   setMode('pan');map.dragging.enable();
   editBuild();
-  toast('橘色大點是轉彎處。點一下節點選取，或用「框選」一次選多個',2800);
+  toast('點一下節點可選取；直接拖曳節點可以把路徑改走附近的路口',3200);
 };
 $('eBox').onclick=()=>{
   S.ebox=!S.ebox;
@@ -1851,6 +1958,7 @@ $('eDone').onclick=()=>{
   S.editing=false;S.ebox=false;$('eBox').classList.remove('on');
   map.dragging.enable();
   if(nodeLayer){nodeLayer.remove();nodeLayer=null;}
+  ghostClear();
   nodeMks=[];S.sel.clear();
   $('mainDock').hidden=false;$('editDock').hidden=true;
   pvBuild(S.result);
