@@ -89,7 +89,21 @@
   .top>*{pointer-events:auto}
   .brand{font-size:15px;font-weight:700;letter-spacing:.5px;
     background:var(--glass);backdrop-filter:blur(8px);
-    border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+    border:1px solid var(--border);border-radius:10px;padding:6px 12px 6px 8px;
+    display:flex;align-items:center;gap:8px}
+  /* Logo。所有筆畫共用 round 端點，和 App 裡的路線／箭頭語彙一致。 */
+  .logo{width:26px;height:26px;flex:none;display:block}
+  .logo path,.logo circle{fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .lg-grid path{stroke:var(--border2);stroke-width:1.6;opacity:.55}
+  .lg-route{stroke:var(--rt-ui);stroke-width:6}
+  .lg-arrow{stroke:var(--rt-ui);stroke-width:5}
+  .lg-start{stroke:var(--rt-ui);stroke-width:2.8}
+  .lg-pin{stroke:var(--rt-ui);stroke-width:2.8}
+  /* 跑者壓在青檸路線上，白對青檸對比不夠，所以先墊一圈底色外框 */
+  .lg-run-out circle{fill:var(--panel)}
+  .lg-run-out path{stroke:var(--panel);stroke-width:6.4}
+  .lg-run circle{fill:var(--text)}
+  .lg-run path{stroke:var(--text);stroke-width:3}
   .btn-dl{display:flex;align-items:center;gap:6px;
     background:var(--glass);backdrop-filter:blur(8px);
     border:1px solid var(--border);color:var(--text);border-radius:10px;
@@ -385,7 +399,34 @@
 <div id="map"></div>
 
 <div class="top">
-  <div class="brand">Running Art</div>
+  <div class="brand">
+  <!-- Logo：一條青檸路線從起點圓環出發、繞成一個 R、最後以方向箭頭收尾，
+       中間是白色跑者，右上是地點圖釘，底下是淡淡的街道格線。
+       用 CSS 變數上色，所以深淺主題都吃得到。 -->
+  <svg class="logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <g class="lg-grid">
+      <path d="M10 4V60M27 4V60M45 4V60M4 15H60M4 33H60M4 51H60"/>
+    </g>
+    <!-- 路線本體：一筆畫成 R -->
+    <path class="lg-route" d="M17 50.5V21q0-7 8-7h6q9 0 9 8.5T31 31h-5l11 10.5h5"/>
+    <!-- 終點方向箭頭 -->
+    <path class="lg-arrow" d="M42 36.5 47 41.5 42 46.5"/>
+    <!-- 起點圓環 -->
+    <circle class="lg-start" cx="17" cy="50.5" r="5"/>
+    <!-- 地點圖釘 -->
+    <path class="lg-pin" d="M52 19.5s-5-5.5-5-8.7a5 5 0 1 1 10 0c0 3.2-5 8.7-5 8.7z"/>
+    <!-- 跑者：先畫一圈反差色外框墊底，再畫本體 -->
+    <g class="lg-run-out">
+      <circle cx="25.5" cy="25" r="3.3"/>
+      <path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/>
+    </g>
+    <g class="lg-run">
+      <circle cx="25.5" cy="25" r="3.3"/>
+      <path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/>
+    </g>
+  </svg>
+  <span>Running Art</span>
+</div>
   <button class="btn-dl icon-btn push" id="btnLang" aria-label="Language">EN</button>
   <button class="btn-dl icon-btn" id="btnTheme" aria-label="切換深淺色主題">
     <svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
@@ -607,6 +648,34 @@
 <script src="engine.js?v=20260727b"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
+
+
+/* ---------- Favicon ----------
+   用和左上角 logo 完全相同的形狀，只是換成寫死的顏色（data URI 吃不到 CSS 變數）
+   並補上深色底。分頁圖示只有 16～32px，所以格線和圖釘刻意拿掉，留下
+   「青檸 R + 起點圓環 + 箭頭」這三個最好辨認的元素。 */
+(function(){
+  const L='#B8FF3C', BG='#14171C', INK='#FFFFFF';
+  const svg=
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
+    +'<rect width="64" height="64" rx="14" fill="'+BG+'"/>'
+    +'<g fill="none" stroke-linecap="round" stroke-linejoin="round">'
+    +'<path d="M17 50.5V21q0-7 8-7h6q9 0 9 8.5T31 31h-5l11 10.5h5" stroke="'+L+'" stroke-width="6"/>'
+    +'<path d="M42 36.5 47 41.5 42 46.5" stroke="'+L+'" stroke-width="5"/>'
+    +'<circle cx="17" cy="50.5" r="5" stroke="'+L+'" stroke-width="2.8"/>'
+    +'<g stroke="'+BG+'" stroke-width="6.4">'
+    +'<path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/></g>'
+    +'<circle cx="25.5" cy="25" r="4.9" fill="'+BG+'" stroke="none"/>'
+    +'<g stroke="'+INK+'" stroke-width="3">'
+    +'<path d="M26 28.5 27.5 38M26.6 31.5 32.5 29.5M26.6 31.5 20.5 34.5M27.5 38 33.5 41.5M27.5 38 22 45.5"/></g>'
+    +'<circle cx="25.5" cy="25" r="3.3" fill="'+INK+'" stroke="none"/>'
+    +'</g></svg>';
+  const link=document.createElement('link');
+  link.rel='icon';
+  link.type='image/svg+xml';
+  link.href='data:image/svg+xml,'+encodeURIComponent(svg);
+  document.head.appendChild(link);
+})();
 
 /* ---------- 深／淺色主題 ---------- */
 // 底圖跟著換：深色用 CARTO dark_all，淺色用 light_all。
@@ -1235,9 +1304,14 @@ const RUNNER={
   /* shoulderDrop 要夠深：手臂的圓端會往上凸出半個線寬（1.5u），
      太淺的話圓端會伸進頭下方的空隙裡，把「沒有脖子」的縫隙填掉。
      1.3 之後實際空白帶還有 1.6u，縮到圖示大小仍看得見。 */
-  shoulderX:2.2, shoulderDrop:1.3, armW:3.0,
-  armHandXStand:2.8, armHandYStand:1.2,   // 立正：手落在髖部下方一點
-  armHandXRun:5.2, armHandRiseRun:2.3,    // 跑步：繞肩膀往上舉（別舉太高，會撞到頭）
+  shoulderX:2.6, shoulderDrop:1.3, armW:3.0,
+  /* 立正的手要離身體夠遠才看得出來：軀幹半寬 3.2u、手臂半寬 1.5u，
+     手心距 4.2u 時手臂外緣在 5.7u，露出軀幹外 2.5u。
+     原本 2.8u 只露出 1.1u，遠看像沒有手臂。 */
+  armHandXStand:4.2, armHandYStand:1.2,
+  /* 跑步的手臂加長：沿著和原本幾乎相同的斜率（約 -0.76）往外延伸，
+     所以手臂變長但不會更靠近頭。長度 3.78u → 5.78u。 */
+  armHandXRun:6.8, armHandRiseRun:3.5,
   legW:2.8, legX:1.8, legXRun:3.8
 };
 /* 回傳畫這個小人需要的所有線段（每段各自有線寬與端點樣式）＋頭的位置。 */
@@ -1281,7 +1355,8 @@ function personSVG(active){
     +'</svg>';
 }
 function personIcon(active){
-  return L.divIcon({className:'',iconSize:[30,34],iconAnchor:[15,30],html:personSVG(active)});
+  // viewBox 維持 30×34，直接把渲染尺寸乘 1.3 就等於整個人放大 30%
+  return L.divIcon({className:'',iconSize:[39,44],iconAnchor:[19.5,39],html:personSVG(active)});
 }
 function pvPose(active){ S.pvActive=active; if(pvHead) pvHead.setIcon(personIcon(active)); }
 let S_arrowList = [];
@@ -2426,7 +2501,7 @@ async function renderExportCanvas(opt){
   if(opt.marks) drawSEMarks(ctx,X,Y,15*sc,sc,P);
   // 小人畫在走過/未走過的分界（最上層，仍在地圖 clip 內）
   if(runnerHead){
-    drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.3*sc,light,false);
+    drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.69*sc,light,false);   // 1.3 × 1.3（放大 30%）
   }
   // 高程圖已經搬到下方資訊欄，地圖區只留路線本身
   ctx.restore();
@@ -2689,7 +2764,7 @@ async function renderPreview(){
     }
   }
   if(opt.marks) drawSEMarks(ctx,X,Y,15*lw,lw,P);
-  if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.3*lw,light,false);
+  if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.69*lw,light,false);   // 同匯出，放大 30%
   // 高程圖已經移到下方資訊欄（見 drawInfoBar），地圖區不再畫
   ctx.restore();
   // 比例尺和匯出用同一個函式，勾選「比例尺」在預覽上才看得到差別
