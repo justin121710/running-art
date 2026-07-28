@@ -60,9 +60,12 @@
     --rt-connector:#8A94A0;
     --rt-draw:#1A2029;
     --rt-guide:#586470;   /* 對未跑線 3.28:1（原本 #98A2AE 只有 1.40:1，兩條線看起來一樣） */
-    --rt-arrow:#1F2937;
-    --rt-runner:#1F2937;
-    --rt-runner-out:#FFFFFF;
+    --rt-arrow:#FFFFFF;      /* 白箭頭。對未跑路線只有 1.84:1，靠陰影襯出來——
+                                地圖是 SVG 的 drop-shadow，匯出是 canvas 的 shadowBlur，
+                                兩邊都要有，缺一邊那邊就會看不見。 */
+    --rt-runner:#FFFFFF;
+    --rt-runner-out:#10151A;   /* 白底黑框。白色本體對淺地圖只有 1.19:1，
+                                  完全靠這圈外框（15.47:1）撐起輪廓。 */
     --rt-start:#4D7C0F;
     --rt-finish:#1F2937;
     --rt-elev:#4D7C0F;
@@ -2273,13 +2276,29 @@ function drawChevron(ctx,base){
   // 轉角是幾何倒角做的，lineJoin 保持 miter 才不會又被圓一次
   ctx.lineCap='round'; ctx.lineJoin='miter'; ctx.setLineDash([]);
   arrowShapes().forEach(sh=>{
-    ctx.beginPath();
-    arrowGeom(sh,arrowRadius).forEach(g=>{
-      if(g.t==='M') ctx.moveTo(g.p[0]*base,g.p[1]*base);
-      else if(g.t==='L') ctx.lineTo(g.p[0]*base,g.p[1]*base);
-      else if(g.t==='Q') ctx.quadraticCurveTo(g.c[0]*base,g.c[1]*base,g.p[0]*base,g.p[1]*base);
-      else if(g.t==='Z') ctx.closePath();
-    });
+    const path=()=>{
+      ctx.beginPath();
+      arrowGeom(sh,arrowRadius).forEach(g=>{
+        if(g.t==='M') ctx.moveTo(g.p[0]*base,g.p[1]*base);
+        else if(g.t==='L') ctx.lineTo(g.p[0]*base,g.p[1]*base);
+        else if(g.t==='Q') ctx.quadraticCurveTo(g.c[0]*base,g.c[1]*base,g.p[0]*base,g.p[1]*base);
+        else if(g.t==='Z') ctx.closePath();
+      });
+    };
+    /* 先帶陰影畫一次，把箭頭從底下的路線襯出來。
+       地圖上的箭頭是 SVG 的 drop-shadow，匯出這邊得自己補，
+       否則淺色模式的白箭頭疊在未跑路線上只有 1.84:1，等於看不見。 */
+    /* 強度對齊地圖上 SVG 的 drop-shadow(.7)。實測在匯出的 12px 箭頭上：
+       .55/0.42 只有 7 個像素比底色暗 15 以上（幾乎沒有暈開），
+       .70/0.60 是 30 個，才真的襯得出輪廓。 */
+    ctx.shadowColor='rgba(0,0,0,.7)';
+    ctx.shadowBlur=Math.max(2, base*0.6);
+    path();
+    if(sh.mode==='fill'){ ctx.fillStyle=col; ctx.fill(); }
+    else { ctx.strokeStyle=col; ctx.lineWidth=Math.max(2, sh.w*base); ctx.stroke(); }
+    // 第二次不帶陰影，免得補的描邊又疊一層陰影把顏色壓暗
+    ctx.shadowColor='transparent'; ctx.shadowBlur=0;
+    path();
     if(sh.mode==='fill'){
       ctx.fillStyle=col; ctx.fill();
       // 補一圈細描邊，讓填色造型在縮圖尺寸下不會被抗鋸齒吃掉
