@@ -680,6 +680,20 @@ const ARROW_STYLES={
 let arrowRadius=parseFloat(localStorage.getItem('runart_arrow_r'));
 if(!(arrowRadius>=0)) arrowRadius=0.10;
 
+/* 白箭頭完全靠陰影襯出輪廓，而淺色模式的需求比深色高得多：
+   白箭頭疊在淺色未跑路線（#B6C0CB，亮度 192）上只有 1.84:1，
+   深色的未跑路線本來就暗，陰影只是輔助。
+
+   實測在 12px 的匯出箭頭上，陰影讓周圍最暗降到：
+     .70 / blur 0.60 / 1 次 → 150（只比底色暗 42，幾乎看不出暈）
+     .85 / blur 0.75 / 2 次 →  98（明顯的暗暈）
+   **兩次是關鍵**：只畫一次的話，alpha 調到 1.0 也只到 132——
+   陰影的最深值受限於單次繪製的衰減，疊第二次才會加深。 */
+const ARROW_SHADOW={
+  dark : {color:'rgba(0,0,0,.70)', blurK:0.60, passes:1},
+  light: {color:'rgba(0,0,0,.85)', blurK:0.75, passes:2}
+};
+
 let arrowStyle=localStorage.getItem('runart_arrow')||'dart';
 if(!ARROW_STYLES[arrowStyle]) arrowStyle='dart';
 
@@ -727,7 +741,9 @@ function arrowIcon(dir,size){
   return L.divIcon({className:'',iconSize:[s,s],iconAnchor:[s/2,s/2],
     html:'<svg width="'+s+'" height="'+s+'" viewBox="-1.5 -1.5 3 3" '
         +'style="transform:rotate('+dir+'deg);overflow:visible;'
-        +'filter:drop-shadow(0 0 1.6px rgba(0,0,0,.7))">'+inner+'</svg>'});
+        +'filter:'+(isLight()
+            ? 'drop-shadow(0 0 1.4px rgba(0,0,0,.85)) drop-shadow(0 0 2.6px rgba(0,0,0,.6))'
+            : 'drop-shadow(0 0 1.6px rgba(0,0,0,.7))')+'">'+inner+'</svg>'});
 }
 // 換配色或換造型後，把已經放在地圖上的箭頭重畫（它們是建立時就固定的 divIcon）
 function pvRestyleArrows(){
@@ -2288,14 +2304,15 @@ function drawChevron(ctx,base){
     /* 先帶陰影畫一次，把箭頭從底下的路線襯出來。
        地圖上的箭頭是 SVG 的 drop-shadow，匯出這邊得自己補，
        否則淺色模式的白箭頭疊在未跑路線上只有 1.84:1，等於看不見。 */
-    /* 強度對齊地圖上 SVG 的 drop-shadow(.7)。實測在匯出的 12px 箭頭上：
-       .55/0.42 只有 7 個像素比底色暗 15 以上（幾乎沒有暈開），
-       .70/0.60 是 30 個，才真的襯得出輪廓。 */
-    ctx.shadowColor='rgba(0,0,0,.7)';
-    ctx.shadowBlur=Math.max(2, base*0.6);
-    path();
-    if(sh.mode==='fill'){ ctx.fillStyle=col; ctx.fill(); }
-    else { ctx.strokeStyle=col; ctx.lineWidth=Math.max(2, sh.w*base); ctx.stroke(); }
+    // 強度依主題（見 ARROW_SHADOW）：淺色模式要深很多，因為白箭頭全靠它才看得見
+    const shc=ARROW_SHADOW[isLight()?'light':'dark'];
+    for(let i=0;i<shc.passes;i++){
+      ctx.shadowColor=shc.color;
+      ctx.shadowBlur=Math.max(2, base*shc.blurK);
+      path();
+      if(sh.mode==='fill'){ ctx.fillStyle=col; ctx.fill(); }
+      else { ctx.strokeStyle=col; ctx.lineWidth=Math.max(2, sh.w*base); ctx.stroke(); }
+    }
     // 第二次不帶陰影，免得補的描邊又疊一層陰影把顏色壓暗
     ctx.shadowColor='transparent'; ctx.shadowBlur=0;
     path();
