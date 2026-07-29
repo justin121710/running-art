@@ -356,6 +356,19 @@
   .mshot{display:block;width:100%;max-width:300px;margin:0 auto;border-radius:10px;
     border:1px solid var(--border)}
   .mhint{font-size:11.5px;color:var(--dim);margin:10px 2px 0;line-height:1.5}
+
+  /* ---- 免責聲明對話框 ----
+     沿用上面的 .modal / .mbox / .mtitle / .mact，只補內文的排版。
+     z-index 要壓過 busy(800) 與 toast(900)：引擎在背景載入時會跳這兩個， */
+  /* 聲明還沒按同意就被蓋住會很怪。 */
+  #legalModal{z-index:1000}
+  .dlg-lead{font-size:13px;line-height:1.6;color:var(--text2);margin:0 0 10px}
+  .dlg-list{margin:0 0 12px;padding-left:19px;font-size:12.5px;line-height:1.65;color:var(--text2)}
+  .dlg-list li{margin-bottom:7px}
+  .dlg-note{font-size:11.5px;color:var(--dim);line-height:1.55;margin:0}
+  /* 品牌標誌兼「再看一次聲明」的入口，所以要看得出可以點 */
+  .brand{cursor:pointer}
+
   @media (max-width:680px){
     .mbox{padding:14px}
     .mcols{flex-direction:column-reverse;gap:12px}
@@ -393,7 +406,7 @@
 <div id="map"></div>
 
 <div class="top">
-  <div class="brand">
+  <div class="brand" id="brand" role="button" tabindex="0" title="免責聲明 / Disclaimer">
   <img class="logo" id="brandLogo" src="logo_dark.svg" alt="" width="26" height="26">
   <span>Running Art</span>
 </div>
@@ -609,6 +622,52 @@
     </div>
   </div>
 </div>
+
+<!-- 免責聲明：第一次進站（或聲明版本更新）時跳出，按下「我了解並同意」才會關掉。
+     刻意不能點背景關閉、也沒有第二顆按鈕——這是法律聲明，要有一個明確的動作。
+     之後想再看一次：點左上角的品牌標誌（openLegal）。
+     內文全部是純文字，不要在 <li> 裡塞 <b>/<span>——applyLang() 用 textContent
+     切換中英文，會把子元素一起蓋掉。 -->
+<div class="modal" id="legalModal" hidden>
+  <div class="mbox" style="max-width:460px">
+    <div class="mtitle" data-en="Before you start — Disclaimer">使用前請詳閱 · 免責聲明</div>
+    <p class="dlg-lead" data-en="Running Art only snaps the shape you draw onto roads found in public map data, producing a suggested route for reference only. It cannot know what the place is actually like right now.">Running Art 只是把你畫的圖案對齊到公開地圖資料裡的道路，產生一條「僅供參考」的建議路線。它並不知道現場的實際狀況。</p>
+    <ol class="dlg-list">
+      <li data-en="Routes are generated automatically and may pass through motor-vehicle lanes, expressways, roadworks, private property, stairs, or other places that are unsafe or not permitted for running. Check the route yourself before you set off.">路線由程式自動產生，可能經過車道、快速道路、施工路段、私人土地、階梯或其他不適合、不允許跑步的地方。出發前請自行確認整條路線。</li>
+      <li data-en="Map data comes from third parties such as OpenStreetMap and may be outdated or wrong. Distance, estimated time and elevation gain/loss are estimates only and are not guaranteed to be accurate.">地圖資料來自 OpenStreetMap 等第三方來源，可能過時或有誤；距離、預估時間與爬升／下降都只是估算值，不保證準確。</li>
+      <li data-en="Always obey local laws and traffic rules, and follow the actual conditions and signals on the ground rather than this app. Do not stare at your phone while moving.">請務必遵守當地法規與交通規則；一切以現場狀況與號誌為準，不要以本程式的路線為準。移動中請勿盯著手機。</li>
+      <li data-en="Exercise carries risk. Consider your own health, plus weather, traffic, lighting and personal safety. Minors should be accompanied by a guardian.">運動本身有風險。請衡量自己的身體狀況，以及天候、車流、照明與治安等因素；未成年人建議由家長或監護人陪同。</li>
+      <li data-en="This service is provided AS IS, without warranty of any kind, express or implied, including fitness for a particular purpose. To the fullest extent permitted by law, the author and contributors accept no liability for any personal injury, death, property damage, getting lost, fines, or any other loss arising from use of this service.">本服務以「現狀」提供，不提供任何明示或默示的擔保（包括但不限於適合特定用途）。在法律允許的最大範圍內，作者與貢獻者對於使用本服務所導致的任何人身傷害、死亡、財產損失、迷路、罰款或其他損害，均不負任何責任。</li>
+      <li data-en="You use this service entirely at your own risk. If you do not agree, please close this page.">你必須自行承擔使用本服務的全部風險。若不同意，請關閉本頁面。</li>
+    </ol>
+    <p class="dlg-note" data-en="Map data © OpenStreetMap contributors · tiles © CARTO. To read this again, tap the Running Art logo in the top-left corner.">地圖資料 © OpenStreetMap 貢獻者，圖磚 © CARTO。想再看一次這份聲明，點左上角的 Running Art 標誌。</p>
+    <div class="mact">
+      <button class="pri" id="legalOk" data-en="I understand and agree">我了解並同意</button>
+    </div>
+  </div>
+</div>
+<script>
+/* 聲明要「剛啟動就跳出」，但主程式排在 Leaflet／Pyodide 兩個 CDN <script> 後面，
+   等它會慢上幾百毫秒。所以這裡先用一小段內嵌腳本決定要不要顯示。
+   主題配色靠 CSS 變數自動跟上，之後的中英切換由 applyLang() 接手。 */
+const LEGAL_KEY='runart_legal', LEGAL_VER='2026-07-29';   // 改內容就把 VER 往前推，讓大家重看
+(function(){
+  try{ if(localStorage.getItem(LEGAL_KEY)===LEGAL_VER) return; }catch(_){}
+  const m=document.getElementById('legalModal');
+  if(!m) return;
+  m.hidden=false;
+  /* 語言判斷和主程式的 lang 同一套（見下方 i18n 區塊）。
+     ⚠️ applyLang() 第一次跑時會把當下的 textContent 記成 data-zh；
+     若先換成英文再讓它記，中文就永遠回不來——所以自己先補上 data-zh。 */
+  let en=false;
+  try{ en=(localStorage.getItem('runart_lang')||
+           (navigator.language.toLowerCase().startsWith('zh')?'zh':'en'))==='en'; }catch(_){}
+  if(en) m.querySelectorAll('[data-en]').forEach(eln=>{
+    if(eln.dataset.zh==null) eln.dataset.zh=eln.textContent;
+    eln.textContent=eln.dataset.en;
+  });
+})();
+</script>
 
 <div class="toast" id="toast"></div>
 <div class="busy" id="busy"><div class="spin"></div><span id="busyTxt"></span></div>
@@ -3125,6 +3184,17 @@ el.pill.onclick=()=>{
   if(!S.result||S.sheetUp||S.editing) return;
   S.sheetUp=true;el.sheet.classList.add('up');refresh();fitRoute();
 };
+
+/* ---------- 免責聲明 ----------
+   要不要在啟動時跳出，已經由 <body> 裡那段內嵌腳本決定了（早幾百毫秒）。
+   這裡只接手「同意」與「再看一次」。 */
+function openLegal(){ $('legalModal').hidden=false; }
+$('legalOk').onclick=()=>{
+  try{ localStorage.setItem(LEGAL_KEY,LEGAL_VER); }catch(_){}
+  $('legalModal').hidden=true;
+};
+$('brand').onclick=openLegal;
+$('brand').onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openLegal(); } };
 
 function busy(t){const b=$('busy');
   if(t){if(EN()&&PROG_EN[t]) t=PROG_EN[t]; $('busyTxt').textContent=t;b.classList.add('on');}
