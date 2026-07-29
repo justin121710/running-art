@@ -167,6 +167,16 @@
   #editDock .sm.danger:not(:disabled){background:#dc2626;border-color:#dc2626;color:#fff}
   #editDock .sm.danger:disabled{background:var(--panel3);border-color:var(--border2)}
 
+  /* 框選下載範圍時，底部工具列與膠囊要讓開。
+     它們是 #map 的「兄弟」、疊在地圖上面，框到那裡不但看不見自己在框什麼，
+     放開手時 pointerup 還會落在工具列上（不是地圖容器），框選收不了尾：
+     畫面上留著一個永遠不會消失的框，而且要再按一次「載入地圖範圍」才解得掉。
+     引導條留著（框選的說明就在上面），但改成不吃事件，才不會擋住起手的拖曳。 */
+  #mainDock{transition:opacity .2s,transform .2s}
+  body.boxing #mainDock{opacity:0;transform:translateY(14px);pointer-events:none}
+  body.boxing .pill{opacity:0;pointer-events:none}
+  body.boxing .guide{pointer-events:none}
+
   /* ---- 恢復結果按鈕 / 距離膠囊（移至工具列上方） ---- */
   .pill{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);z-index:550;
     background:var(--glass);backdrop-filter:blur(8px);border:1px solid var(--border);
@@ -1035,6 +1045,17 @@ document.querySelectorAll('.m').forEach(b=>b.onclick=()=>setMode(b.dataset.mode)
 function boxBegin(e){
   boxA=[e.clientX,e.clientY];
   boxEl=document.createElement('div');boxEl.className='box';document.body.appendChild(boxEl);
+  /* 抓住這個指標：接下來的 pointermove／pointerup 一律送回地圖容器，
+     就算放開手時停在某個浮在地圖上的 UI（工具列、引導條、頂部按鈕）也一樣。
+     沒有這行的話那些元素會把 pointerup 吃掉——事件不會冒泡到地圖容器，
+     因為它們是 #map 的兄弟不是子孫——框選就收不了尾，框會留在畫面上。
+     兩個呼叫端（框選下載、微調框選）都已經把 map.dragging 關掉，不會打架。 */
+  try{ mc.setPointerCapture(e.pointerId); }catch(_){}
+}
+/* 收不了尾時的清場：把還沒完成的框丟掉，不留殘影 */
+function boxAbort(){
+  boxA=null;
+  if(boxEl){boxEl.remove();boxEl=null;}
 }
 function boxDrag(e){
   if(!boxA||!boxEl) return;
@@ -1044,6 +1065,7 @@ function boxDrag(e){
 /* 收框，回傳 {x0,y0,x1,y1}（相對地圖容器）；沒在畫框就回傳 null */
 function boxEnd(e){
   if(!boxA) return null;
+  try{ mc.releasePointerCapture(e.pointerId); }catch(_){}
   const a=boxA;boxA=null;
   if(boxEl){boxEl.remove();boxEl=null;}
   const r=mc.getBoundingClientRect();
@@ -1104,11 +1126,18 @@ function refresh(){
 }
 
 /* ---------- 框選下載 ---------- */
+/* 框選模式的開關集中在這裡：狀態、按鈕外觀、地圖拖曳、以及讓底部工具列退場
+   （body.boxing，見檔頭 CSS）。以前開跟關寫在兩個地方，關的那邊少做了幾件事。 */
+function setBoxing(on){
+  S.boxing=on;
+  $('btnDl').classList.toggle('on',on);
+  document.body.classList.toggle('boxing',on);
+  map.dragging[on?'disable':'enable']();
+  if(!on) boxAbort();      // 離開框選就不該再留著半途的框
+}
 $('btnDl').onclick=()=>{
-  S.boxing=!S.boxing;
-  $('btnDl').classList.toggle('on',S.boxing);
+  setBoxing(!S.boxing);
   $('dlLabel').textContent=S.boxing?tx('取消框選','Cancel'):tx('載入地圖範圍','Load Map');
-  map.dragging[S.boxing?'disable':'enable']();
   if(S.boxing) toast('在地圖上拖曳一個方框',1800);
 };
 const mc=map.getContainer();
@@ -1184,7 +1213,7 @@ mc.addEventListener('pointerup',e=>{
       const p1=map.containerPointToLatLng([r.x0,r.y0]);
       const p2=map.containerPointToLatLng([r.x1,r.y1]);
       const bounds=L.latLngBounds(p1,p2);
-      S.boxing=false;$('btnDl').classList.remove('on');
+      setBoxing(false);           // 框好了就離開框選模式，工具列跟著回來
       const km=(map.distance(bounds.getNorthWest(),bounds.getNorthEast())/1000)
              *(map.distance(bounds.getNorthWest(),bounds.getSouthWest())/1000);
       $('dlLabel').textContent=tx('載入中…','Loading…');
@@ -1206,6 +1235,12 @@ mc.addEventListener('pointerup',e=>{
     S.cur=null;S.curLine=null;refresh();
   }
 });
+/* 指標被系統中斷（手機的返回手勢、拖出視窗外放開…）時，pointerup 不一定會來。
+   lostpointercapture 一定會來，而正常收尾時 boxEnd 已經把 boxA 清成 null，
+   所以「這時候 boxA 還在」就代表框沒收成，直接清掉免得留下殘影。 */
+mc.addEventListener('pointercancel',boxAbort);
+mc.addEventListener('lostpointercapture',()=>{ if(boxA) boxAbort(); });
+
 // 起終點標記：綠圈內 ▶＝起點、紅圈內 ■＝終點（比兩個不同色的圓點好辨識）。
 // 地圖與匯出圖片用同一套語意（綠=start、紅=stop）。
 function seIcon(isStart){
