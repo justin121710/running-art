@@ -1024,8 +1024,53 @@ function showArea(b){
   areaMask=L.polygon([W,hole],{stroke:false,fillColor:isLight()?'#8a96a6':'#05070a',
     fillOpacity:.72,interactive:false}).addTo(map);
   areaRect=L.rectangle(b,{color:isLight()?'#000':'#fff',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map);
-  // 留出上下非對稱邊距，避免被頂部按鈕或底部工具欄遮擋
-  map.fitBounds(b,{paddingTopLeft:[30,64],paddingBottomRight:[30,110]});
+}
+
+/* 量出「浮在地圖上的 UI」實際吃掉哪幾邊，讓 fitBounds 把範圍塞進真正看得見的區域。
+   以前是寫死的 [30,64]/[30,110]，但引導提示框會依步驟與版面換位置
+   （手機貼在工具列上方、桌面在工具列左邊），寫死的數字擋不住它——
+   實際回報：載入完成後，步驟 2 的提示框正好蓋住白色的範圍框。
+
+   作法：把每個浮動元素和地圖容器求交集，看它離哪一邊最近就算成那一邊的邊距。
+   例如貼著底部的提示框 → 底部要留 (地圖下緣 − 提示框上緣)。 */
+/* 用選擇器而不是 id：頂部那條是 .top，沒有 id——寫成 $('top') 會拿到 null
+   然後被靜靜跳過，頂部按鈕就完全沒被算進邊距裡。 */
+const FLOATERS=['.top','#guide','#mainDock','#pill'];
+function mapInsets(gap=12){
+  const mr=mc.getBoundingClientRect();
+  const ins={top:0,right:0,bottom:0,left:0};
+  FLOATERS.forEach(sel=>{
+    const eln=document.querySelector(sel);
+    if(!eln||eln.hidden) return;
+    const cs=getComputedStyle(eln);
+    // 看不見或不吃事件的（例如 hide 掉的引導條、框選時退場的工具列）不算
+    if(cs.display==='none'||cs.visibility==='hidden'||parseFloat(cs.opacity)<0.05) return;
+    const r=eln.getBoundingClientRect();
+    if(!r.width||!r.height) return;
+    const ov={l:Math.max(r.left,mr.left), r:Math.min(r.right,mr.right),
+              t:Math.max(r.top,mr.top),  b:Math.min(r.bottom,mr.bottom)};
+    if(ov.r<=ov.l||ov.b<=ov.t) return;          // 根本沒疊在地圖上
+    /* 從四邊各算一次「要留多少才能完全避開它」，取最小的那一邊。
+       不能用「離哪一邊最近」：手機上引導條貼在工具列上方、左邊只差 12px，
+       會被判成左側，於是 375px 寬的畫面被吃掉 267px，範圍框縮成一條。
+       改成比較所需的邊距，同一個引導條會正確地算成「底部留 214」。 */
+    const need={top:ov.b-mr.top, bottom:mr.bottom-ov.t,
+                left:ov.r-mr.left, right:mr.right-ov.l};
+    const side=Object.keys(need).reduce((a,k)=>need[k]<need[a]?k:a,'top');
+    ins[side]=Math.max(ins[side],need[side]+gap);
+  });
+  // 邊距吃掉太多會讓 fitBounds 算出荒謬的縮放，各軸合計最多 70%
+  const capX=mr.width*0.7, capY=mr.height*0.7;
+  if(ins.left+ins.right>capX){const k=capX/(ins.left+ins.right);ins.left*=k;ins.right*=k;}
+  if(ins.top+ins.bottom>capY){const k=capY/(ins.top+ins.bottom);ins.top*=k;ins.bottom*=k;}
+  return ins;
+}
+/* 把視野拉到已載入的範圍，並閃開所有浮在上面的 UI。
+   一定要在 refresh() 之後呼叫：引導條要先跳到步驟 2 的位置，量到的才是它真正的落點。 */
+function fitArea(b){
+  const i=mapInsets();
+  map.fitBounds(b,{paddingTopLeft:[Math.round(i.left),Math.round(i.top)],
+                   paddingBottomRight:[Math.round(i.right),Math.round(i.bottom)]});
 }
 function inArea(ll){return !S.bounds||S.bounds.contains(ll);}
 
@@ -1224,6 +1269,9 @@ mc.addEventListener('pointerup',e=>{
           $('dlLabel').textContent=km.toFixed(1)+' km²';
           ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=false);
           toast(tx('路網已載入（'+st.nodes+' 個路口）','Roads loaded ('+st.nodes+' junctions)'));setMode('draw');refresh();
+          // 視野最後才拉：refresh() 會把引導條推到步驟 2 並重新定位，
+          // 先拉的話量到的是它舊的位置，範圍框還是會被蓋住。
+          fitArea(bounds);
         })
         .catch(err=>{busy('');updateDlLabel();toast(err.message,3000);});
     }
