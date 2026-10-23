@@ -4,8 +4,8 @@
 輸出 GPX 或分享圖片。
 
 - **線上版**：https://justin121710.github.io/running-art/
-- **原始碼**：`deploy/index.html`（介面，約 3000 行）＋ `deploy/engine.js`（引擎橋接）＋ `gpsart/*.py`（演算法）
-- **桌面版 `GPS_ART_vFINAL.py` 已不再維護**（2026-07-23 起專注網頁版）
+- **原始碼**：這個 repo 本身就是網站（GitHub Pages），推到 `main` 約一分鐘後上線
+- 只維護瀏覽器版；舊的桌面版 `GPS_ART_vFINAL.py` 已停止維護
 
 ---
 
@@ -14,10 +14,11 @@
 | 你想做的事 | 讀這份 |
 |---|---|
 | 剛接手，想先搞懂全貌 | 本檔 → `ARCHITECTURE.md` |
-| 改路徑演算法（`gpsart/`） | `ARCHITECTURE.md` 二～四章 ⚠️ **動之前先看基準測試那節** |
+| 改路徑演算法（`gpsart/`） | `ARCHITECTURE.md` 二～四章 ⚠️ **先看「改程式之前」那節** |
 | 改顏色、圖示、匯出版面 | `UI_DESIGN.md` |
-| 想知道某個怪現象是不是已知問題 | `FEATURES.md` 第三章（12 個解過的路線品質問題） |
+| 想知道某個怪現象是不是已知問題 | `FEATURES.md` 第三章 |
 | 要開新對話接手 | `HANDOFF_PROMPT.md` |
+| 這次全面檢討的問題清單與修正結果 | `Running_Art_專案檢討報告.pdf` |
 
 ---
 
@@ -25,12 +26,15 @@
 
 ```
 瀏覽器（不需要任何伺服器）
- ├─ Leaflet         地圖、手繪、圖層
- ├─ index.html      介面 + Canvas 匯出（單檔，約 3000 行）
- ├─ engine.js       橋接層 + Pyodide 膠水（Python 字串）
- └─ Pyodide (WASM)
-     ├─ numpy / networkx / shapely
-     └─ gpsart/*.py  ← 真正的路徑演算法，和桌面版同一份
+ ├─ 主執行緒
+ │   ├─ Leaflet（vendor/）   地圖、手繪、圖層
+ │   ├─ index.html + js/*.js  介面、分享圖匯出、GPX
+ │   └─ engine.js             和 Worker 傳話
+ └─ Web Worker（engine-worker.js）
+     ├─ Pyodide (WASM)：numpy / networkx / shapely
+     │   └─ gpsart/*.py   ← 真正的路徑演算法
+     ├─ Overpass 下載（錯開競速）
+     └─ IndexedDB 路網快取
 ```
 
 資料流：
@@ -38,38 +42,42 @@
 ```
 手繪筆畫 ──► Engine.generate()
                 │
-                ├─ stitch / reorder / smooth   （前處理）
-                ├─ route_in_corridor()          （沿紅線的走廊裡找道路）
-                ├─ 一連串清理（去尖刺、剪折返、截彎取直…）
-                └─ bridge_node_path_gaps()      （最後統一把跳點沿道路接回）
+                ├─ 縫合 / 排序 / 閉合圖形旋轉      （prepare_strokes）
+                ├─ match_stroke()   Viterbi 地圖匹配：找「最像這條線」的道路
+                ├─ clean_path()     收拾小毛邊（會保護畫出來的尖角）
+                ├─ 連接段           起點 → 各筆 → 終點，純最短路
+                └─ bridge_node_path_gaps()   最後統一把跳點沿道路接回
                        │
                        ▼
                   SEGS（分段 + 節點編號）
                        │
         ┌──────────────┼──────────────┐
         ▼              ▼              ▼
-   地圖上的路線    微調（刪／拖節點）   匯出 PNG / GPX
+   地圖上的路線    微調（刪／拖節點）   匯出 PNG / GPX / 分享連結
 ```
 
 ---
 
 ## 三個一定要知道的規矩
 
-### 1. 動 `gpsart/` 就要跑基準測試
+### 1. 改了就跑測試
 
 ```bash
-python selftest_algorithms.py compare
+python -m pytest                   # 演算法行為＋真實路網品質不退步（約 15 秒）
+node tests/e2e/run_e2e.js          # 端對端：真的在瀏覽器跑一次完整流程（約 3 分鐘）
 ```
 
-這個專案發生過兩次嚴重回歸（路徑覆蓋率掉到 1/3、路線連到地圖邊界外），
-測試是補回來的安全網。細節與**安全網本身的漏洞**見 `ARCHITECTURE.md` 第二章。
+這個專案發生過好幾次嚴重回歸（路徑覆蓋率掉到 1/3、路線連到地圖邊界外、
+閉合圖形被整圈抄掉），而且好幾次是「測試測不到」。CI 每次 push 都會跑。
 
-### 2. `gpsart/` 有三份副本，要一起同步
+### 2. 改了 .js 或 gpsart/*.py 就更新版本號
 
-`gpsart/`（根目錄，測試用）、`web_prototype/gpsart/`、`deploy/gpsart/`。
-改完演算法還要更新 `engine.js` 的 `VERSION`，否則瀏覽器沿用快取的舊演算法。
+```bash
+python tools/stamp_versions.py
+```
 
-**同理，改了 `engine.js` 就要改 `index.html` 裡 `<script src="engine.js?v=…">` 的 `v`。**
+瀏覽器（和 Service Worker）靠網址上的 `?v=` 判斷檔案有沒有換新。
+這支工具依檔案內容自動算，不用再手動改。忘了跑 CI 會紅燈。
 
 ### 3. 顏色只寫在 CSS 變數裡
 
@@ -81,23 +89,15 @@ python selftest_algorithms.py compare
 ## 本機開發
 
 ```bash
-python -m http.server 8766 --directory deploy
+python -m http.server 8766
 ```
 
 然後開 http://localhost:8766/index.html
 
-改完部署：
-
-```bash
-cd deploy && git add -A && git commit -m "說明" && git push
-```
-
-約一分鐘後線上版更新。**`deploy/` 自己是一個獨立的 git repo。**
+部署：`git push origin main`，約一分鐘後線上版更新。
 
 > ⚠️ 不要短時間連推多個 commit——GitHub Pages 一次只允許一個部署，
 > 併發會讓其中一個卡在 in progress 把後續全擋住。每次 push 後先確認上線再做下一次。
-> 驗證是否真的更新：比對 `raw.githubusercontent.com/.../main/index.html`（repo 實際內容）
-> 和 `justin121710.github.io/...`（Pages 服務層），兩者不一致就是部署卡住，不是快取。
 
 ---
 
@@ -108,4 +108,5 @@ cd deploy && git add -A && git commit -m "說明" && git push
 
 一個容易誤判的坑：**瀏覽器窗格收合或沒在合成畫面時，CSS transition 不會前進**，
 `getComputedStyle` 會卡在切換前的值，看起來像「主題切了顏色沒變」。
-把 `transition` 暫時關掉再量一次就能分辨。
+把 `transition` 暫時關掉再量一次就能分辨。另一個：`fitBounds` 預設會動畫，
+同一段程式裡馬上量到的是動畫前的值（端對端測試就踩過）。

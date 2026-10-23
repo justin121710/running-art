@@ -8,7 +8,7 @@
  * · 其他外部服務（圖磚、Overpass、Nominatim、Open-Meteo）完全不經手，
  *   照它們自己的快取規則走（OSM 圖磚的使用政策也要求不要另外囤積）。
  */
-const VERSION = '738c94c0d0';
+const VERSION = '9bb71fdc07';
 const APP_CACHE = 'runart-app-' + VERSION;
 const CDN_CACHE = 'runart-cdn-v1';
 const CDN_PREFIXES = ['https://cdn.jsdelivr.net/pyodide/v0.26.4/'];
@@ -33,7 +33,10 @@ self.addEventListener('fetch', ev => {
       const cache = await caches.open(CDN_CACHE);
       const hit = await cache.match(req);
       if (hit) return hit;
-      const res = await fetch(req);
+      /* 用 CORS 模式去抓：Worker 的 importScripts 是 no-cors 請求，原樣轉發會拿到
+         「不透明」回應（status 0），沒辦法判斷成功與否、也不該存。jsDelivr 有回 CORS 標頭，
+         改成 cors 之後回應可以檢查、可以快取，給 no-cors 的請求用也沒問題。 */
+      const res = await fetch(new Request(req.url, { mode: 'cors', credentials: 'omit' }));
       if (res.ok) cache.put(req, res.clone());
       return res;
     })());

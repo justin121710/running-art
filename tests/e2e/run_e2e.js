@@ -43,18 +43,20 @@ async function setupContext(browser, opts = {}) {
   await ctx.route('**/*', async route => {
     const req = route.request();
     const u = new URL(req.url());
-    if (u.hostname === 'app.test') {
+    if (u.hostname === 'app.test' || (u.hostname === 'localhost' && u.port === '8765')) {
       let f = path.join(ROOT, decodeURIComponent(u.pathname));
       if (f.endsWith('/')) f += 'index.html';
       if (!fs.existsSync(f)) return route.fulfill({ status: 404, body: 'nf' });
       return route.fulfill({ body: fs.readFileSync(f), contentType: MIME[path.extname(f)] || 'application/octet-stream' });
     }
+    if (u.hostname === 'cdn.jsdelivr.net') { counters.cdn = (counters.cdn || 0) + 1; (counters.cdnUrls = counters.cdnUrls || []).push(u.pathname.split('/').pop()); }
     if (u.hostname === 'cdn.jsdelivr.net' && PYODIDE_DIR) {
       const f = path.join(PYODIDE_DIR, path.basename(u.pathname));
       if (!fs.existsSync(f)) return route.fulfill({ status: 404, body: 'nf' });
       return route.fulfill({ body: fs.readFileSync(f), contentType: MIME[path.extname(f)] || 'application/octet-stream',
                              headers: { 'access-control-allow-origin': '*' } });
     }
+    if (u.hostname === 'cdn.jsdelivr.net') return route.continue();   // CI：用真的 CDN
     if (u.pathname.endsWith('/api/interpreter') || u.pathname.endsWith('/overpass/api/interpreter')) {
       counters.overpass++;
       if (opts.overpassDown) return route.fulfill({ status: 504, body: 'busy', headers: { 'access-control-allow-origin': '*' } });
@@ -109,11 +111,12 @@ async function loadArea(page) {
   await page.evaluate(c => map.setView(c, 15, { animate: false }), CENTER);
   await page.waitForTimeout(300);
   await page.click('#btnDl');
-  const box = await page.evaluate(() => { const r = map.getContainer().getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
-  await page.mouse.move(box.x - 260, box.y - 170);
+  const box = await page.evaluate(() => { const r = map.getContainer().getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; });
+  const hw = Math.min(260, box.w * 0.42), hh = Math.min(170, box.h * 0.3);
+  await page.mouse.move(box.x - hw, box.y - hh);
   await page.mouse.down();
   await page.mouse.move(box.x, box.y, { steps: 5 });
-  await page.mouse.move(box.x + 260, box.y + 170, { steps: 5 });
+  await page.mouse.move(box.x + hw, box.y + hh, { steps: 5 });
   await page.mouse.up();
   await waitFor(page, () => S.hasMap === true);
 }
@@ -262,7 +265,8 @@ async function setStartEnd(page, p) {
     await page.press('#searchIn', 'Enter');
     await waitFor(page, () => document.querySelectorAll('#searchRes li').length === 1 && !document.querySelector('#searchRes li').textContent.includes('…'), 10000);
     await page.click('#searchRes li');
-    check(await page.evaluate(() => document.querySelector('#searchBox').hidden && map.getZoom() >= 13), '地點搜尋可以移動地圖（U10）');
+    const moved = await waitFor(page, () => document.querySelector('#searchBox').hidden && map.getZoom() >= 13, 5000).then(() => true, () => false);
+    check(moved, '地點搜尋可以移動地圖（U10）');
 
     check(errors.length === 0, '沒有 JS 錯誤' + (errors.length ? '：' + errors.join(' | ') : ''));
     await ctx.close();
@@ -322,6 +326,29 @@ async function setStartEnd(page, p) {
     await loadArea(page);
     check(counters.overpass > n1, `過期快取會先嘗試重新下載（打了 ${counters.overpass - n1} 台）`);
     check(await page.evaluate(() => S.hasMap), `全部失敗時改用過期資料（${((Date.now() - t) / 1000).toFixed(0)}s）`);
+    check(errors.length === 0, '沒有 JS 錯誤' + (errors.length ? '：' + errors.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  console.log('5. Service Worker：第二次進站不重抓 Pyodide、離線也能開（E3）');
+  {
+    const { ctx, counters } = await setupContext(browser, { sw: true });
+    const { page, errors } = await openApp(ctx, 'http://localhost:8765/index.html');
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();                                   // 讓 SW 開始控制這個頁面
+    await waitFor(page, () => !!navigator.serviceWorker.controller, 10000);
+    await page.evaluate(() => Engine.boot());
+    const n1 = counters.cdn || 0;
+    await page.reload();
+    await waitFor(page, () => !!navigator.serviceWorker.controller, 10000);
+    await page.evaluate(() => Engine.boot());
+    const n2 = counters.cdn || 0;
+    if (n2 !== n1) console.log('    第二次仍連網：', counters.cdnUrls.slice(n1).join(', '));
+    check(n1 > 0 && n2 === n1, `第二次啟動 Pyodide 全部來自快取（CDN 請求 ${n1} → ${n2}）`);
+    await ctx.setOffline(true);
+    await page.reload();
+    await page.evaluate(() => Engine.boot());
+    check(await page.evaluate(() => typeof S === 'object'), '離線時頁面與引擎都能啟動');
     check(errors.length === 0, '沒有 JS 錯誤' + (errors.length ? '：' + errors.join(' | ') : ''));
     await ctx.close();
   }

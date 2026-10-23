@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # 版本對齊 Pyodide 0.26.4 內建的套件，瀏覽器裡跑的就是這些版本
+      - run: pip install numpy==1.26.4 networkx==3.3 shapely==2.0.2 pytest
+      - name: 演算法測試（含真實路網品質不退步）
+        run: python -m pytest -q
+      - name: 版本號是否已更新
+        run: python tools/stamp_versions.py --check
+
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JS 語法
+        run: for f in engine.js engine-worker.js sw.js js/*.js tests/e2e/run_e2e.js; do node --check "$f"; done
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [python, js]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-save playwright@1.49.1 && npx playwright install --with-deps chromium
+      - name: 端對端（真的在瀏覽器裡跑 Pyodide）
+        env:
+          PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS: '1'
+        run: node tests/e2e/run_e2e.js
