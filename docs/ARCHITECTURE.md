@@ -220,6 +220,13 @@ python selftest_algorithms.py baseline
    - 查詢用 `[out:json][timeout:25]`（伺服器端逾時），塞住的機器早點放棄。
    - 整輪競速失敗會短暫等一下再試第二輪；仍失敗給乾淨的中文錯誤，不是 traceback。
 
+   **底圖圖磚**（`index.html` 的 `TILE_PROVIDERS`）：CARTO 從 2026-09 起點陣圖磚必須帶 key，
+   沒帶就回 403 並印滿「API KEY REQUIRED」。到 https://carto.com/basemaps/apikey 免費申請、
+   網站限制設 `justin121710.github.io`，填進 `CARTO_KEY` 即可用回 dark_all／light_all。
+   `CARTO_KEY` 是空的、或啟動時 `probeTiles()` 驗證失敗（key 過期、額度用完、網域不符），
+   會自動改用 OpenStreetMap 官方圖磚（免金鑰，深色模式用濾鏡反轉）。
+   匯出圖片走同一個來源；OSM 沒有 @2x，`tilePlan()` 會改抓下一級縮放補清晰度。
+
    另外兩個瀏覽器版用到的外部服務（都有 CORS、失敗都不影響主流程）：
    - **Nominatim**（`nominatim.openstreetmap.org/reverse`）：反向地理編碼出地點名稱，
      匯出圖片用。

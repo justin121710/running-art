@@ -86,6 +86,13 @@
   #map{position:absolute;inset:0;background:var(--bg)}
   .leaflet-container{background:var(--bg)}
   .leaflet-tile-pane{filter:var(--tile-filter)}
+  /* 圖磚來源的版權標示（OSM／CARTO 的使用條款都要求顯示在地圖上）。
+     Leaflet 預設把角落控制項放在 z-index 1000，會蓋住工具列與結果面板；
+     壓到 450 讓它退在 UI 底下，只在工具列下方那條 12px 的縫裡露出來。 */
+  .leaflet-bottom{z-index:450}
+  .leaflet-container .leaflet-control-attribution{font-size:9px;line-height:12px;
+    padding:0 5px;background:var(--glass);color:var(--dim);border-top-left-radius:6px}
+  .leaflet-container .leaflet-control-attribution a{color:inherit}
 
   /* ---- 頂部 ---- */
   .top{position:absolute;top:0;left:0;right:0;z-index:500;padding:10px 12px;
@@ -650,7 +657,7 @@
       <li data-en="This service is provided AS IS, without warranty of any kind, express or implied, including fitness for a particular purpose. To the fullest extent permitted by law, the author and contributors accept no liability for any personal injury, death, property damage, getting lost, fines, or any other loss arising from use of this service.">本服務以「現狀」提供，不提供任何明示或默示的擔保（包括但不限於適合特定用途）。在法律允許的最大範圍內，作者與貢獻者對於使用本服務所導致的任何人身傷害、死亡、財產損失、迷路、罰款或其他損害，均不負任何責任。</li>
       <li data-en="You use this service entirely at your own risk. If you do not agree, please close this page.">你必須自行承擔使用本服務的全部風險。若不同意，請關閉本頁面。</li>
     </ol>
-    <p class="dlg-note" data-en="Map data © OpenStreetMap contributors · tiles © CARTO. To read this again, tap the Running Art logo in the top-left corner.">地圖資料 © OpenStreetMap 貢獻者，圖磚 © CARTO。想再看一次這份聲明，點左上角的 Running Art 標誌。</p>
+    <p class="dlg-note" data-en="Map data © OpenStreetMap contributors · tiles © CARTO / OpenStreetMap. To read this again, tap the Running Art logo in the top-left corner.">地圖資料 © OpenStreetMap 貢獻者，圖磚 © CARTO／OpenStreetMap。想再看一次這份聲明，點左上角的 Running Art 標誌。</p>
     <div class="mact">
       <button class="pri" id="legalOk" data-en="I understand and agree">我了解並同意</button>
     </div>
@@ -688,14 +695,65 @@ const LEGAL_KEY='runart_legal', LEGAL_VER='2026-07-29';   // 改內容就把 VER
 <script src="engine.js?v=20260727b"></script>
 <script>
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
+L.control.attribution({prefix:false,position:'bottomright'}).addTo(map);
 
 
 /* Favicon 用 logo_dark.svg：它自己帶深色圓角底，
    在淺色與深色的瀏覽器分頁列上都看得清楚。 */
 
 /* ---------- 深／淺色主題 ---------- */
-// 底圖跟著換：深色用 CARTO dark_all，淺色用 light_all。
-const TILE_URL=t=>`https://{s}.basemaps.cartocdn.com/${t?'light_all':'dark_all'}/{z}/{x}/{y}{r}.png`;
+/* ---------- 底圖圖磚來源 ----------
+   CARTO 從 2026-09 起不再提供免金鑰的點陣圖磚：沒帶 key 的請求回 403，
+   圖上印滿「API KEY REQUIRED」。到 https://carto.com/basemaps/apikey 免費申請
+   （不需要帳號），填進 CARTO_KEY 就會用回原本的 dark_all / light_all。
+   申請時把網站限制設成 justin121710.github.io（本機測試再加 localhost），
+   這樣 key 就算從原始碼被抄走，在別的網域也不能用。
+
+   沒填 key、或 key 失效（過期、額度用完、網域不符）時，自動改用 OpenStreetMap
+   官方圖磚：免金鑰，深色模式用濾鏡反轉。失效是靠啟動時 fetch 一顆圖磚看狀態碼
+   判斷的（probeTiles）——<img> 遇到 403 照樣會把浮水印畫出來、不會觸發
+   tileerror，只聽 Leaflet 的事件抓不到。 */
+const CARTO_KEY='';
+const TILE_PROVIDERS={
+  carto:{
+    leaflet:light=>`https://{s}.basemaps.cartocdn.com/${light?'light_all':'dark_all'}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_KEY)}`,
+    url:(z,x,y,light,i)=>`https://${'abcd'[i%4]}.basemaps.cartocdn.com/${light?'light_all':'dark_all'}/${z}/${x}/${y}@2x.png?key=${encodeURIComponent(CARTO_KEY)}`,
+    hd:true, maxNativeZoom:19,
+    // CARTO dark_all 的道路偏暗，提亮讓街道看得清楚；light_all 本來就亮
+    filter:{light:'none', dark:'brightness(2.3) contrast(0.92)'},
+    emul:{light:null, dark:{bright:2.3}},     // 不支援 ctx.filter 時的替代畫法（見 paintTiles）
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>',
+    credit:'© OpenStreetMap contributors © CARTO'
+  },
+  osm:{
+    leaflet:()=>'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    url:(z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
+    hd:false, maxNativeZoom:19,               // 沒有 @2x，匯出時改抓下一級縮放補清晰度
+    filter:{light:'none', dark:'invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9)'},
+    emul:{light:null, dark:{invert:true}},
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    credit:'© OpenStreetMap contributors'
+  }
+};
+let tileProvider=CARTO_KEY?'carto':'osm';
+const TP=()=>TILE_PROVIDERS[tileProvider];
+/* 只有 CARTO 需要驗：OSM 不用 key。網路錯誤也當成失敗——
+   CARTO 的 403 不一定帶 CORS 標頭，那時 fetch 會直接丟 TypeError、看不到狀態碼；
+   反正 OSM 一定能用，誤判的代價只是底圖換一種樣式。 */
+async function probeTiles(){
+  if(tileProvider!=='carto') return;
+  let ok=false;
+  try{
+    const ctrl=new AbortController(); const tm=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(TP().url(2,3,1,isLight(),0),{mode:'cors',credentials:'omit',signal:ctrl.signal});
+    clearTimeout(tm);
+    ok=r.ok;
+  }catch(_){ ok=!navigator.onLine; }   // 離線時哪家都抓不到，不必換
+  if(ok) return;
+  console.warn('CARTO 圖磚驗證失敗（key 無效、過期或網域不符），改用 OpenStreetMap 圖磚');
+  tileProvider='osm';
+  applyBaseLayer();
+}
 let baseLayer=null, areaMask=null, areaRect=null;
 function isLight(){return document.body.classList.contains('light');}
 
@@ -821,8 +879,12 @@ function pvRestyleArrows(){
 }
 function applyBaseLayer(){
   if(baseLayer) baseLayer.remove();
-  baseLayer=L.tileLayer(TILE_URL(isLight()),{maxZoom:19}).addTo(map);
+  const tp=TP(), light=isLight();
+  baseLayer=L.tileLayer(tp.leaflet(light),{maxZoom:19,maxNativeZoom:tp.maxNativeZoom,
+    subdomains:'abcd',attribution:tp.attribution}).addTo(map);
   baseLayer.bringToBack();
+  // 濾鏡跟著「來源 × 主題」走，直接寫在 pane 上，蓋過 CSS 的 --tile-filter
+  map.getPane('tilePane').style.filter=tp.filter[light?'light':'dark'];
   // 已下載範圍的遮罩顏色也要隨主題（淺色用淺灰遮罩、深色用近黑）
   if(areaMask) areaMask.setStyle({fillColor:isLight()?'#8a96a6':'#05070a'});
   // 範圍框虛線：亮色底圖用黑、深色底圖用白
@@ -856,6 +918,7 @@ function setTheme(light,save=true){
   setTheme(light,false);
 })();
 document.getElementById('btnTheme').onclick=()=>setTheme(!isLight());
+probeTiles();
 
 /* ---------- 中英文切換（i18n） ----------
    靜態文字用 HTML 的 data-en 屬性；動態字串（toast / 進度 / 引導 / 匯出）查下面的表。
@@ -2224,12 +2287,11 @@ $('aGpx').onclick=()=>{
   toast('GPX 已下載');
 };
 /* ---------- 匯出圖片 ----------
-   把底圖 tile 自己抓下來畫進 canvas。CARTO 通常會回 Access-Control-Allow-Origin: *，
+   把底圖 tile 自己抓下來畫進 canvas。CARTO 和 OSM 通常會回 Access-Control-Allow-Origin: *，
    但不能假設一定有（快取層、企業 proxy、離線重送都可能吃掉那個標頭），
    少了它 canvas 就會被「污染 (tainted)」而 toBlob/toDataURL 直接丟 SecurityError。
    所以圖磚一律走 fetch→blob 這條路（見 loadTile），並在匯出時做污染偵測 + 自動降級。
    不依賴任何額外函式庫。 */
-const TILE_HOSTS=['a','b','c','d'];
 const TILE_SIZE=256;          // 一個 tile 代表的「世界像素」
 /* 資訊欄的兩列各自可關，所以高度要分開算——兩列都關掉時整塊不佔位，
    不然會留下一條空白。PLACE_ROW_H + STATS_ROW_H = 原本的 250。 */
@@ -2277,9 +2339,22 @@ function latToWorld(lat,z){
   const r=lat*Math.PI/180;
   return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*TILE_SIZE*Math.pow(2,z);
 }
-function tileURL(z,x,y,i,style){
-  return `https://${TILE_HOSTS[i%TILE_HOSTS.length]}.basemaps.cartocdn.com/${style}/${z}/${x}/${y}@2x.png`;
+/* 算出要抓哪些圖磚、各自畫在哪（匯出與預覽共用）。
+   有 @2x 的來源（CARTO）在縮放 z 抓 512px 圖磚；沒有的（OSM）改抓 z+1，
+   每格 256px 只佔一半的世界像素，清晰度才跟 @2x 一樣。 */
+function tilePlan(z,K,cxZ,cyZ,mapW,mapH){
+  const tp=TP();
+  const zt=Math.min(tp.maxNativeZoom, z+(tp.hd?0:1));
+  const ws=TILE_SIZE/Math.pow(2,zt-z);        // 一格 zt 圖磚在 z 世界像素裡的寬
+  const n=Math.pow(2,zt);
+  const tx0=Math.floor((cxZ-(mapW/2)/K)/ws), tx1=Math.floor((cxZ+(mapW/2)/K)/ws);
+  const ty0=Math.max(0,Math.floor((cyZ-(mapH/2)/K)/ws)), ty1=Math.min(n-1,Math.floor((cyZ+(mapH/2)/K)/ws));
+  const jobs=[];let ji=0;
+  for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++)
+    jobs.push({tx,ty,x:((tx%n)+n)%n,i:ji++});   // x 繞回 0..n-1，跨換日線也抓得到
+  return {zt,jobs,rectOf:j=>({x:mapW/2+(j.tx*ws-cxZ)*K, y:mapH/2+(j.ty*ws-cyZ)*K, w:ws*K+1, h:ws*K+1})};
 }
+function tileURL(z,x,y,i,light){ return TP().url(z,x,y,light,i); }
 /* 第一順位：fetch → blob → 解碼。blob 是同源資料，畫進 canvas 永遠不會污染它，
    所以只要這條路走得通，匯出就一定不會踩到 tainted canvas。 */
 async function fetchTileBitmap(url){
@@ -2313,16 +2388,18 @@ function corsTileImage(url){
 /* 兩段式備援；兩條都失敗就回 null，那一格留底色。
    刻意不退回「不設 crossOrigin 的 <img>」——那雖然畫得出來，但會污染 canvas
    讓整張圖匯不出去。缺一格 tile 遠比整張匯出失敗好。 */
-async function loadTile(z,x,y,i,style){
-  const url=tileURL(z,x,y,i,style);
+async function loadTile(z,x,y,i,light){
+  const url=tileURL(z,x,y,i,light);
   try{ return await fetchTileBitmap(url); }catch(_){}
   try{ return await corsTileImage(url); }catch(_){}
   return null;
 }
 
-/* ctx.filter 在舊版 Safari 沒有實作（設了會被無聲忽略），深色圖磚就不會被提亮。
-   偵測一次，不支援時改用「加法疊圖」模擬 brightness(k)：
-   正常畫 1 次 + 用 'lighter' 再疊 (k−1) 次，數學上等於逐通道乘 k 後截斷。 */
+/* ctx.filter 在舊版 Safari 沒有實作（設了會被無聲忽略），深色圖磚就不會被調色。
+   偵測一次，不支援時改用合成模式模擬（見 paintTiles）：
+   · brightness(k)：正常畫 1 次 + 用 'lighter' 再疊 (k−1) 次，等於逐通道乘 k 後截斷。
+   · invert(1)：疊一層白色 'difference'，等於逐通道 255−v。hue-rotate 模擬不了，
+     色相會偏，但明暗是對的。 */
 const CTX_FILTER_OK=(()=>{
   try{
     const c=document.createElement('canvas').getContext('2d');
@@ -2330,8 +2407,10 @@ const CTX_FILTER_OK=(()=>{
     return c.filter==='brightness(2)';
   }catch(_){ return false; }
 })();
-/* 把圖磚畫上去並提亮。rectOf(job) 要回 {x,y,w,h}。 */
-function paintTiles(ctx,jobs,imgs,rectOf,bright){
+/* 把圖磚畫上去並依「來源 × 主題」調色，和地圖上 tilePane 的濾鏡一致。
+   rectOf(job) 要回 {x,y,w,h}。呼叫端要先把 ctx clip 在地圖區。 */
+function paintTiles(ctx,jobs,imgs,rectOf,light){
+  const tp=TP(), th=light?'light':'dark', filter=tp.filter[th], emu=tp.emul[th];
   const pass=(alpha,mode)=>{
     ctx.save();
     ctx.globalAlpha=alpha;ctx.globalCompositeOperation=mode;
@@ -2342,20 +2421,39 @@ function paintTiles(ctx,jobs,imgs,rectOf,bright){
     });
     ctx.restore();
   };
-  if(bright<=1.001){ pass(1,'source-over'); return; }
+  if(!filter||filter==='none'){ pass(1,'source-over'); return; }
   if(CTX_FILTER_OK){
     ctx.save();
-    ctx.filter=`brightness(${bright}) contrast(0.92)`;
+    ctx.filter=filter;
     pass(1,'source-over');
     ctx.restore();
     return;
   }
   pass(1,'source-over');
-  for(let left=bright-1;left>0.001;){
-    const a=Math.min(1,left);
-    pass(a,'lighter');
-    left-=a;
+  if(emu&&emu.bright){
+    for(let left=emu.bright-1;left>0.001;){
+      const a=Math.min(1,left);
+      pass(a,'lighter');
+      left-=a;
+    }
+  }else if(emu&&emu.invert){
+    /* 一次蓋滿整個 clip 區，不逐格畫——圖磚的矩形有 1px 重疊，
+       逐格 difference 的話重疊那條會被反轉兩次，變成一條條亮縫。 */
+    ctx.save();
+    ctx.globalCompositeOperation='difference';ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    ctx.restore();
   }
+}
+/* 圖磚來源的版權標示，畫在地圖區底邊正中（比例尺在左下、logo 在右下）。 */
+function drawTileCredit(ctx,mapW,mapH,sc,TH,F){
+  ctx.save();
+  ctx.font=`400 ${Math.max(6,Math.round(16*sc))}px ${F}`;
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.lineWidth=3*sc;ctx.strokeStyle=TH.overlayStroke;ctx.globalAlpha=.8;
+  ctx.strokeText(TP().credit,mapW/2,mapH-8*sc);
+  ctx.fillStyle=TH.overlay;ctx.fillText(TP().credit,mapW/2,mapH-8*sc);
+  ctx.restore();
 }
 // 匯出圖片的地圖大頭針（畫在資訊欄地點名稱左邊）
 function drawPin(ctx,cx,tipY,h,color,inner){
@@ -2489,11 +2587,11 @@ async function renderExportCanvas(opt){
   // 圖片跟著 App 的深／淺色主題走
   const light=isLight();
   const TH=light?{
-    tile:'light_all', tileBright:1, mapBg:'#e8ecf1',
+    mapBg:'#e8ecf1',
     infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
     overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
   }:{
-    tile:'dark_all', tileBright:2.3, mapBg:'#262a30',
+    mapBg:'#262a30',
     infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
     overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
   };
@@ -2534,18 +2632,12 @@ async function renderExportCanvas(opt){
   // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）；opt.basemap 關閉時透明
   ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
   if(opt.basemap){
-    const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
-    const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
-    const jobs=[];let ji=0;
-    for(let tx=tx0;tx<=tx1;tx++) for(let ty=ty0;ty<=ty1;ty++) jobs.push({tx,ty,i:ji++});
+    const plan=tilePlan(z,K,cxZ,cyZ,mapW,mapH);
     busy('下載底圖…');
-    const imgs=await Promise.all(jobs.map(j=>loadTile(z,j.tx,j.ty,j.i,TH.tile)));
-    const ts=TILE_SIZE*K;
-    paintTiles(ctx,jobs,imgs,
-      j=>({x:mapW/2+(j.tx*TILE_SIZE-cxZ)*K, y:mapH/2+(j.ty*TILE_SIZE-cyZ)*K, w:ts+1, h:ts+1}),
-      TH.tileBright);
+    const imgs=await Promise.all(plan.jobs.map(j=>loadTile(plan.zt,j.x,j.ty,j.i,light)));
+    paintTiles(ctx,plan.jobs,imgs,plan.rectOf,light);
     // 一格都沒抓到就等於沒有底圖：回報給呼叫端，讓它能提醒使用者而不是默默給張空白底
-    if(jobs.length && imgs.every(im=>!im)) tilesFailed=true;
+    if(plan.jobs.length && imgs.every(im=>!im)) tilesFailed=true;
     busy('產生圖片…');
   }
 
@@ -2633,6 +2725,7 @@ async function renderExportCanvas(opt){
   const cLat=(Math.min(...lats)+Math.max(...lats))/2;
   const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
   if(opt.scale!==false) drawScaleBar(ctx,{mapW,mapH,sc,z,K,cLat,TH,F});
+  if(opt.basemap&&!tilesFailed) drawTileCredit(ctx,mapW,mapH,sc,TH,F);
   if(opt.logo!==false) drawExportLogo(ctx,await loadLogoBitmap(light),mapW,mapH,sc);
   /* 沒有資訊欄、又把 logo 關掉時，才用文字浮水印墊底——
      否則文字會和右下角的 logo 疊在一起。 */
@@ -2763,10 +2856,10 @@ const layerOn=name=>{const b=document.querySelector('.lyr[data-layer="'+name+'"]
 const datOn=name=>{const b=document.querySelector('.dat[data-dat="'+name+'"]');return b&&b.classList.contains('on')?name:null;};
 // 匯出預覽的底圖 tile 快取：同一顆 tile 只抓一次，之後 toggle/拖桿都用快取重畫。
 const _tileCache={};
-async function loadTileCached(z,x,y,style){
-  const k=z+'/'+x+'/'+y+'/'+style;
+async function loadTileCached(z,x,y,light){
+  const k=tileProvider+'/'+(light?'l':'d')+'/'+z+'/'+x+'/'+y;
   if(k in _tileCache) return _tileCache[k];
-  const img=await loadTile(z,x,y,(x%4)+(y%4),style);   // 與匯出共用同一套安全載入
+  const img=await loadTile(z,x,y,(x%4)+(y%4),light);   // 與匯出共用同一套安全載入
   _tileCache[k]=img;
   return img;
 }
@@ -2797,11 +2890,11 @@ async function renderPreview(){
   /* 預覽用和匯出完全相同的主題色與資訊欄函式，差別只有縮放係數 scale。
      以前預覽自己有一組簡化的顏色、資訊欄只畫灰方塊示意，跟成品對不起來。 */
   const TH=light?{
-    tile:'light_all', tileBright:1, mapBg:'#e8ecf1',
+    mapBg:'#e8ecf1',
     infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
     overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
   }:{
-    tile:'dark_all', tileBright:2.3, mapBg:'#262a30',
+    mapBg:'#262a30',
     infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
     overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
   };
@@ -2827,16 +2920,11 @@ async function renderPreview(){
   const X=lon=>mapW/2+(lonToWorld(lon,z)-cxZ)*K, Y=lat=>mapH/2+(latToWorld(lat,z)-cyZ)*K;
   // 底圖：basemap 開＝抓真實 tile（快取）、關＝棋盤示意
   if(opt.basemap){
-    const tx0=Math.floor((cxZ-(mapW/2)/K)/TILE_SIZE), tx1=Math.floor((cxZ+(mapW/2)/K)/TILE_SIZE);
-    const ty0=Math.floor((cyZ-(mapH/2)/K)/TILE_SIZE), ty1=Math.floor((cyZ+(mapH/2)/K)/TILE_SIZE);
-    const jobs=[];for(let tx=tx0;tx<=tx1;tx++)for(let ty=ty0;ty<=ty1;ty++)jobs.push({tx,ty});
-    const imgs=await Promise.all(jobs.map(j=>loadTileCached(z,j.tx,j.ty,TH.tile)));
+    const plan=tilePlan(z,K,cxZ,cyZ,mapW,mapH);
+    const imgs=await Promise.all(plan.jobs.map(j=>loadTileCached(plan.zt,j.x,j.ty,light)));
     if(myTok!==_prevToken) return;   // 期間有更新的呼叫，放棄這次繪製
     ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
-    const ts=TILE_SIZE*K;
-    paintTiles(ctx,jobs,imgs,
-      j=>({x:mapW/2+(j.tx*TILE_SIZE-cxZ)*K, y:mapH/2+(j.ty*TILE_SIZE-cyZ)*K, w:ts+1, h:ts+1}),
-      TH.tileBright);
+    paintTiles(ctx,plan.jobs,imgs,plan.rectOf,light);
     ctx.restore();
   }else{
     const gs=Math.max(12,mapW/14);
@@ -2898,6 +2986,7 @@ async function renderPreview(){
     const cLat=(Math.min(...lats)+Math.max(...lats))/2;
     drawScaleBar(ctx,{mapW,mapH,sc:scale,z,K,cLat,TH,F});
   }
+  if(opt.basemap) drawTileCredit(ctx,mapW,mapH,scale,TH,F);
   if(opt.logo!==false){
     const lg=await loadLogoBitmap(light);
     if(myTok===_prevToken) drawExportLogo(ctx,lg,mapW,mapH,scale);
