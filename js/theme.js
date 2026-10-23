@@ -28,7 +28,7 @@ L.control.attribution({prefix:false,position:'bottomright'}).addTo(map);
    官方圖磚：免金鑰，深色模式用濾鏡反轉。失效是靠啟動時 fetch 一顆圖磚看狀態碼
    判斷的（probeTiles）——<img> 遇到 403 照樣會把浮水印畫出來、不會觸發
    tileerror，只聽 Leaflet 的事件抓不到。 */
-const CARTO_KEY='';
+const CARTO_KEY='cb1_4t1b_1_44f40e55112b9c2415eb4506';
 const TILE_PROVIDERS={
   carto:{
     leaflet:light=>`https://{s}.basemaps.cartocdn.com/${light?'light_all':'dark_all'}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_KEY)}`,
