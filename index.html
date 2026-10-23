@@ -2,10 +2,10 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Running Art</title>
 <link rel="icon" type="image/svg+xml" href="logo_dark.svg">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
   /* 深色（預設）與淺色主題都用這組變數，只有 body.light 覆寫。 */
   :root{
@@ -298,7 +298,8 @@
   .grp-4{flex:1 1 180px;display:flex;flex-direction:column;gap:8px;justify-content:stretch;min-width:0}
   .grp-4 button{flex:1;padding:11px 12px;border-radius:11px;font-size:15px;
     font-family:inherit;font-weight:700;border:1px solid var(--rt-ui);
-    display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;white-space:nowrap;height:calc(50% - 4px)}
+    display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;white-space:nowrap}
+  .grp-4 .shr{background:transparent;color:var(--rt-ui-ink);flex:0 0 auto;padding:8px 12px;font-size:13.5px}
   /* 下載圖片和下載 GPX 是同一類動作（把成果帶走），所以用同一種樣式 */
   .grp-4 .exp,.grp-4 .pri{background:var(--rt-ui);color:var(--rt-ui-text)}
   .grp-4 svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;
@@ -408,7 +409,30 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .box{position:absolute;border:2px dashed var(--rt-ui);
     background:color-mix(in srgb,var(--rt-ui) 16%,transparent);
-    z-index:450;pointer-events:none;border-radius:4px}
+    z-index:450;pointer-events:none;border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;
+    text-shadow:0 0 3px var(--bg),0 0 3px var(--bg)}
+  .box.over{border-color:#ef4444;background:rgba(239,68,68,.16)}
+  .busy button{margin-left:6px;padding:4px 12px;border-radius:8px;border:1px solid var(--border2);
+    background:var(--panel2);color:var(--text);font-family:inherit;font-size:12.5px;cursor:pointer}
+  .busy button[hidden]{display:none}
+  /* 地點搜尋：頂部按鈕下方展開的小面板 */
+  .search{position:absolute;top:58px;left:12px;right:12px;z-index:700;max-width:420px;margin-left:auto;
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px;
+    box-shadow:0 6px 24px rgba(0,0,0,.25)}
+  .search[hidden]{display:none}
+  .search form{display:flex;gap:6px}
+  /* 16px：iOS 在輸入框字小於 16px 時會自動放大整個頁面 */
+  .search input{flex:1;min-width:0;font-size:16px;padding:8px 10px;border-radius:9px;
+    border:1px solid var(--border2);background:var(--panel2);color:var(--text);font-family:inherit}
+  .search button{padding:8px 12px;border-radius:9px;border:1px solid var(--rt-ui);background:var(--rt-ui);
+    color:var(--rt-ui-text);font-family:inherit;font-size:13px;font-weight:600}
+  .search ul{list-style:none;margin:6px 0 0;padding:0;max-height:50vh;overflow-y:auto}
+  .search li{padding:8px 10px;border-radius:8px;font-size:13px;cursor:pointer;color:var(--text2)}
+  .search li:hover,.search li:focus{background:var(--panel2);outline:none}
+  .search .note{font-size:11px;color:var(--dim);padding:6px 4px 0}
+  @media (max-width:480px){ .brand span{display:none} }
 
   /* ==== 桌面版與大螢幕 ==== */
   @media (min-width:900px){
@@ -427,7 +451,13 @@
   <img class="logo" id="brandLogo" src="logo_dark.svg" alt="" width="26" height="26">
   <span>Running Art</span>
 </div>
-  <button class="btn-dl icon-btn push" id="btnLang" aria-label="Language">EN</button>
+  <button class="btn-dl icon-btn push" id="btnSearch" aria-label="搜尋地點" title="搜尋地點 / Search">
+    <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg>
+  </button>
+  <button class="btn-dl icon-btn" id="btnLocate" aria-label="移到我的位置" title="移到我的位置 / My location">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="7.5"/></svg>
+  </button>
+  <button class="btn-dl icon-btn" id="btnLang" aria-label="Language">EN</button>
   <button class="btn-dl icon-btn" id="btnTheme" aria-label="切換深淺色主題">
     <svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
   </button>
@@ -435,6 +465,16 @@
     <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
     <span id="dlLabel">載入地圖範圍</span>
   </button>
+</div>
+
+<div class="search" id="searchBox" hidden>
+  <form id="searchForm">
+    <input id="searchIn" type="search" enterkeyhint="search" autocomplete="off"
+           placeholder="搜尋地點…" data-ph-en="Search a place…">
+    <button type="submit" data-en="Search">搜尋</button>
+  </form>
+  <ul id="searchRes"></ul>
+  <div class="note" data-en="Search by OpenStreetMap Nominatim">地點搜尋：OpenStreetMap Nominatim</div>
 </div>
 
 <div class="pill hide" id="pill">0.00 km</div>
@@ -573,6 +613,10 @@
         <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
         <span data-en="Save GPX">下載 GPX</span>
       </button>
+      <button class="shr" id="aShare">
+        <svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1"/></svg>
+        <span data-en="Share link">分享連結</span>
+      </button>
     </div>
   </div>
 </div>
@@ -687,13 +731,22 @@ const LEGAL_KEY='runart_legal', LEGAL_VER='2026-07-29';   // 改內容就把 VER
 </script>
 
 <div class="toast" id="toast"></div>
-<div class="busy" id="busy"><div class="spin"></div><span id="busyTxt"></span></div>
+<div class="busy" id="busy"><div class="spin"></div><span id="busyTxt"></span><button id="busyCancel" hidden data-en="Cancel">取消</button></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<!-- Leaflet 放在 repo 裡自己提供（vendor/），不從 CDN 載：少一個第三方依賴，
+     也不必擔心 CDN 上的檔案被竄改。Pyodide 在 engine-worker.js 裡載入。 -->
+<script src="vendor/leaflet/leaflet.js"></script>
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
-<script src="engine.js?v=20260727b"></script>
+<script src="engine.js?v=e859c69745"></script>
 <script>
+/* localStorage 一律經過 store：瀏覽器封鎖儲存空間時（Chrome「封鎖所有 Cookie」、
+   部分 WebView、iframe 嵌入）存取會直接丟 SecurityError，以前會中斷整段主程式，
+   畫面只剩地圖、所有按鈕都沒反應。讀不到就當作沒存過。 */
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(_){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(_){} }
+};
 const map=L.map('map',{zoomControl:false,attributionControl:false}).setView([25.0610,121.5330],16);
 L.control.attribution({prefix:false,position:'bottomright'}).addTo(map);
 
@@ -804,7 +857,7 @@ const ARROW_STYLES={
 /* 轉角圓角半徑（正規化單位，箭頭本身大約 ±1）。
    小 = 銳利。用「幾何上把轉角換成一段二次貝茲」來做，而不是靠 lineJoin:'round'
    —— 後者的圓角半徑等於線寬的一半，改不動，箭頭尖端會鈍掉。 */
-let arrowRadius=parseFloat(localStorage.getItem('runart_arrow_r'));
+let arrowRadius=parseFloat(store.get('runart_arrow_r'));
 if(!(arrowRadius>=0)) arrowRadius=0.10;
 
 /* 白箭頭完全靠陰影襯出輪廓，而淺色模式的需求比深色高得多：
@@ -821,7 +874,7 @@ const ARROW_SHADOW={
   light: {color:'rgba(0,0,0,.85)', blurK:0.75, passes:2}
 };
 
-let arrowStyle=localStorage.getItem('runart_arrow')||'dart';
+let arrowStyle=store.get('runart_arrow')||'dart';
 if(!ARROW_STYLES[arrowStyle]) arrowStyle='dart';
 
 /* 把折點換成小圓角。回傳一串 {t:'M'|'L'|'Q'|'Z'} 指令，
@@ -894,7 +947,7 @@ function setTheme(light,save=true){
   document.body.classList.toggle('light',light);
   palInvalidate();          // --rt-* 換了一組值，快取要丟掉
   try{ $('brandLogo').src = light ? 'logo_bright.svg' : 'logo_dark.svg'; }catch(_){}
-  if(save) localStorage.setItem('runart_theme',light?'light':'dark');
+  if(save) store.set('runart_theme',light?'light':'dark');
   applyBaseLayer();
   // 小人外框跟主題重繪。try 包住：初始化時本函式會在 pvHead（let）
   // 宣告前被呼叫，落在暫時死區（TDZ）—— 連 typeof 都會拋 ReferenceError、
@@ -913,7 +966,7 @@ function setTheme(light,save=true){
 }
 // 初始主題：記住的優先，否則跟隨系統設定
 (function(){
-  const saved=localStorage.getItem('runart_theme');
+  const saved=store.get('runart_theme');
   const light=saved?saved==='light':window.matchMedia('(prefers-color-scheme: light)').matches;
   setTheme(light,false);
 })();
@@ -923,7 +976,7 @@ probeTiles();
 /* ---------- 中英文切換（i18n） ----------
    靜態文字用 HTML 的 data-en 屬性；動態字串（toast / 進度 / 引導 / 匯出）查下面的表。
    toast() 與 busy() 會自動把中文原字換成英文，所以大多數呼叫端不用改。 */
-let lang = localStorage.getItem('runart_lang') || (navigator.language.toLowerCase().startsWith('zh')?'zh':'en');
+let lang = store.get('runart_lang') || ((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
 const EN=()=>lang==='en';
 const tx=(zh,en)=>EN()?en:zh;   // 有插值的字串用這個選字
 
@@ -964,9 +1017,9 @@ const TOASTS_EN={
  '這個範圍抓不到可跑的道路（伺服器可能回了空資料）。請換個地點、把範圍放大一點或稍後再試。':'No runnable roads found here (the server may have returned empty data). Try another spot, enlarge the area, or retry later.'
 };
 const PROG_EN={
- '載入運算引擎…':'Loading engine…','載入數學套件…':'Loading math packages…',
- '載入路網套件…':'Loading graph packages…','載入演算法…':'Loading algorithm…',
- '下載路網（同時向多台伺服器請求）…':'Loading roads (querying several servers)…',
+ '載入運算引擎…':'Loading engine…','載入數學與路網套件…':'Loading math & graph packages…',
+ '載入演算法…':'Loading algorithm…','下載路網…':'Loading roads…',
+ '伺服器忙碌，改用之前下載過的地圖…':'Servers busy — using a previously saved map…',
  '伺服器忙碌，重試中…':'Servers busy, retrying…','使用已下載的地圖…':'Using saved map…',
  '建立路網…':'Building road network…','對齊道路中…':'Snapping to roads…',
  '重新接路中…':'Re-routing…','產生圖片…':'Creating image…','查詢地點…':'Finding location…',
@@ -985,9 +1038,13 @@ function applyLang(){
     if(eln.dataset.zh==null) eln.dataset.zh=eln.textContent;
     eln.textContent = EN()?eln.dataset.en:eln.dataset.zh;
   });
+  document.querySelectorAll('[data-ph-en]').forEach(eln=>{
+    if(eln.dataset.phZh==null) eln.dataset.phZh=eln.placeholder;
+    eln.placeholder = EN()?eln.dataset.phEn:eln.dataset.phZh;
+  });
   document.documentElement.lang = EN()?'en':'zh-Hant';
   $('btnLang').textContent = EN()?'中':'EN';
-  localStorage.setItem('runart_lang',lang);
+  store.set('runart_lang',lang);
   guide(); paceUI(); updateDlLabel();
   if(S.result&&S.elevGain!=null) $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
 }
@@ -1169,6 +1226,23 @@ function boxDrag(e){
   if(!boxA||!boxEl) return;
   const x=Math.min(boxA[0],e.clientX),y=Math.min(boxA[1],e.clientY);
   boxEl.style.cssText+=`;left:${x}px;top:${y}px;width:${Math.abs(e.clientX-boxA[0])}px;height:${Math.abs(e.clientY-boxA[1])}px`;
+  /* 框選下載範圍時即時顯示面積與預估下載時間；超過上限框會變紅。
+     以前框多大都照下，太大就逾時，或者路網大到演算法變慢，使用者不知道為什麼。 */
+  if(S.boxing&&!S.editing){
+    const r=mc.getBoundingClientRect();
+    const km2=boxAreaKm2(boxA[0]-r.left,boxA[1]-r.top,e.clientX-r.left,e.clientY-r.top);
+    const over=km2>MAX_AREA_KM2;
+    boxEl.classList.toggle('over',over);
+    boxEl.textContent=km2.toFixed(km2<10?2:0)+' km²'+(over
+      ? tx('（上限 '+MAX_AREA_KM2+'）',' (max '+MAX_AREA_KM2+')')
+      : tx(' · 約 ',' · ~')+Math.round(DL_FIXED_S+DL_S_PER_KM2*km2)+tx(' 秒',' s'));
+  }
+}
+/* 範圍上限與下載時間估算（依實測校準：0.27km²≈8.6s、2.3km²≈12s、15.1km²≈59s） */
+const MAX_AREA_KM2=6, DL_FIXED_S=7, DL_S_PER_KM2=3.5;
+function boxAreaKm2(x0,y0,x1,y1){
+  const a=map.containerPointToLatLng([x0,y0]), b=map.containerPointToLatLng([x1,y1]);
+  return map.distance(a,L.latLng(a.lat,b.lng))/1000*map.distance(a,L.latLng(b.lat,a.lng))/1000;
 }
 /* 收框，回傳 {x0,y0,x1,y1}（相對地圖容器）；沒在畫框就回傳 null */
 function boxEnd(e){
@@ -1198,7 +1272,7 @@ function refresh(){
   if(S.editing) return;   // 微調模式有自己的一套按鈕與提示
   const n=S.strokes.length;
   $('btnUndo').disabled=!n||S.locked; $('btnClear').disabled=!n||S.locked;
-  $('btnGo').disabled=!(n&&S.start&&S.end)||S.locked;
+  $('btnGo').disabled=!(n&&S.start&&S.end)||S.locked||!!S.generating;
   ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=!S.hasMap||S.locked);
   if(S.locked&&S.mode!=='pan') setMode('pan');
 
@@ -1231,9 +1305,43 @@ function refresh(){
   if(S.hasMap&&n&&S.start&&S.end) st=4;
   if(S.generated) st=5;
   if(st!==S.step){S.step=st;guide();}
+  if(S.hasMap) saveSession();
 }
 
 /* ---------- 框選下載 ---------- */
+/* 下載並載入一個範圍（框選、還原上次的圖案、開分享連結共用）。 */
+let islandLayer=null;
+function loadBounds(bounds){
+  const km=(map.distance(bounds.getNorthWest(),bounds.getNorthEast())/1000)
+         *(map.distance(bounds.getNorthWest(),bounds.getSouthWest())/1000);
+  $('dlLabel').textContent=tx('載入中…','Loading…');
+  return Engine.loadArea(bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast())
+    .then(st=>{
+      S.hasMap=true;S.bounds=bounds;
+      showArea(bounds);
+      showIslands(st.islands||[]);
+      $('dlLabel').textContent=km.toFixed(1)+' km²';
+      ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=false);
+      toast(tx('路網已載入（'+st.nodes+' 個路口）','Roads loaded ('+st.nodes+' junctions)'));setMode('draw');refresh();
+      if(st.islands&&st.islands.length)
+        setTimeout(()=>toast(tx('灰色虛線框裡的道路沒有連到主要路網（例如橋沒畫進地圖），在那裡畫的圖會被拉到最近的連通道路',
+                                'Roads inside the grey dashed areas are not connected to the main network; drawings there will snap to the nearest connected road'),4200),1600);
+      // 視野最後才拉：refresh() 會把引導條推到步驟 2 並重新定位，
+      // 先拉的話量到的是它舊的位置，範圍框還是會被蓋住。
+      fitArea(bounds);
+      saveSession();
+      return st;
+    })
+    .catch(err=>{busy('');updateDlLabel();toast(err.message,3000);throw err;});
+}
+/* 主路網以外的孤立區域（橋沒畫進 OSM 的河濱公園之類）。以前被靜靜丟掉，
+   使用者在那裡畫圖，路線會被吸到很遠的地方卻不知道為什麼。 */
+function showIslands(list){
+  if(islandLayer){islandLayer.remove();islandLayer=null;}
+  if(!list.length) return;
+  islandLayer=L.layerGroup(list.map(pts=>L.polygon(pts,{color:'#9aa3ad',weight:1.5,dashArray:'4 4',
+    fillColor:'#9aa3ad',fillOpacity:.18,interactive:false}))).addTo(map);
+}
 /* 框選模式的開關集中在這裡：狀態、按鈕外觀、地圖拖曳、以及讓底部工具列退場
    （body.boxing，見檔頭 CSS）。以前開跟關寫在兩個地方，關的那邊少做了幾件事。 */
 function setBoxing(on){
@@ -1318,31 +1426,22 @@ mc.addEventListener('pointerup',e=>{
   if(S.boxing&&boxA){
     const r=boxEnd(e);
     if(r&&r.x1-r.x0>30&&r.y1-r.y0>30){
+      const km2=boxAreaKm2(r.x0,r.y0,r.x1,r.y1);
+      if(km2>MAX_AREA_KM2){
+        toast(tx('範圍太大（'+km2.toFixed(1)+' km²），請縮小到 '+MAX_AREA_KM2+' km² 以內',
+                 'Area too large ('+km2.toFixed(1)+' km²). Please keep it under '+MAX_AREA_KM2+' km²'),2600);
+        return;   // 留在框選模式，直接再框一次
+      }
       const p1=map.containerPointToLatLng([r.x0,r.y0]);
       const p2=map.containerPointToLatLng([r.x1,r.y1]);
-      const bounds=L.latLngBounds(p1,p2);
       setBoxing(false);           // 框好了就離開框選模式，工具列跟著回來
-      const km=(map.distance(bounds.getNorthWest(),bounds.getNorthEast())/1000)
-             *(map.distance(bounds.getNorthWest(),bounds.getSouthWest())/1000);
-      $('dlLabel').textContent=tx('載入中…','Loading…');
-      Engine.loadArea(bounds.getSouth(),bounds.getWest(),bounds.getNorth(),bounds.getEast())
-        .then(st=>{
-          S.hasMap=true;S.bounds=bounds;
-          showArea(bounds);
-          $('dlLabel').textContent=km.toFixed(1)+' km²';
-          ['mDraw','mStart','mEnd'].forEach(i=>$(i).disabled=false);
-          toast(tx('路網已載入（'+st.nodes+' 個路口）','Roads loaded ('+st.nodes+' junctions)'));setMode('draw');refresh();
-          // 視野最後才拉：refresh() 會把引導條推到步驟 2 並重新定位，
-          // 先拉的話量到的是它舊的位置，範圍框還是會被蓋住。
-          fitArea(bounds);
-        })
-        .catch(err=>{busy('');updateDlLabel();toast(err.message,3000);});
+      loadBounds(L.latLngBounds(p1,p2)).catch(()=>{});
     }
     return;
   }
   if(S.mode==='draw'&&S.cur){
     if(S.cur.length>3) S.strokes.push({pts:S.cur,line:S.curLine});
-    else S.curLine.remove();
+    else{ S.curLine.remove(); toast(tx('筆畫太短，已略過','Stroke too short — ignored'),1200); }
     S.cur=null;S.curLine=null;refresh();
   }
 });
@@ -1418,7 +1517,9 @@ map.on('click',async e=>{
   if(!isStart&&!isEnd) return;
   if(!inArea(e.latlng)){ toast('起點／終點要在藍色框線內');return; }
 
+  const my=S.snapSeq=(S.snapSeq||0)+1;
   const ll=await snapLatLng(e.latlng);
+  if(my!==S.snapSeq) return;   // 連點兩下時，先點的那次較晚回來，不能蓋掉後點的
   // 吸附後仍要在範圍內，否則寧可用原座標（邊緣點可能被吸到框外的節點）
   const use=inArea(ll)?ll:e.latlng;
   const moved=map.distance(e.latlng,use);
@@ -1434,6 +1535,7 @@ map.on('click',async e=>{
 $('btnUndo').onclick=()=>{const s=S.strokes.pop();if(s)s.line.remove();refresh();};
 function clearAll(){
   S.strokes.forEach(s=>s.line.remove());S.strokes=[];
+  S.prevResult=null;   // 不清的話，清空後還能按「取消修改」叫回一條沒有手繪線的舊路線
   // 清空畫布時，起點與終點也一併清掉
   if(startMk){startMk.remove();startMk=null;} S.start=null;
   if(endMk){endMk.remove();endMk=null;} S.end=null;
@@ -1683,7 +1785,7 @@ $('pvPlay').onclick=()=>{
 };
 
 /* ---------- 配速（可調，會記住） ---------- */
-S.pace=parseFloat(localStorage.getItem('runart_pace'))||6;   // 分鐘/公里
+S.pace=parseFloat(store.get('runart_pace'))||6;   // 分鐘/公里
 S.km=0;
 function paceName(p){
   const i = p<=4.5?0 : p<=6.5?1 : p<=9?2 : 3;
@@ -1703,7 +1805,7 @@ function paceUI(){
     }
   }
   $('sTime').textContent=txt;
-  localStorage.setItem('runart_pace',S.pace);
+  store.set('runart_pace',S.pace);
 }
 $('pDn').onclick=()=>{S.pace=Math.min(15,+(S.pace+0.5).toFixed(1));paceUI();};
 $('pUp').onclick=()=>{S.pace=Math.max(3,+(S.pace-0.5).toFixed(1));paceUI();};
@@ -1734,6 +1836,9 @@ function applyResult(res,withPreview=true){
   S.km=res.total_m/1000;
   $('sDist').textContent=S.km.toFixed(2)+' km';
   $('sFit').textContent=Math.round(res.fit)+'%';
+  // 吻合度 = 準確率與覆蓋率的調和平均；兩個分項放在提示裡
+  if(res.precision!=null) $('sFit').title=tx('路線貼著圖案 '+Math.round(res.precision)+'%・圖案被跑到 '+Math.round(res.recall)+'%',
+    'On the drawing '+Math.round(res.precision)+'% · drawing covered '+Math.round(res.recall)+'%');
   paceUI();
   if(withPreview) pvBuild(res);
 }
@@ -1929,8 +2034,15 @@ async function updateElevation(){
     const e=(await r.json()).elevation;
     if(seq!==elevSeq) return;
     if(!e||!e.length) throw 0;
-    let up=0,down=0;
-    for(let i=1;i<e.length;i++){const d=e[i]-e[i-1]; if(d>0)up+=d; else down-=d;}
+    /* 爬升／下降用 3m 遲滯門檻累計：落差要累積超過門檻才算一次爬升或下降。
+       直接加總每個取樣點的差會把 DEM 的雜訊也算進去，數字會比運動手錶的高。 */
+    let up=0,down=0,ref=e[0];
+    const HYST=3;
+    for(let i=1;i<e.length;i++){
+      const d=e[i]-ref;
+      if(d>=HYST){up+=d;ref=e[i];}
+      else if(d<=-HYST){down-=d;ref=e[i];}
+    }
     S.elevGain=Math.round(up); S.elevLoss=Math.round(down);
     $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
     renderElevChart({ elevations: e });
@@ -1955,7 +2067,10 @@ $('btnGo').onclick=()=>{
   for(const s of S.strokes) for(let i=1;i<s.pts.length;i++) drawM+=map.distance(s.pts[i-1],s.pts[i]);
   if(drawM>10000) toast(tx('路線較長（'+(drawM/1000).toFixed(1)+' km），分析需要多一點時間…',
                           'Long route ('+(drawM/1000).toFixed(1)+' km), analysis may take a while…'),3000);
+  if(S.generating) return;           // 防止連按：上一次還沒算完
+  S.generating=true; refresh();
   Engine.generate(strokes,[S.start.lat,S.start.lng],[S.end.lat,S.end.lng])
+    .finally(()=>{ S.generating=false; refresh(); })
     .then(res=>{
       applyResult(res);
       S.strokes.forEach(s=>s.line.setStyle({opacity:.25,weight:3}));
@@ -1963,7 +2078,9 @@ $('btnGo').onclick=()=>{
       S.sheetUp=true;el.sheet.classList.add('up');
       refresh();fitRoute();updateElevation();
     })
-    .catch(err=>{busy('');toast(tx('生成失敗：','Generate failed: ')+err.message,3000);});
+    .catch(err=>{busy('');
+      if(err.cancelled) toast(tx('已取消','Cancelled'),1400);
+      else toast(tx('生成失敗：','Generate failed: ')+err.message,3000);});
 };
 
 /* ---------- 生成後的動作 ---------- */
@@ -1983,6 +2100,7 @@ $('btnCancelMod').onclick=()=>{
   S.strokes.forEach(s=>s.line.setStyle({opacity:.25,weight:3}));
   S.sheetUp = true; el.sheet.classList.add('up');
   refresh(); fitRoute();
+  updateElevation();   // dropRoute() 已經把爬升與高程圖清掉了，要重新查
   toast(tx('已取消修改，恢復原路線', 'Cancelled edits, restored route'), 2000);
 };
 $('aNew').onclick=()=>{
@@ -2000,10 +2118,16 @@ $('aRev').onclick=()=>{
       // 起終點對調：路線現在從原本的終點跑起
       const s=S.start;S.start=S.end;S.end=s;
       refreshSEMarkers();   // 起訖點對調，重疊時左右半邊也要跟著換
-      // 方向反轉＝爬升與下降互換，不必再打一次 API
+      // 方向反轉＝爬升與下降互換、高程剖面左右翻轉，不必再打一次 API。
+      // 剖面不翻的話，跑者從另一頭出發，高程圖上的點卻還照舊方向走（匯出圖也是反的）。
       const g=S.elevGain;S.elevGain=S.elevLoss;S.elevLoss=g;
       if(S.elevGain!=null) $('sElev').textContent='↑'+S.elevGain+' ↓'+S.elevLoss+' m';
-      toast('已反轉方向',1600);
+      if(elevChartData&&elevChartData.elevations){
+        elevChartData={elevations:elevChartData.elevations.slice().reverse()};
+        renderElevChart(elevChartData);
+      }
+      saveSession();
+      toast(tx('已反轉方向','Direction reversed'),1600);
     })
     .catch(err=>{busy('');toast(tx('反轉失敗：','Reverse failed: ')+err.message,3000);});
 };
@@ -2219,13 +2343,13 @@ $('aEdit').onclick=()=>{
   $('mainDock').hidden=true;$('editDock').hidden=false;
   setMode('pan');map.dragging.enable();
   editBuild();
-  toast('點一下節點可選取；直接拖曳節點可以把路徑改走附近的路口',3200);
+  toast(tx('點一下節點可選取；直接拖曳節點可以把路徑改走附近的路口','Tap a node to select it; drag a node to re-route through a nearby junction'),3200);
 };
 $('eBox').onclick=()=>{
   S.ebox=!S.ebox;
   $('eBox').classList.toggle('on',S.ebox);
   map.dragging[S.ebox?'disable':'enable']();
-  toast(S.ebox?'拖曳框住要刪除的節點':'改回點擊選取，可拖曳地圖',1600);
+  toast(S.ebox?tx('拖曳框住要刪除的節點','Drag a box over the nodes to delete'):tx('改回點擊選取，可拖曳地圖','Back to tap-select; you can pan the map'),1600);
 };
 $('eNone').onclick=()=>{
   S.sel.forEach(i=>editMark(i,false));S.sel.clear();editUI();
@@ -2240,12 +2364,14 @@ $('eDel').onclick=()=>{
         S.sel.clear();
         editUI();
         toast(res.reason==='break'
-          ? '刪掉這些節點後找不到別條路繞過去，已自動取消選取。請嘗試框選整段路徑。'
-          : '無法刪除（該段剩餘節點太少），已自動取消選取。',3400);
+          ? tx('刪掉這些節點後找不到別條路繞過去，已自動取消選取。請嘗試框選整段路徑。',
+               'No other road goes around these nodes, so the selection was cleared. Try box-selecting the whole detour.')
+          : tx('無法刪除（該段剩餘節點太少），已自動取消選取。',
+               'Cannot delete: too few nodes would be left in this segment. Selection cleared.'),3400);
         return;
       }
       applyResult(res,false);editBuild();
-      toast('已重新沿道路接好',1400);
+      toast(tx('已重新沿道路接好','Re-routed along the roads'),1400);
     })
     .catch(err=>{
       busy('');
@@ -2258,7 +2384,7 @@ $('eDel').onclick=()=>{
 $('eUndo').onclick=()=>{
   Engine.editUndo()
     .then(res=>{
-      if(!res.ok){toast('沒有可復原的步驟');return;}
+      if(!res.ok){toast(tx('沒有可復原的步驟','Nothing to undo'));return;}
       applyResult(res,false);editBuild();
     })
     .catch(err=>toast(tx('復原失敗：','Undo failed: ')+err.message,3000));
@@ -2278,13 +2404,22 @@ $('eDone').onclick=()=>{
 };
 $('aGpx').onclick=()=>{
   if(!S.result) return;
-  const blob=new Blob([Engine.toGPX(S.result.segments)],{type:'application/gpx+xml'});
+  // 有高程資料就沿距離內插寫進 <ele>；沒有就不寫（不能寫 0，平台會當成真的海拔）
+  let elevAt=null;
+  if(elevChartData&&elevChartData.elevations&&elevChartData.elevations.length>1&&S.totalM>0){
+    const E=elevChartData.elevations, N=E.length;
+    elevAt=d=>{
+      const f=Math.max(0,Math.min(1,d/S.totalM))*(N-1), i=Math.floor(f), t=f-i;
+      return E[Math.min(i,N-1)]+(E[Math.min(i+1,N-1)]-E[Math.min(i,N-1)])*t;
+    };
+  }
+  const blob=new Blob([Engine.toGPX(S.result.segments,elevAt)],{type:'application/gpx+xml'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='RunningArt_'+localDate()+'.gpx';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-  toast('GPX 已下載');
+  toast(tx('GPX 已下載','GPX downloaded'));
 };
 /* ---------- 匯出圖片 ----------
    把底圖 tile 自己抓下來畫進 canvas。CARTO 和 OSM 通常會回 Access-Control-Allow-Origin: *，
@@ -2305,6 +2440,20 @@ const PNG_RATIOS={'1:1':[1080,1080],'4:5':[1080,1350],'9:16':[1080,1920]};
 /* 反向地理編碼：把座標變成「中山區, 台北市」。用 OSM 的 Nominatim（有 CORS）。
    結果快取在記憶體，失敗就回空字串、不影響出圖。 */
 const _placeCache={};
+/* Nominatim 的使用政策：每秒最多 1 次請求。所有查詢（反向地理編碼、地點搜尋）
+   都排進同一個佇列，前後至少隔 1.1 秒。 */
+let _nomiChain=Promise.resolve(), _nomiLast=0;
+function nominatimFetch(url,opt){
+  const run=async()=>{
+    const wait=_nomiLast+1100-Date.now();
+    if(wait>0) await new Promise(r=>setTimeout(r,wait));
+    _nomiLast=Date.now();
+    return fetch(url,opt);
+  };
+  const p=_nomiChain.then(run,run);
+  _nomiChain=p.catch(()=>{});
+  return p;
+}
 async function getPlaceName(lat,lon){
   const key=lang+':'+lat.toFixed(3)+','+lon.toFixed(3);   // 語言不同要分開快取
   if(key in _placeCache) return _placeCache[key];
@@ -2312,7 +2461,7 @@ async function getPlaceName(lat,lon){
     const ctrl=new AbortController();const tm=setTimeout(()=>ctrl.abort(),7000);
     const u='https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14'+
             '&accept-language='+(EN()?'en':'zh-TW')+'&lat='+lat+'&lon='+lon;
-    const r=await fetch(u,{signal:ctrl.signal});clearTimeout(tm);
+    const r=await nominatimFetch(u,{signal:ctrl.signal});clearTimeout(tm);
     if(!r.ok) throw 0;
     const a=(await r.json()).address||{};
     const district=a.city_district||a.suburb||a.borough||a.district||a.town||a.city_block||a.quarter||a.village||a.neighbourhood||'';
@@ -2567,12 +2716,27 @@ function drawChevron(ctx,base){
   ctx.restore();
 }
 
-/* 只負責「畫出」成品 canvas；抓圖磚、下載、錯誤處理都不在這裡。
-   拆開來的原因：底圖若造成 canvas 污染，exportPNG 需要能用 basemap:false 再畫一次。 */
-async function renderExportCanvas(opt){
-  const P=PC();
-  const [W,H]=PNG_RATIOS[opt.ratio]||PNG_RATIOS['1:1'];
-  const sc=W/1080;                   // 寬固定 1080，sc=1；保留以便日後改寬
+/* 匯出圖片與對話框預覽共用的主題色：圖片跟著 App 的深／淺色主題走 */
+function exportTheme(light){
+  return light?{
+    mapBg:'#e8ecf1',
+    infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
+    overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
+  }:{
+    mapBg:'#262a30',
+    infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
+    overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
+  };
+}
+const EXPORT_FONT='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
+
+/* 畫整張分享圖。匯出（1080 寬）與對話框預覽（300 寬）都呼叫這一個函式，
+   差別只有縮放 sc 與 preview 旗標——以前兩邊各寫一份，主題色、箭頭大小、
+   浮水印好幾次對不起來。
+   preview=true 時：圖磚走快取、底圖關閉畫棋盤格示意透明、地點名稱用呼叫端給的
+   （不等網路）；stale() 回 true 代表已經有更新的重畫請求，這次直接放棄（回傳 null）。 */
+async function renderScene(ctx,W,H,sc,opt,{preview=false,stale=()=>false,place=null}={}){
+  const P=PC(), light=isLight(), TH=exportTheme(light), F=EXPORT_FONT;
   const dats=(opt.dats||['dist','pace','time','elev']).filter(Boolean);
   const showStats=dats.length>0;
   const showPlace=opt.place!==false, showDate=opt.date!==false;
@@ -2583,71 +2747,54 @@ async function renderExportCanvas(opt){
   const infoH=statsH+elevBandH;      // 兩塊都關＝不畫資訊欄、地圖佔滿整張（配合透明背景做純路線圖）
   const showInfo=infoH>0;
   const mapW=W, mapH=H-infoH;
+  const frac=(opt.frac!=null)?opt.frac:1;
+  let tilesFailed=false;
 
-  // 圖片跟著 App 的深／淺色主題走
-  const light=isLight();
-  const TH=light?{
-    mapBg:'#e8ecf1',
-    infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
-    overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
-  }:{
-    mapBg:'#262a30',
-    infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
-    overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
-  };
+  const info=pl=>drawInfoPanel(ctx,{mapW,mapH,statsH,elevBandH,infoH,sc,TH,P,F,
+    dats,place:pl,light,frac,showStats,elevOn,showInfo,showPlace,showDate,placeRowOn});
 
-  // 1) 要涵蓋的地理範圍
-  const pts=[];
-  if(opt.route) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
-  if(opt.draw)  S.strokes.forEach(s=>s.pts.forEach(p=>pts.push([p.lat,p.lng])));
-  if(!pts.length) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
-  if(opt.marks){
-    if(S.start) pts.push([S.start.lat,S.start.lng]);
-    if(S.end)   pts.push([S.end.lat,S.end.lng]);
-  }
+  ctx.clearRect(0,0,W,H);
+  // 地圖區底色：basemap 開＝純色(稍後 tile 蓋滿)、關＝保持透明(做去背 PNG)
+  if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,mapW,mapH); }
+  const pts=pngCollectPts(opt);
+  if(!pts.length){ info(place||''); return {tilesFailed}; }
+
+  // 在「世界像素(z0)」裡算，避免經緯度在 Mercator 上被拉伸；路線置中、保留真實比例
   const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
-
-  // 2) 在「世界像素(z0)」裡算，避免經緯度在 Mercator 上被拉伸
   const wx0=lonToWorld(Math.min(...lons),0), wx1=lonToWorld(Math.max(...lons),0);
   const wy0=latToWorld(Math.max(...lats),0), wy1=latToWorld(Math.min(...lats),0);
   const cx=(wx0+wx1)/2, cy=(wy0+wy1)/2;
   const dx=Math.max(wx1-wx0,1e-9)*1.16, dy=Math.max(wy1-wy0,1e-9)*1.16;  // 8% 邊界
-
-  // 3) 把路線「置中」塞進地圖區：保留路線真實比例，四周由底圖填滿。
-  //    比例是固定的（1:1／4:5／9:16），所以路線不會被壓扁，只是留白多寡不同。
   const s=Math.min(mapW/dx, mapH/dy)*0.9;    // canvas px / z0世界px；0.9 留邊
   const z=Math.max(1,Math.min(19,Math.floor(Math.log2(s))));
   const K=s/Math.pow(2,z);                    // 落在 [1,2)，@2x tile 縮小繪製最清晰
   const cxZ=cx*Math.pow(2,z), cyZ=cy*Math.pow(2,z);
   const X=lon=>mapW/2+(lonToWorld(lon,z)-cxZ)*K;
   const Y=lat=>mapH/2+(latToWorld(lat,z)-cyZ)*K;
+  const cLat=(Math.min(...lats)+Math.max(...lats))/2, cLon=(Math.min(...lons)+Math.max(...lons))/2;
 
-  const cv=document.createElement('canvas');
-  cv.width=W;cv.height=H;
-  const ctx=cv.getContext('2d');
-  let tilesFailed=false;
-  // 地圖區底色：basemap 開＝純色(稍後 tile 蓋滿)、關＝保持透明(做去背 PNG)
-  if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,mapW,mapH); }
-
-  // 4) 底圖（提亮，讓道路看得清楚，與 App 內一致）；opt.basemap 關閉時透明
   ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
   if(opt.basemap){
     const plan=tilePlan(z,K,cxZ,cyZ,mapW,mapH);
-    busy('下載底圖…');
-    const imgs=await Promise.all(plan.jobs.map(j=>loadTile(plan.zt,j.x,j.ty,j.i,light)));
+    if(!preview) busy('下載底圖…');
+    const imgs=await Promise.all(plan.jobs.map(j=>preview
+      ? loadTileCached(plan.zt,j.x,j.ty,light) : loadTile(plan.zt,j.x,j.ty,j.i,light)));
+    if(stale()){ ctx.restore(); return null; }
     paintTiles(ctx,plan.jobs,imgs,plan.rectOf,light);
     // 一格都沒抓到就等於沒有底圖：回報給呼叫端，讓它能提醒使用者而不是默默給張空白底
     if(plan.jobs.length && imgs.every(im=>!im)) tilesFailed=true;
-    busy('產生圖片…');
+    if(!preview) busy('產生圖片…');
+  }else if(preview){
+    const gs=Math.max(12,mapW/14);
+    ctx.fillStyle='rgba(128,128,128,.12)';
+    for(let yy=0;yy<mapH;yy+=gs)for(let xx=0;xx<mapW;xx+=gs)
+      if(((xx/gs|0)+(yy/gs|0))%2) ctx.fillRect(xx,yy,gs,gs);
   }
 
-  // 5) 手繪線。路線通常正好貼著它跑，所以要畫得比路線寬、
-  //    當成路線底下透出來的光暈，否則會被整條蓋掉、勾了也看不見。
+  // 手繪線：路線通常正好貼著它跑，所以畫得比路線寬，當成路線底下透出來的光暈
   ctx.lineJoin=ctx.lineCap='round';
   if(opt.draw){
-    ctx.strokeStyle=P.guide;
-    ctx.lineWidth=(opt.route?15:5)*sc;
-    ctx.globalAlpha=.9;   // 別用半透明會暗成醬紅色，這裡只是壓一點點
+    ctx.strokeStyle=P.guide; ctx.lineWidth=(opt.route?15:5)*sc; ctx.globalAlpha=.9;
     S.strokes.forEach(st=>{
       ctx.beginPath();
       st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
@@ -2655,9 +2802,7 @@ async function renderExportCanvas(opt){
     });
     ctx.globalAlpha=1;
   }
-  // 6) 路線：先畫完整路線當「未走過」底層（draw 灰藍實線 #708090、連接段橘虛線），
-  //    再把「走過」的部分（到拉桿位置 frac）蓋成藍實線 #4169E1，並記住小人位置，
-  //    和地圖上的預覽一模一樣（小人走到哪、藍線就到哪）。
+  // 路線：先畫完整路線當「未走過」底層，再把走過的部分（到 frac）蓋上去，小人站在分界
   let runnerHead=null;
   if(opt.route){
     S.result.segments.forEach(sg=>{
@@ -2670,11 +2815,8 @@ async function renderExportCanvas(opt){
       ctx.stroke();
     });
     ctx.setLineDash([]);
-    const frac=(opt.frac!=null)?opt.frac:1;
     if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
-      const target=S.totalM*frac;
-      let lo=0,hi=S.cum.length-1;while(lo<hi){const m=(lo+hi)>>1;S.cum[m]<target?lo=m+1:hi=m;}
-      const idx=lo;
+      const target=S.totalM*frac, idx=pvIndexAt(target);
       const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
       let head=S.path[Math.max(idx,0)];
       if(idx>0){
@@ -2683,72 +2825,66 @@ async function renderExportCanvas(opt){
         head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
         shown[shown.length-1]=head;
       }
-      ctx.strokeStyle=P.done;ctx.lineWidth=8*sc;ctx.setLineDash([]);
+      ctx.strokeStyle=P.done;ctx.lineWidth=8*sc;
       ctx.beginPath();
       shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
       ctx.stroke();
       if(frac<1) runnerHead=head;   // 跑完(100%)就不畫小人，避免杵在終點
     }
   }
-  // 7) 方向箭頭：每 200m 一個、<30m 跳過、走過路段不顯示，鮮青色 #00E5FF 粗線 >
-  if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
-    const frac = (opt.frac != null) ? opt.frac : 1;
-    const curD = S.totalM * frac;
-    const step = 200;
-    for(let targetD = step; targetD < S.totalM - 20; targetD += step){
-      if(targetD <= curD) continue;   // 已走過路段不顯示箭頭
-      const i = pvIndexAt(targetD);
-      if(i < 1) continue;
-      const a = S.path[i-1], b = S.path[i];
-      const segLen = S.cum[i] - S.cum[i-1];
-      if(segLen < 30) continue;   // 兩節點小於 30m 跳過
-      const mid = [(a[0] + b[0])/2, (a[1] + b[1])/2];
-      const ax = X(a[1]), ay = Y(a[0]), bx = X(b[1]), by = Y(b[0]);
-      if(ax === bx && ay === by) continue;
+  // 方向箭頭：每 200m 一個、兩節點 <30m 跳過、走過的路段不顯示
+  if(opt.arrows && S.path && S.path.length>=2 && S.totalM>0){
+    const curD=S.totalM*frac;
+    for(let targetD=200; targetD<S.totalM-20; targetD+=200){
+      if(targetD<=curD) continue;
+      const i=pvIndexAt(targetD);
+      if(i<1) continue;
+      const a=S.path[i-1], b=S.path[i];
+      if(S.cum[i]-S.cum[i-1]<30) continue;
+      const ax=X(a[1]), ay=Y(a[0]), bx=X(b[1]), by=Y(b[0]);
+      if(ax===bx && ay===by) continue;
       ctx.save();
-      ctx.translate(X(mid[1]), Y(mid[0]));
-      ctx.rotate(Math.atan2(by - ay, bx - ax));
-      drawChevron(ctx, 6 * sc);
+      ctx.translate((ax+bx)/2,(ay+by)/2);
+      ctx.rotate(Math.atan2(by-ay,bx-ax));
+      drawChevron(ctx,Math.max(4,6*sc));
       ctx.restore();
     }
   }
-  // 8) 起終點：綠圈▶＝起點、紅圈■＝終點（與地圖上同一套）
   if(opt.marks) drawSEMarks(ctx,X,Y,15*sc,sc,P);
-  // 小人畫在走過/未走過的分界（最上層，仍在地圖 clip 內）
-  if(runnerHead){
-    drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.69*sc,light,false);   // 1.3 × 1.3（放大 30%）
-  }
-  // 高程圖已經搬到下方資訊欄，地圖區只留路線本身
+  if(runnerHead) drawRunnerCanvas(ctx,X(runnerHead[1]),Y(runnerHead[0]),1.69*sc,light,false);
   ctx.restore();
 
-  // 9) 比例尺（可關）。地圖區現在只剩它一個疊加物。
-  const cLat=(Math.min(...lats)+Math.max(...lats))/2;
-  const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
   if(opt.scale!==false) drawScaleBar(ctx,{mapW,mapH,sc,z,K,cLat,TH,F});
   if(opt.basemap&&!tilesFailed) drawTileCredit(ctx,mapW,mapH,sc,TH,F);
-  if(opt.logo!==false) drawExportLogo(ctx,await loadLogoBitmap(light),mapW,mapH,sc);
-  /* 沒有資訊欄、又把 logo 關掉時，才用文字浮水印墊底——
-     否則文字會和右下角的 logo 疊在一起。 */
+  if(opt.logo!==false){
+    const lg=await loadLogoBitmap(light);
+    if(stale()) return null;
+    drawExportLogo(ctx,lg,mapW,mapH,sc);
+  }
+  // 沒有資訊欄、又把 logo 關掉時，才用文字浮水印墊底——否則會和右下角的 logo 疊在一起
   if(!showInfo && opt.logo===false){
-    ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';
-    ctx.textBaseline='alphabetic';
+    ctx.font=`600 ${Math.round(24*sc)}px ${F}`;ctx.textAlign='right';ctx.textBaseline='alphabetic';
     ctx.lineWidth=4*sc;ctx.strokeStyle=TH.overlayStroke;
     ctx.strokeText('RUNNING ART',mapW-26*sc,mapH-24*sc);
     ctx.globalAlpha=.92;ctx.fillStyle=TH.overlay;ctx.fillText('RUNNING ART',mapW-26*sc,mapH-24*sc);
     ctx.globalAlpha=1;
   }
+  let pl=place;
+  if(pl==null){
+    if(showInfo&&showPlace){ busy('查詢地點…'); pl=await getPlaceName(cLat,cLon); }
+    else pl='';
+  }
+  if(stale()) return null;
+  info(pl);
+  return {tilesFailed,cLat,cLon};
+}
 
-  // 10) 地點名稱（中山區, 台北市）—— 反向地理編碼，失敗就留空
-  const cLon=(Math.min(...lons)+Math.max(...lons))/2;
-  busy('查詢地點…');
-  const place=showInfo?await getPlaceName(cLat,cLon):'';
-
-  // 11) 資訊欄（數據區 + 高程區）。預覽和匯出共用同一個函式，版面才會完全一致。
-  drawInfoPanel(ctx,{mapW,mapH,statsH,elevBandH,infoH,sc,TH,P,F,
-                     dats,place,light,frac:(opt.frac!=null)?opt.frac:1,
-                     showStats,elevOn,showInfo,showPlace,showDate,placeRowOn});
-
-  return {canvas:cv, w:W, h:H, tilesFailed};
+async function renderExportCanvas(opt){
+  const [W,H]=PNG_RATIOS[opt.ratio]||PNG_RATIOS['1:1'];
+  const cv=document.createElement('canvas');
+  cv.width=W;cv.height=H;
+  const r=await renderScene(cv.getContext('2d'),W,H,W/1080,opt);
+  return {canvas:cv, w:W, h:H, tilesFailed:r.tilesFailed};
 }
 
 /* canvas → Blob。canvas 若被跨域圖磚污染，toBlob 會丟 SecurityError
@@ -2840,8 +2976,7 @@ function closeExportResult(){
   _shotUrl='';_shotBlob=null;
 }
 let pngRatio='1:1';
-// 匯出對話框的即時預覽：不抓底圖 tile（純色底示意），只即時反映勾選的圖層、
-// 比例與跑者進度。真實高畫質底圖在按「產生圖片」時才抓（exportPNG）。
+// 要涵蓋的地理範圍：勾了哪些圖層就把哪些點算進來（全沒勾時至少用路線）
 function pngCollectPts(opt){
   const pts=[];
   if(opt.route&&S.result) S.result.segments.forEach(sg=>sg.pts.forEach(p=>pts.push(p)));
@@ -2865,145 +3000,35 @@ async function loadTileCached(z,x,y,light){
 }
 let _prevToken=0;
 let _previewPlace='', _previewPlaceKey='';   // 預覽用的地點名稱（非同步查回來後重畫）
+function collectExportOpt(){
+  return {ratio:pngRatio,route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
+          marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
+          scale:layerOn('scale'),place:layerOn('place'),date:layerOn('date'),logo:layerOn('logo'),
+          dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n)),
+          frac:+$('pngProg').value/1000};
+}
+/* 對話框的即時預覽：和匯出同一個 renderScene，先畫在離屏畫布、畫完才貼上，
+   避免抓圖磚的空檔讓預覽閃一下空白。 */
 async function renderPreview(){
-  const P=PC();
   const cv=$('pngPrev'); if(!cv||!S.result) return;
   const myTok=++_prevToken;
-  const opt={route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
-             marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
-             scale:layerOn('scale'),place:layerOn('place'),date:layerOn('date'),
-             logo:layerOn('logo'),
-             dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n))};
-  const frac=+$('pngProg').value/1000;
+  const opt=collectExportOpt();
   const [RW,RH]=PNG_RATIOS[pngRatio]||PNG_RATIOS['1:1'];
-  const W=cv.width, scale=W/RW, H=Math.round(RH*scale); cv.height=H;
-  const lw=W/1080, light=isLight();
-  const showStats=opt.dats.length>0;
-  const showPlace=opt.place!==false, showDate=opt.date!==false;
-  const placeRowOn=showPlace||showDate;
-  const elevOn=!!(opt.elevchart && elevChartData);
-  const statsH=(placeRowOn?PLACE_ROW_H*scale:0)+(showStats?STATS_ROW_H*scale:0);
-  const elevBandH=elevOn?ELEV_BAND_H*scale:0;
-  const infoH=statsH+elevBandH;
-  const showInfo=infoH>0;
-  const mapW=W, mapH=H-infoH;
-  /* 預覽用和匯出完全相同的主題色與資訊欄函式，差別只有縮放係數 scale。
-     以前預覽自己有一組簡化的顏色、資訊欄只畫灰方塊示意，跟成品對不起來。 */
-  const TH=light?{
-    mapBg:'#e8ecf1',
-    infoBg:'#ffffff', infoLine:'#dfe4ea', textMain:'#1a1d22', textDim:'#6b727d',
-    overlay:'#1a1d22', overlayStroke:'rgba(255,255,255,.85)'
-  }:{
-    mapBg:'#262a30',
-    infoBg:'#14171c', infoLine:'#2b313b', textMain:'#f4f6f8', textDim:'#8b929c',
-    overlay:'#fff', overlayStroke:'rgba(0,0,0,.75)'
-  };
-  const F='"Microsoft JhengHei","PingFang TC",system-ui,sans-serif';
-  const ctx=cv.getContext('2d');
-  function drawInfoBar(){
-    drawInfoPanel(ctx,{mapW:W,mapH,statsH,elevBandH,infoH,sc:scale,TH,P,F,
-                       dats:opt.dats,place:_previewPlace,light,frac,
-                       showStats,elevOn,showInfo,showPlace,showDate,placeRowOn});
-  }
-  ctx.clearRect(0,0,W,H);
-  if(opt.basemap){ ctx.fillStyle=TH.mapBg;ctx.fillRect(0,0,W,mapH); }
-  const pts=pngCollectPts(opt);
-  if(!pts.length){ drawInfoBar(); return; }
-  const lats=pts.map(p=>p[0]),lons=pts.map(p=>p[1]);
-  const wx0=lonToWorld(Math.min(...lons),0),wx1=lonToWorld(Math.max(...lons),0);
-  const wy0=latToWorld(Math.max(...lats),0),wy1=latToWorld(Math.min(...lats),0);
-  const cx=(wx0+wx1)/2,cy=(wy0+wy1)/2;
-  const dx=Math.max(wx1-wx0,1e-9)*1.16,dy=Math.max(wy1-wy0,1e-9)*1.16;
-  const s=Math.min(mapW/dx,mapH/dy)*0.9;
-  const z=Math.max(1,Math.min(19,Math.floor(Math.log2(s)))), K=s/Math.pow(2,z);
-  const cxZ=cx*Math.pow(2,z), cyZ=cy*Math.pow(2,z);
-  const X=lon=>mapW/2+(lonToWorld(lon,z)-cxZ)*K, Y=lat=>mapH/2+(latToWorld(lat,z)-cyZ)*K;
-  // 底圖：basemap 開＝抓真實 tile（快取）、關＝棋盤示意
-  if(opt.basemap){
-    const plan=tilePlan(z,K,cxZ,cyZ,mapW,mapH);
-    const imgs=await Promise.all(plan.jobs.map(j=>loadTileCached(plan.zt,j.x,j.ty,light)));
-    if(myTok!==_prevToken) return;   // 期間有更新的呼叫，放棄這次繪製
-    ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();
-    paintTiles(ctx,plan.jobs,imgs,plan.rectOf,light);
-    ctx.restore();
-  }else{
-    const gs=Math.max(12,mapW/14);
-    for(let yy=0;yy<mapH;yy+=gs)for(let xx=0;xx<mapW;xx+=gs)
-      if(((xx/gs|0)+(yy/gs|0))%2){ctx.fillStyle='rgba(128,128,128,.12)';ctx.fillRect(xx,yy,gs,gs);}
-  }
-  // 向量層
-  ctx.save();ctx.beginPath();ctx.rect(0,0,mapW,mapH);ctx.clip();ctx.lineCap=ctx.lineJoin='round';
-  if(opt.draw){
-    ctx.strokeStyle=P.guide;ctx.lineWidth=(opt.route?15:5)*lw;ctx.globalAlpha=.9;
-    S.strokes.forEach(st=>{ctx.beginPath();st.pts.forEach((p,k)=>{const x=X(p.lng),y=Y(p.lat);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
-    ctx.globalAlpha=1;
-  }
-  let head=null;
-  if(opt.route){
-    S.result.segments.forEach(sg=>{const draw=sg.kind==='draw';
-      ctx.strokeStyle=draw?P.pending:P.connector;ctx.lineWidth=(draw?10.5:2.5)*lw;
-      ctx.setLineDash(draw?[]:[10*lw,9*lw]);ctx.beginPath();
-      sg.pts.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();});
-    ctx.setLineDash([]);
-    if(S.path&&S.path.length>1&&S.totalM>0&&frac>0){
-      const target=S.totalM*frac;let lo=0,hi=S.cum.length-1;
-      while(lo<hi){const mm=(lo+hi)>>1;S.cum[mm]<target?lo=mm+1:hi=mm;}
-      const idx=lo;const shown=S.path.slice(0,Math.max(idx+1,1)).map(p=>[p[0],p[1]]);
-      head=S.path[Math.max(idx,0)];
-      if(idx>0){const seg=S.cum[idx]-S.cum[idx-1],t=seg>0?(target-S.cum[idx-1])/seg:0,a=S.path[idx-1],b=S.path[idx];
-        head=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];shown[shown.length-1]=head;}
-      ctx.strokeStyle=P.done;ctx.lineWidth=8*lw;ctx.beginPath();
-      shown.forEach((p,k)=>{const x=X(p[1]),y=Y(p[0]);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
-      if(frac>=1) head=null;
-    }
-  }
-  if(opt.arrows && S.path && S.path.length >= 2 && S.totalM > 0){
-    const curD = S.totalM * (frac || 0);
-    const step = 200;
-    for(let targetD = step; targetD < S.totalM - 20; targetD += step){
-      if(targetD <= curD) continue;   // 已走過路段不顯示箭頭
-      const i = pvIndexAt(targetD);
-      if(i < 1) continue;
-      const a = S.path[i-1], b = S.path[i];
-      const segLen = S.cum[i] - S.cum[i-1];
-      if(segLen < 30) continue;   // 兩節點小於 30m 跳過
-      const mid = [(a[0] + b[0])/2, (a[1] + b[1])/2];
-      const ax = X(a[1]), ay = Y(a[0]), bx = X(b[1]), by = Y(b[0]);
-      if(ax === bx && ay === by) continue;
-      ctx.save();
-      ctx.translate(X(mid[1]), Y(mid[0]));
-      ctx.rotate(Math.atan2(by - ay, bx - ax));
-      drawChevron(ctx, Math.max(4, 6 * lw));
-      ctx.restore();
-    }
-  }
-  if(opt.marks) drawSEMarks(ctx,X,Y,15*lw,lw,P);
-  if(head) drawRunnerCanvas(ctx,X(head[1]),Y(head[0]),1.69*lw,light,false);   // 同匯出，放大 30%
-  // 高程圖已經移到下方資訊欄（見 drawInfoBar），地圖區不再畫
-  ctx.restore();
-  // 比例尺和匯出用同一個函式，勾選「比例尺」在預覽上才看得到差別
-  if(opt.scale!==false){
-    const cLat=(Math.min(...lats)+Math.max(...lats))/2;
-    drawScaleBar(ctx,{mapW,mapH,sc:scale,z,K,cLat,TH,F});
-  }
-  if(opt.basemap) drawTileCredit(ctx,mapW,mapH,scale,TH,F);
-  if(opt.logo!==false){
-    const lg=await loadLogoBitmap(light);
-    if(myTok===_prevToken) drawExportLogo(ctx,lg,mapW,mapH,scale);
-  }
-  drawInfoBar();
+  const W=cv.width, sc=W/RW, H=Math.round(RH*sc);
+  const off=document.createElement('canvas'); off.width=W; off.height=H;
+  const r=await renderScene(off.getContext('2d'),W,H,sc,opt,
+    {preview:true,stale:()=>myTok!==_prevToken,place:_previewPlace});
+  if(!r||myTok!==_prevToken) return;
+  cv.height=H; cv.getContext('2d').drawImage(off,0,0);
 
   /* 地點名稱要連網查（Nominatim）。預覽不能等它，所以先用快取的值畫，
      查回來之後再重畫一次。getPlaceName 自己有記憶體快取，不會重複請求。 */
-  if(showStats){
-    const cLat=(Math.min(...lats)+Math.max(...lats))/2;
-    const cLon=(Math.min(...lons)+Math.max(...lons))/2;
-    const key=lang+':'+cLat.toFixed(3)+','+cLon.toFixed(3);
+  if(opt.place!==false && r.cLat!=null){
+    const key=lang+':'+r.cLat.toFixed(3)+','+r.cLon.toFixed(3);
     if(_previewPlaceKey!==key){
       _previewPlaceKey=key;
-      getPlaceName(cLat,cLon).then(n=>{
-        if(_previewPlaceKey!==key) return;    // 期間換了路線，這次結果作廢
-        if(n===_previewPlace) return;
+      getPlaceName(r.cLat,r.cLon).then(n=>{
+        if(_previewPlaceKey!==key || n===_previewPlace) return;
         _previewPlace=n;
         renderPreview();
       }).catch(()=>{});
@@ -3319,12 +3344,7 @@ $('aPng').onclick=()=>{
 $('pngCancel').onclick=()=>{ $('pngModal').hidden=true; };
 $('pngGo').onclick=()=>{
   $('pngModal').hidden=true;
-  exportPNG({ratio:pngRatio,route:layerOn('route'),arrows:layerOn('arrows'),draw:layerOn('draw'),
-             marks:layerOn('marks'),basemap:layerOn('basemap'),elevchart:layerOn('elevchart'),
-             scale:layerOn('scale'),place:layerOn('place'),date:layerOn('date'),
-             logo:layerOn('logo'),
-             dats:['dist','pace','time','elev','fit'].filter(n=>datOn(n)),
-             frac:+$('pngProg').value/1000});
+  exportPNG(collectExportOpt());
 };
 $('pngClose').onclick=closeExportResult;
 // 這個 click 本身就是使用者手勢，所以 a.click() 不會被 Safari 的彈窗攔截器擋掉
@@ -3362,20 +3382,178 @@ el.pill.onclick=()=>{
    這裡只接手「同意」與「再看一次」。 */
 function openLegal(){ $('legalModal').hidden=false; }
 $('legalOk').onclick=()=>{
-  try{ localStorage.setItem(LEGAL_KEY,LEGAL_VER); }catch(_){}
+  store.set(LEGAL_KEY,LEGAL_VER);
+  const first=!$('legalModal').hidden && !S.offered;
   $('legalModal').hidden=true;
+  if(first){ S.offered=true; offerRestore(); }
 };
 $('brand').onclick=openLegal;
 $('brand').onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openLegal(); } };
 
+/* ---------- 地點搜尋與定位 ----------
+   Nominatim 的使用政策禁止「邊打邊查」的自動完成，所以只在按下搜尋（Enter）時查一次。 */
+function toggleSearch(on){
+  const box=$('searchBox');
+  box.hidden=on==null?!box.hidden:!on;
+  if(!box.hidden) setTimeout(()=>$('searchIn').focus(),30);
+}
+$('btnSearch').onclick=()=>toggleSearch();
+$('searchForm').onsubmit=async e=>{
+  e.preventDefault();
+  const q=$('searchIn').value.trim();
+  const ul=$('searchRes');
+  if(!q) return;
+  ul.innerHTML='';
+  const li0=document.createElement('li'); li0.textContent=tx('搜尋中…','Searching…'); ul.appendChild(li0);
+  let list=[];
+  try{
+    const ctrl=new AbortController(); const tm=setTimeout(()=>ctrl.abort(),9000);
+    const r=await nominatimFetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6'+
+      '&accept-language='+(EN()?'en':'zh-TW')+'&q='+encodeURIComponent(q),{signal:ctrl.signal});
+    clearTimeout(tm);
+    if(r.ok) list=await r.json();
+  }catch(_){}
+  ul.innerHTML='';
+  if(!list.length){
+    const li=document.createElement('li'); li.textContent=tx('找不到符合的地點','No matching places'); ul.appendChild(li);
+    return;
+  }
+  list.forEach(it=>{
+    const li=document.createElement('li');
+    li.tabIndex=0;
+    li.textContent=it.display_name;          // textContent：結果是外部資料，不能當 HTML 塞
+    const go=()=>{
+      const bb=(it.boundingbox||[]).map(Number);
+      if(bb.length===4&&bb.every(isFinite)){
+        const b=L.latLngBounds([bb[0],bb[2]],[bb[1],bb[3]]);
+        map.fitBounds(b,{maxZoom:16});
+      }else map.setView([+it.lat,+it.lon],16);
+      toggleSearch(false);
+    };
+    li.onclick=go;
+    li.onkeydown=ev=>{ if(ev.key==='Enter') go(); };
+    ul.appendChild(li);
+  });
+};
+$('btnLocate').onclick=()=>{
+  if(!navigator.geolocation){ toast(tx('這個瀏覽器不支援定位','Location is not supported in this browser'),2000); return; }
+  busy(tx('定位中…','Locating…'));
+  navigator.geolocation.getCurrentPosition(
+    p=>{ busy(''); map.setView([p.coords.latitude,p.coords.longitude],16); },
+    ()=>{ busy(''); toast(tx('無法取得位置（可能沒有開啟定位權限）','Could not get your location (permission denied?)'),2600); },
+    {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+};
+
+/* ---------- 作品保存與分享連結 ----------
+   重新整理頁面以前會把畫好的圖全部弄丟。現在範圍、筆畫、起訖點存在本機，
+   下次進站詢問要不要還原；也可以做成分享連結（資料全在網址 # 後面，不經過任何伺服器）。 */
+const SESSION_KEY='runart_session';
+const r6=v=>Math.round(v*1e6)/1e6;
+function snapshotState(){
+  if(!S.bounds) return null;
+  return {v:1,
+    b:[S.bounds.getSouth(),S.bounds.getWest(),S.bounds.getNorth(),S.bounds.getEast()].map(r6),
+    s:S.strokes.map(st=>st.pts.map(p=>[r6(p.lat),r6(p.lng)])),
+    a:S.start?[r6(S.start.lat),r6(S.start.lng)]:null,
+    z:S.end?[r6(S.end.lat),r6(S.end.lng)]:null};
+}
+let _saveT=null;
+function saveSession(){
+  clearTimeout(_saveT);
+  _saveT=setTimeout(()=>{
+    const st=snapshotState();
+    if(st&&st.s.length) store.set(SESSION_KEY,JSON.stringify(st));
+    else if(st) store.del(SESSION_KEY);
+  },400);
+}
+/* Google encoded polyline（精度 1e-5 ≈ 1m）：分享連結比 JSON 短很多 */
+function encPoly(pts){
+  let out='', pl=0, pn=0;
+  const enc=v=>{ v=v<0?~(v<<1):(v<<1); let s=''; while(v>=0x20){ s+=String.fromCharCode((0x20|(v&0x1f))+63); v>>=5; } return s+String.fromCharCode(v+63); };
+  pts.forEach(([la,ln])=>{ const a=Math.round(la*1e5), b=Math.round(ln*1e5); out+=enc(a-pl)+enc(b-pn); pl=a; pn=b; });
+  return out;
+}
+function decPoly(str){
+  const pts=[]; let i=0, la=0, ln=0;
+  const dec=()=>{ let r=0, sh=0, b; do{ b=str.charCodeAt(i++)-63; r|=(b&0x1f)<<sh; sh+=5; }while(b>=0x20&&i<=str.length); return (r&1)?~(r>>1):(r>>1); };
+  while(i<str.length){ la+=dec(); ln+=dec(); pts.push([la/1e5,ln/1e5]); }
+  return pts;
+}
+function shareURL(){
+  const st=snapshotState(); if(!st) return null;
+  const f=a=>a?a.map(v=>v.toFixed(5)).join(','):'';
+  // polyline 字元在 63..126 之間，用 ',' 分隔各筆畫不會撞到
+  const h='v1;b='+st.b.map(v=>v.toFixed(5)).join(',')+';a='+f(st.a)+';z='+f(st.z)+
+          ';s='+st.s.map(encPoly).map(encodeURIComponent).join(',');
+  return location.origin+location.pathname+'#'+h;
+}
+function parseShare(hash){
+  if(!hash.startsWith('#v1;')) return null;
+  const kv={};
+  hash.slice(4).split(';').forEach(p=>{ const k=p.indexOf('='); if(k>0) kv[p.slice(0,k)]=p.slice(k+1); });
+  const nums=t=>t?t.split(',').map(Number):null;
+  const b=nums(kv.b);
+  if(!b||b.length!==4||!b.every(isFinite)) return null;
+  const pt=t=>{ const v=nums(t); return v&&v.length===2&&v.every(isFinite)?v:null; };
+  let s=[];
+  try{ s=(kv.s||'').split(',').filter(Boolean).map(x=>decPoly(decodeURIComponent(x))).filter(x=>x.length>1); }
+  catch(_){ return null; }
+  return {v:1,b,s,a:pt(kv.a),z:pt(kv.z)};
+}
+/* 還原一份狀態：先載入範圍（通常有快取、不必連網），再把筆畫與起訖點放回去。 */
+async function restoreState(st,fromLink){
+  clearAll();
+  const bounds=L.latLngBounds([st.b[0],st.b[1]],[st.b[2],st.b[3]]);
+  map.fitBounds(bounds);
+  try{ await loadBounds(bounds); }catch(_){ return; }
+  st.s.forEach(pts=>{
+    const ll=pts.map(p=>L.latLng(p[0],p[1]));
+    S.strokes.push({pts:ll,line:L.polyline(ll,{color:PC().draw,weight:5,opacity:.95}).addTo(map)});
+  });
+  if(st.a) S.start=L.latLng(st.a[0],st.a[1]);
+  if(st.z) S.end=L.latLng(st.z[0],st.z[1]);
+  refreshSEMarkers(); refresh(); saveSession();
+  toast(fromLink?tx('已載入分享的圖案，按「生成路線」就能產生路線','Shared drawing loaded — tap Generate to make the route')
+                :tx('已還原上次的圖案','Your last drawing was restored'),2600);
+}
+function offerRestore(){
+  const link=parseShare(location.hash||'');
+  if(link){
+    history.replaceState(null,'',location.pathname+location.search);   // 重新整理時不要再載一次
+    restoreState(link,true);
+    return;
+  }
+  let saved=null;
+  try{ saved=JSON.parse(store.get(SESSION_KEY)||'null'); }catch(_){}
+  if(saved&&saved.v===1&&saved.b&&saved.s&&saved.s.length&&
+     confirm(tx('要還原上次畫的圖案嗎？','Restore the drawing from your last visit?'))) restoreState(saved,false);
+}
+$('aShare').onclick=async()=>{
+  const url=shareURL(); if(!url) return;
+  try{
+    if(navigator.share){ await navigator.share({title:'Running Art',url}); return; }
+  }catch(e){ if(e&&e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(url); toast(tx('分享連結已複製','Share link copied'),1800); }
+  catch(_){ prompt(tx('複製這個連結：','Copy this link:'),url); }
+};
+
+/* Service Worker：Pyodide 與本站檔案的快取（見 sw.js）。只在安全來源（https、localhost）啟用。 */
+if('serviceWorker' in navigator && window.isSecureContext)
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 function busy(t){const b=$('busy');
   if(t){if(EN()&&PROG_EN[t]) t=PROG_EN[t]; $('busyTxt').textContent=t;b.classList.add('on');}
-  else b.classList.remove('on');}
+  else b.classList.remove('on');
+  // 生成路線時可以取消（例如路線太長算太久）。運算在 Worker 裡，畫面不會卡住。
+  $('busyCancel').hidden=!(t&&S.generating);}
+$('busyCancel').onclick=()=>Engine.cancel();
 Engine.setProgress(busy);
-Engine.boot().then(()=>toast('運算引擎已就緒')).catch(e=>toast(tx('引擎載入失敗：','Engine load failed: ')+e.message,3000));
+Engine.boot().then(()=>toast(tx('運算引擎已就緒','Engine ready'))).catch(e=>toast(tx('引擎載入失敗：','Engine load failed: ')+e.message,3000));
 
 applyLang();
 setMode('pan');guide();refresh();
+// 免責聲明還開著的話，等使用者按「同意」之後才問要不要還原（見 legalOk）
+if($('legalModal').hidden){ S.offered=true; offerRestore(); }
 </script>
 </body>
 </html>

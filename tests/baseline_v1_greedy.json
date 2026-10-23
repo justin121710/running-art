@@ -1,0 +1,74 @@
+{
+ "helsinki/circle300": {
+  "len": 3296,
+  "conn": 11,
+  "prec": 0.555,
+  "recall": 0.767,
+  "dev": 34.7,
+  "uturn": 2,
+  "sec": 0.85
+ },
+ "helsinki/circle150": {
+  "len": 1788,
+  "conn": 39,
+  "prec": 0.469,
+  "recall": 0.741,
+  "dev": 39.1,
+  "uturn": 1,
+  "sec": 0.61
+ },
+ "helsinki/heart": {
+  "len": 2166,
+  "conn": 20,
+  "prec": 0.464,
+  "recall": 0.596,
+  "dev": 43.8,
+  "uturn": 0,
+  "sec": 0.9
+ },
+ "helsinki/square_rot20": {
+  "len": 2394,
+  "conn": 6,
+  "prec": 0.443,
+  "recall": 0.548,
+  "dev": 51.9,
+  "uturn": 0,
+  "sec": 1.0
+ },
+ "helsinki/star": {
+  "len": 1953,
+  "conn": 11,
+  "prec": 0.471,
+  "recall": 0.328,
+  "dev": 34.6,
+  "uturn": 0,
+  "sec": 1.12
+ },
+ "helsinki/zigzag": {
+  "len": 1230,
+  "conn": 11,
+  "prec": 0.858,
+  "recall": 0.765,
+  "dev": 15.7,
+  "uturn": 1,
+  "sec": 0.52
+ },
+ "helsinki/two_circles": {
+  "len": 2637,
+  "conn": 640,
+  "prec": 0.602,
+  "recall": 0.708,
+  "dev": 34.0,
+  "uturn": 2,
+  "sec": 0.95
+ },
+ "helsinki/straight": {
+  "len": 1304,
+  "conn": 8,
+  "prec": 0.64,
+  "recall": 0.772,
+  "dev": 24.7,
+  "uturn": 2,
+  "sec": 151.92
+ }
+}
