@@ -112,7 +112,9 @@ function positionGuide(){
     const gw=Math.min(300, window.innerWidth-24);
     g.style.maxWidth=gw+'px';
     const gh=g.offsetHeight, gwA=Math.min(g.offsetWidth,gw), M=10;
-    const top=r.bottom+M;
+    // 進度膠囊顯示中的話也要讓開它（引擎啟動時兩個會同時出現在頂部列下方）
+    const bz=$('busy'), br=bz&&bz.classList.contains('on')?bz.getBoundingClientRect():null;
+    const top=Math.max(r.bottom, br&&br.height?br.bottom:0)+M;
     const left=Math.min(r.right-gwA, window.innerWidth-gwA-12);
     g.style.left=Math.max(12,left)+'px'; g.style.top=Math.max(12,top)+'px';
     return;
@@ -155,6 +157,16 @@ function positionGuide(){
   left = Math.max(12, Math.min(left, window.innerWidth - gwA - 12));
   g.style.left = left+'px'; g.style.top = top+'px';
 }
+/* 頂部列的位置在載入後還可能變：iOS 主畫面模式要等 safe-area 數值出來、字型晚載入會撐寬按鈕。
+   以前只在 resize 時重算，結果引導框停在舊位置、壓住右上角的按鈕。 */
+if(window.ResizeObserver){
+  const ro=new ResizeObserver(()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); });
+  // border-box：safe-area 是加在 padding 上的，只看內容框的話 padding 變了不會觸發
+  ro.observe(document.querySelector('.top'),{box:'border-box'});
+  ro.observe($('btnDl'),{box:'border-box'});
+}
+window.addEventListener('load',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); });
+if(window.visualViewport) visualViewport.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); });
 // 高程圖不再需要對齊拉桿（它自己就是拉桿），圖上元素也全用百分比定位，縮放不必重畫
 window.addEventListener('resize',()=>{ if(!el.guide.classList.contains('hide')) positionGuide(); updatePillPos(); });
 function toast(t,ms=1500){

@@ -169,7 +169,9 @@ function busy(t){const b=$('busy');
   if(t){if(EN()&&PROG_EN[t]) t=PROG_EN[t]; $('busyTxt').textContent=t;b.classList.add('on');}
   else b.classList.remove('on');
   // 生成路線時可以取消（例如路線太長算太久）。運算在 Worker 裡，畫面不會卡住。
-  $('busyCancel').hidden=!(t&&S.generating);}
+  $('busyCancel').hidden=!(t&&S.generating);
+  // 進度膠囊出現／消失時，步驟 1 的引導框要重新讓位
+  if(S.step===1&&!el.guide.classList.contains('hide')) positionGuide();}
 $('busyCancel').onclick=()=>Engine.cancel();
 Engine.setProgress(busy);
 Engine.boot().then(()=>toast(tx('運算引擎已就緒','Engine ready'))).catch(e=>toast(tx('引擎載入失敗：','Engine load failed: ')+e.message,3000));

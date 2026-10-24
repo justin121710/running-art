@@ -13,7 +13,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Running Art">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- 狀態列用不透明的黑色：內容從狀態列下方開始。black-translucent 雖然能讓地圖延伸到狀態列底下，
+     但實測 iOS 主畫面模式下版面高度會比螢幕短一截，隱藏中的結果面板會從底部露出來。 -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
   /* 深色（預設）與淺色主題都用這組變數，只有 body.light 覆寫。 */
@@ -209,9 +211,11 @@
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;
     background:var(--panel);border-top:1px solid var(--border);
     border-radius:18px 18px 0 0;padding:14px 20px calc(18px + env(safe-area-inset-bottom));
-    transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1);
-    box-sizing:border-box;overflow-x:hidden}
-  .sheet.up{transform:translateY(0)}
+    transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1),visibility 0s .3s;
+    box-sizing:border-box;overflow-x:hidden;visibility:hidden}
+  /* 收起時整個隱藏（visibility），不只是往下推：版面高度和螢幕不一致時（iOS 主畫面模式），
+     只靠 translate 的話面板頂端會從畫面底部露出一條。滑出動畫結束才隱藏。 */
+  .sheet.up{transform:translateY(0);visibility:visible;transition:transform .3s cubic-bezier(.4,0,.2,1)}
   .grip{width:34px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 12px}
 
   /* 四大群組由左至右：Group 1 -> Group 3 -> Group 2 -> Group 4，寬度展延且底部齊平對齊 */
@@ -422,9 +426,13 @@
     padding:15px 20px;font-size:13.5px;text-align:center;opacity:0;
     transition:opacity .2s;pointer-events:none}
   .toast.show{opacity:1}
-  .busy{position:absolute;top:0;left:0;right:0;z-index:800;display:none;
-    align-items:center;gap:9px;justify-content:center;padding:calc(10px + env(safe-area-inset-top)) 10px 10px;color:var(--text);
-    background:var(--glass);border-bottom:1px solid var(--border);font-size:13px}
+  /* 進度提示是頂部列下方的小膠囊，不蓋住頂部按鈕（以前是整條橫幅壓在按鈕上）。
+     步驟 1 的引導框會讓開它（positionGuide）。 */
+  .busy{position:absolute;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+    z-index:800;display:none;max-width:calc(100vw - 24px);box-sizing:border-box;
+    align-items:center;gap:9px;justify-content:center;padding:8px 14px;color:var(--text);
+    background:var(--glass);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:999px;
+    font-size:13px;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.25)}
   .busy.on{display:flex}
   .spin{width:14px;height:14px;border:2px solid var(--rt-ui);border-top-color:transparent;
     border-radius:50%;animation:sp .7s linear infinite}
@@ -764,10 +772,10 @@ const LEGAL_KEY='runart_legal', LEGAL_VER='2026-07-29';   // 改內容就把 VER
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
 <script src="engine.js?v=e859c69745"></script>
 <script src="js/theme.js?v=7a52250c4f"></script>
-<script src="js/ui.js?v=2ccdc7ef0a"></script>
+<script src="js/ui.js?v=bf834cf420"></script>
 <script src="js/route.js?v=48894a305e"></script>
 <script src="js/edit.js?v=0716eafb7c"></script>
 <script src="js/export.js?v=a9119d4f11"></script>
-<script src="js/init.js?v=7c1b381415"></script>
+<script src="js/init.js?v=e73fb57859"></script>
 </body>
 </html>
