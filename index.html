@@ -91,7 +91,7 @@
     --rt-ui-ink:#3C6109;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;overflow:hidden;
+  html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none;
     font-family:system-ui,-apple-system,"Microsoft JhengHei",sans-serif;
     background:var(--bg);color:var(--text)}
   #map{position:absolute;inset:0;background:var(--bg)}
@@ -206,6 +206,10 @@
   body.boxing #mainDock{opacity:0;transform:translateY(14px);pointer-events:none}
   body.boxing .pill{opacity:0;pointer-events:none}
   body.boxing .guide{pointer-events:none}
+  /* 框選時 map.dragging 是關的，Leaflet 會把地圖的 touch-action 改回 pan-x pan-y，
+     手機上單指拖曳就被瀏覽器當成捲動頁面接走（pointercancel），框收不了尾，
+     或在 iOS 上連頁面一起被拖動，量到的位置全部錯開。框選期間一律自己處理觸控。 */
+  body.boxing #map{touch-action:none}
 
   /* ---- 恢復結果按鈕 / 距離膠囊（移至工具列上方） ---- */
   .pill{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);z-index:550;
@@ -794,7 +798,7 @@ const LEGAL_KEY='runart_legal', LEGAL_VER='2026-07-29';   // 改內容就把 VER
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
 <script src="engine.js?v=e859c69745"></script>
 <script src="js/theme.js?v=7a52250c4f"></script>
-<script src="js/ui.js?v=229451f5cd"></script>
+<script src="js/ui.js?v=0f53317285"></script>
 <script src="js/route.js?v=48894a305e"></script>
 <script src="js/edit.js?v=0716eafb7c"></script>
 <script src="js/export.js?v=a9119d4f11"></script>

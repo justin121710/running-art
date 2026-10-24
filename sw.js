@@ -8,7 +8,7 @@
  * · 其他外部服務（圖磚、Overpass、Nominatim、Open-Meteo）完全不經手，
  *   照它們自己的快取規則走（OSM 圖磚的使用政策也要求不要另外囤積）。
  */
-const VERSION = 'dabcba2df1';
+const VERSION = '5bab29ff5c';
 const APP_CACHE = 'runart-app-' + VERSION;
 const CDN_CACHE = 'runart-cdn-v1';
 const CDN_PREFIXES = ['https://cdn.jsdelivr.net/pyodide/v0.26.4/'];

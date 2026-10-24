@@ -37,7 +37,8 @@ let failures = 0;
 const check = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if (!cond) failures++; };
 
 async function setupContext(browser, opts = {}) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 }, acceptDownloads: true,
+  const ctx = await browser.newContext({ viewport: opts.viewport || { width: 1280, height: 860 }, acceptDownloads: true,
+                                         hasTouch: !!opts.mobile, isMobile: !!opts.mobile,
                                          serviceWorkers: opts.sw ? 'allow' : 'block', locale: opts.locale || 'zh-TW' });
   const counters = { overpass: 0, tiles: 0 };
   await ctx.route('**/*', async route => {
@@ -349,6 +350,33 @@ async function setStartEnd(page, p) {
     await page.reload();
     await page.evaluate(() => Engine.boot());
     check(await page.evaluate(() => typeof S === 'object'), '離線時頁面與引擎都能啟動');
+    check(errors.length === 0, '沒有 JS 錯誤' + (errors.length ? '：' + errors.join(' | ') : ''));
+    await ctx.close();
+  }
+
+  console.log('6. 手機觸控框選：框得起來，載入後視野落在框選範圍上');
+  {
+    const { ctx } = await setupContext(browser, { mobile: true, viewport: { width: 390, height: 664 } });
+    const { page, errors } = await openApp(ctx);
+    await page.evaluate(() => Engine.boot());
+    await page.evaluate(c => map.setView(c, 15, { animate: false }), CENTER);
+    await page.waitForTimeout(300);
+    await page.tap('#btnDl');
+    const cdp = await ctx.newCDPSession(page);
+    const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+    const [x0, y0, x1, y1] = [80, 200, 330, 480];
+    await touch('touchStart', x0, y0);
+    for (let i = 1; i <= 10; i++) { await touch('touchMove', x0 + (x1 - x0) * i / 10, y0 + (y1 - y0) * i / 10); await page.waitForTimeout(16); }
+    await touch('touchEnd');
+    await page.waitForTimeout(300);
+    check(await page.evaluate(() => !S.boxing), '單指拖曳的框有收尾（沒有被瀏覽器當成捲動取消）');
+    await waitFor(page, () => S.hasMap === true);
+    await page.waitForTimeout(800);
+    const r = await page.evaluate(() => {
+      const b = S.bounds, nw = map.latLngToContainerPoint(b.getNorthWest()), se = map.latLngToContainerPoint(b.getSouthEast());
+      return { contains: map.getBounds().contains(b), area: (se.x - nw.x) * (se.y - nw.y), view: map.getSize().x * map.getSize().y };
+    });
+    check(r.contains && r.area > r.view * 0.15, `載入後範圍完整在畫面內且夠大（佔 ${(100 * r.area / r.view).toFixed(0)}%）`);
     check(errors.length === 0, '沒有 JS 錯誤' + (errors.length ? '：' + errors.join(' | ') : ''));
     await ctx.close();
   }

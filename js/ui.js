@@ -229,9 +229,18 @@ function mapInsets(gap=12){
 /* 把視野拉到已載入的範圍，並閃開所有浮在上面的 UI。
    一定要在 refresh() 之後呼叫：引導條要先跳到步驟 2 的位置，量到的才是它真正的落點。 */
 function fitArea(b){
+  /* 地圖正在縮放動畫（例如還原時先 fitBounds 過一次、或手指還在捏）時，
+     Leaflet 會把新的 setView 靜靜丟掉，等動畫結束再拉一次。 */
+  if(map._animatingZoom){ map.once('zoomend',()=>fitArea(b)); return; }
+  // 版面剛變過（工具列回來、主畫面模式的 100lvh）時 Leaflet 記的尺寸可能是舊的
+  map.invalidateSize({pan:false});
   const i=mapInsets();
-  map.fitBounds(b,{paddingTopLeft:[Math.round(i.left),Math.round(i.top)],
-                   paddingBottomRight:[Math.round(i.right),Math.round(i.bottom)]});
+  const tl=L.point(Math.round(i.left),Math.round(i.top)), br=L.point(Math.round(i.right),Math.round(i.bottom));
+  /* 保險：邊距算出來不合理（縮放不是有限值，或比不留邊距時小了 2 級以上），
+     就退回不留邊距，至少範圍一定在畫面裡，不會被拉到遠處。 */
+  const z=map.getBoundsZoom(b,false,tl.add(br)), z0=map.getBoundsZoom(b);
+  if(!isFinite(z)||z<z0-2) map.fitBounds(b,{padding:[12,12]});
+  else map.fitBounds(b,{paddingTopLeft:tl,paddingBottomRight:br});
 }
 function inArea(ll){return !S.bounds||S.bounds.contains(ll);}
 
