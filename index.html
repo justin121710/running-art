@@ -225,6 +225,10 @@
   .pace .pbtn-row button{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:16px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
+  /* 配速快慢：烏龜＝變慢、兔子＝變快。圖是 512 座標畫的，線寬 34 ≈ 其他 24 座標圖示的 1.6 */
+  .pace .pbtn-row svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:34;
+    stroke-linecap:round;stroke-linejoin:round}
+  .pace .pbtn-row svg .eye{fill:currentColor;stroke:none}
 
   /* 群組 3：路線預覽 ＝ 高程變化圖。
      兩者本來就共用同一個進度值和同一條「距離」橫軸，所以直接把高程圖當成拉桿：
@@ -569,8 +573,8 @@
             <b id="pVal">6:00</b><span class="unit" id="pUnit" data-en="min/km">分/公里</span>
           </div>
           <div class="pbtn-row">
-            <button id="pDn" aria-label="slower">−</button>
-            <button id="pUp" aria-label="faster">+</button>
+            <button id="pDn" aria-label="slower" title="配速變慢 / Slower"><svg viewBox="0 0 512 512"><path d="M393 168C360 118 305 92 240 92C130 92 30 160 30 245A20 20 0 0 0 50 268H255C320 268 370 230 385 178"/><path d="M62 268C62 300 85 318 110 322L125 412H170L185 355C215 372 255 372 285 355L300 412H345V318C395 285 440 240 470 205L492 190V100A32 32 0 0 0 460 68H425A32 32 0 0 0 393 100V168"/><path d="M115 128V212M205 94V200M290 104V212M34 236L115 212L165 230M245 230L290 212L352 230M165 268V230L205 202L245 230V268"/><rect class="eye" x="424" y="114" width="24" height="24"/></svg></button>
+            <button id="pUp" aria-label="faster" title="配速變快 / Faster"><svg viewBox="0 0 512 512"><path d="M222 18C300 22 390 92 398 182L478 238V310L405 335L425 475H372L335 375"/><path d="M222 18C218 110 275 182 365 205C330 240 300 252 205 252C130 252 82 296 82 362L98 470H205L210 432C260 446 300 432 330 400"/><path d="M165 345C205 340 212 395 190 428"/><path d="M82 330A34 34 0 0 0 82 398"/></svg></button>
           </div>
         </div>
       </div>
