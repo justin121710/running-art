@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Running Art</title>
 <link rel="icon" type="image/svg+xml" href="logo_dark.svg">
+<!-- 加到主畫面用的圖示。iOS 不吃 SVG favicon，沒有 apple-touch-icon 的話會拿網頁截圖當圖示。
+     PNG 由 logo_dark.svg 產生（底色同 logo 的深色方塊，iOS／Android 會自己裁圓角）。 -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#14171C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Running Art">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
   /* 深色（預設）與淺色主題都用這組變數，只有 body.light 覆寫。 */
@@ -95,7 +104,10 @@
   .leaflet-container .leaflet-control-attribution a{color:inherit}
 
   /* ---- 頂部 ---- */
-  .top{position:absolute;top:0;left:0;right:0;z-index:500;padding:10px 12px;
+  /* env(safe-area-inset-*)：從主畫面全螢幕開啟（或橫向）時，避開瀏海、狀態列與 Home 指示條。
+     一般瀏覽器裡這些值是 0，不影響。 */
+  .top{position:absolute;top:0;left:0;right:0;z-index:500;
+    padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
     display:flex;gap:8px;align-items:center;pointer-events:none}
   .top>*{pointer-events:auto}
   .brand{font-size:15px;font-weight:700;letter-spacing:.5px;
@@ -132,7 +144,7 @@
   .guide b{color:var(--text);font-weight:500}
 
   /* ---- 底部工具列 ---- */
-  .dock{position:absolute;left:12px;right:12px;bottom:12px;z-index:500;
+  .dock{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:500;
     background:var(--glass);backdrop-filter:blur(12px);
     border:1px solid var(--border);border-radius:16px;padding:8px;
     display:flex;flex-direction:column;gap:8px}
@@ -196,7 +208,7 @@
   /* ---- 結果面板 ---- */
   .sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;
     background:var(--panel);border-top:1px solid var(--border);
-    border-radius:18px 18px 0 0;padding:14px 20px 18px;
+    border-radius:18px 18px 0 0;padding:14px 20px calc(18px + env(safe-area-inset-bottom));
     transform:translateY(102%);transition:transform .3s cubic-bezier(.4,0,.2,1);
     box-sizing:border-box;overflow-x:hidden}
   .sheet.up{transform:translateY(0)}
@@ -411,7 +423,7 @@
     transition:opacity .2s;pointer-events:none}
   .toast.show{opacity:1}
   .busy{position:absolute;top:0;left:0;right:0;z-index:800;display:none;
-    align-items:center;gap:9px;justify-content:center;padding:10px;color:var(--text);
+    align-items:center;gap:9px;justify-content:center;padding:calc(10px + env(safe-area-inset-top)) 10px 10px;color:var(--text);
     background:var(--glass);border-bottom:1px solid var(--border);font-size:13px}
   .busy.on{display:flex}
   .spin{width:14px;height:14px;border:2px solid var(--rt-ui);border-top-color:transparent;
@@ -428,7 +440,7 @@
     background:var(--panel2);color:var(--text);font-family:inherit;font-size:12.5px;cursor:pointer}
   .busy button[hidden]{display:none}
   /* 地點搜尋：頂部按鈕下方展開的小面板 */
-  .search{position:absolute;top:58px;left:12px;right:12px;z-index:700;max-width:420px;margin-left:auto;
+  .search{position:absolute;top:calc(58px + env(safe-area-inset-top));left:12px;right:12px;z-index:700;max-width:420px;margin-left:auto;
     background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px;
     box-shadow:0 6px 24px rgba(0,0,0,.25)}
   .search[hidden]{display:none}
