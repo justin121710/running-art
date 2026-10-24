@@ -215,11 +215,24 @@ function pvFracFromEvent(e){
   });
 })();
 
-function pvStop(){if(pvTimer){clearInterval(pvTimer);pvTimer=null;$('pvPlay').textContent='▶';} pvPose(false);}
+/* 播放／暫停圖示（實心圓角）。地圖上的高程圖標籤也從這裡拿山峰／山谷造型。 */
+const PV_ICON={
+  play:'<svg viewBox="0 0 24 24"><path d="M8 5.6a1 1 0 011.5-.86l9.6 6.4a1 1 0 010 1.7l-9.6 6.4A1 1 0 018 18.4z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg>'
+};
+/* 高程最高＝山峰、最低＝山谷。匯出圖片（js/export.js）用同一組路徑畫在 canvas 上。 */
+const ELEV_PEAK='M2.5 19.5L10 6.5l3.5 6 2-3 6 10z', ELEV_VALLEY='M2.5 4.5h19l-6 10-2-3-3.5 6z';
+const elevIcon=d=>'<svg viewBox="0 0 24 24"><path d="'+d+'"/></svg>';
+function pvPlayIcon(playing){
+  $('pvPlay').innerHTML=playing?PV_ICON.pause:PV_ICON.play;
+  $('pvPlay').setAttribute('aria-label',playing?'pause':'play');
+}
+pvPlayIcon(false);
+function pvStop(){if(pvTimer){clearInterval(pvTimer);pvTimer=null;pvPlayIcon(false);} pvPose(false);}
 $('pvPlay').onclick=()=>{
   if(pvTimer){pvStop();return;}
   if(S.pvFrac>=1) pvSet(0);
-  $('pvPlay').textContent='⏸';
+  pvPlayIcon(true);
   pvPose(true);   // 播放中＝奔跑（雙手舉高）
   pvTimer=setInterval(()=>{
     // 前進速度跟著配速：配速越慢（S.pace 越大）小人跑越慢。
@@ -390,8 +403,8 @@ function renderElevChart(data){
     </svg>
     <div class="elev-pt max" style="left:${pctX(maxPt).toFixed(2)}%;top:${pctY(maxPt.y).toFixed(2)}%"></div>
     <div class="elev-pt min" style="left:${pctX(minPt).toFixed(2)}%;top:${pctY(minPt.y).toFixed(2)}%"></div>
-    <div class="elev-lbl max" style="left:${lblX(maxPt)};top:${pctY(maxLblY).toFixed(2)}%">▲ ${Math.round(maxE)} m</div>
-    <div class="elev-lbl min" style="left:${lblX(minPt)};top:${pctY(minLblY).toFixed(2)}%">▼ ${Math.round(minE)} m</div>
+    <div class="elev-lbl max" style="left:${lblX(maxPt)};top:${pctY(maxLblY).toFixed(2)}%">${elevIcon(ELEV_PEAK)}${Math.round(maxE)} m</div>
+    <div class="elev-lbl min" style="left:${lblX(minPt)};top:${pctY(minLblY).toFixed(2)}%">${elevIcon(ELEV_VALLEY)}${Math.round(minE)} m</div>
     <div id="elevRunnerDot"></div>
   `;
 

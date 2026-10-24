@@ -236,6 +236,12 @@
   .pv-info .unit{font-size:11.5px;color:var(--dim);white-space:nowrap}
   /* 最高／最低推到最右邊，和左邊的距離讀數分開 */
   #elevRangeText{margin-left:auto;font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap}
+  /* 播放／暫停用 SVG 圖示（js/route.js 的 PV_ICON），不用 ▶ ⏸ 文字：
+     ⏸ 在部分手機的字型裡會變成一個小方塊 */
+  #pvPlay svg{width:16px;height:16px;fill:currentColor;display:block}
+  /* 高程圖最高／最低標籤前面的山峰／山谷圖示；文字靠 text-shadow 襯底，SVG 要用 drop-shadow */
+  .elev-lbl svg{width:9px;height:9px;fill:currentColor;vertical-align:-1px;margin-right:2px;
+    filter:drop-shadow(0 0 1px var(--panel2)) drop-shadow(0 0 1px var(--panel2))}
   #pvPlay{flex:0 0 36px;width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
     background:var(--panel3);color:var(--text);font-size:14px;font-family:inherit;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -511,7 +517,7 @@
       <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-4"/></svg><span data-en="Undo">復原</span>
     </button>
     <button class="sm" id="btnClear" disabled>
-      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Clear">清除</span>
+      <svg viewBox="0 0 24 24"><path d="M4.5 15.5L13 7a2 2 0 012.8 0l3.2 3.2a2 2 0 010 2.8L12 20H8.5z"/><path d="M9 11.5l5.5 5.5"/><path d="M12 20h8"/></svg><span data-en="Clear">清除</span>
     </button>
     <button class="sm" id="btnCancelMod" style="display:none">
       <svg viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg><span data-en="Cancel Edit">取消修改</span>
@@ -578,7 +584,7 @@
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
              aria-label="路線預覽進度"></div>
         <div class="pv-row">
-          <button id="pvPlay" aria-label="play">▶</button>
+          <button id="pvPlay" aria-label="play"></button>
           <div class="pv-info">
             <b id="pvAt">0.00 km</b>
             <span class="unit" id="pvPct">0%</span>
@@ -601,7 +607,7 @@
           <svg viewBox="0 0 24 24"><path d="M11 4H5a2 2 0 00-2 2v13a2 2 0 002 2h13a2 2 0 002-2v-6"/><path d="M8.5 15.5L9.41 11.47L17.54 3.34L20.66 6.46L12.53 14.59Z"/><path d="M15.42 5.46L18.54 8.58"/></svg><span data-en="Edit Shape">修改圖案</span>
         </button>
         <button id="aNew">
-          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span data-en="Restart">重新繪製</span>
+          <svg viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 005 4.5v15A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5V8z"/><path d="M14 3v5h5"/><path d="M12 11.5v6M9 14.5h6"/></svg><span data-en="Restart">重新繪製</span>
         </button>
       </div>
     </div>
@@ -743,9 +749,9 @@ const LEGAL_KEY='runart_legal', LEGAL_VER='2026-07-29';   // 改內容就把 VER
 <script src="engine.js?v=e859c69745"></script>
 <script src="js/theme.js?v=7a52250c4f"></script>
 <script src="js/ui.js?v=2ccdc7ef0a"></script>
-<script src="js/route.js?v=25dc55fce6"></script>
+<script src="js/route.js?v=48894a305e"></script>
 <script src="js/edit.js?v=0716eafb7c"></script>
-<script src="js/export.js?v=fc2a56f928"></script>
+<script src="js/export.js?v=a9119d4f11"></script>
 <script src="js/init.js?v=7c1b381415"></script>
 </body>
 </html>

@@ -853,21 +853,34 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
   };
   /* 標籤不加底色方塊（那會蓋掉底下的折線），改用描邊當光暈把字襯出來。
      水平位置夾在方框內，貼著點但不會被切掉。 */
-  const label = (p, text, color, above) => {
+  /* 標籤＝山峰／山谷圖示（和 App 內高程圖同一組路徑 ELEV_PEAK／ELEV_VALLEY）＋數字。
+     圖示和字一起置中、一起夾在方框內，外面描一圈光暈襯出來。 */
+  const label = (p, iconPath, text, color, above) => {
     const fs = Math.max(7, 11 * u);
     ctx.font = `bold ${fs}px sans-serif`;
     ctx.textBaseline = 'middle';
-    ctx.textAlign = 'center';
-    const tw = ctx.measureText(text).width;
-    let cx = Math.max(tw / 2 + 3 * u, Math.min(w - tw / 2 - 3 * u, p.px));
+    ctx.textAlign = 'left';
+    const isz = fs * 0.95, gap = fs * 0.25;
+    const tw = ctx.measureText(text).width, total = isz + gap + tw;
+    let cx = Math.max(total / 2 + 3 * u, Math.min(w - total / 2 - 3 * u, p.px));
     let cy = above ? p.py - lblGap : p.py + lblGap;
     cy = Math.max(fs * 0.6 + 1 * u, Math.min(h - fs * 0.6 - 1 * u, cy));
+    const x0 = cx - total / 2;
+    const halo = light ? 'rgba(255,255,255,0.9)' : 'rgba(10,13,17,0.9)';
     ctx.lineWidth = Math.max(1.4, 2.6 * u);
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = light ? 'rgba(255,255,255,0.9)' : 'rgba(10,13,17,0.9)';
-    ctx.strokeText(text, cx, cy);
+    ctx.save();
+    ctx.translate(x0, cy - isz / 2);
+    ctx.scale(isz / 24, isz / 24);
+    const ico = new Path2D(iconPath);
+    ctx.lineWidth = Math.max(1.4, 2.6 * u) * 24 / isz;
+    ctx.strokeStyle = halo; ctx.stroke(ico);
+    ctx.fillStyle = color; ctx.fill(ico);
+    ctx.restore();
+    ctx.strokeStyle = halo;
+    ctx.strokeText(text, x0 + isz + gap, cy);
     ctx.fillStyle = color;
-    ctx.fillText(text, cx, cy);
+    ctx.fillText(text, x0 + isz + gap, cy);
   };
 
   const maxP = at(maxIdx), minP = at(minIdx);
@@ -896,8 +909,8 @@ function drawElevProfileCanvas(ctx, x, y, w, h, light, frac){
   }
 
   // 最高固定在點的上方、最低固定在下方（上下的空白帶就是為此保留的）
-  label(maxP, `▲ ${Math.round(maxE)} m`, P.elev, true);
-  label(minP, `▼ ${Math.round(minE)} m`, P['elev-dim'], false);
+  label(maxP, ELEV_PEAK, `${Math.round(maxE)} m`, P.elev, true);
+  label(minP, ELEV_VALLEY, `${Math.round(minE)} m`, P['elev-dim'], false);
 
   ctx.restore();
 }
