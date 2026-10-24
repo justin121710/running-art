@@ -95,6 +95,15 @@
     font-family:system-ui,-apple-system,"Microsoft JhengHei",sans-serif;
     background:var(--bg);color:var(--text)}
   #map{position:absolute;inset:0;background:var(--bg)}
+  /* 頂部列離畫面上緣的距離。從主畫面全螢幕開啟時（iOS 26 起），狀態列底下有一段
+     玻璃模糊效果，不管 status-bar-style 怎麼設都會有，按鈕要再往下讓一點才不會落在模糊裡。 */
+  :root{--top-pad:calc(10px + env(safe-area-inset-top))}
+  @media (display-mode: standalone){
+    :root{--top-pad:calc(22px + env(safe-area-inset-top))}
+    /* 主畫面模式下 iOS 的版面高度可能比螢幕短一截，地圖底下會空一條。
+       這個模式沒有瀏覽器工具列，用 100lvh（最大視窗高度）讓地圖鋪到螢幕底。 */
+    #map{bottom:auto;height:100lvh}
+  }
   .leaflet-container{background:var(--bg)}
   .leaflet-tile-pane{filter:var(--tile-filter)}
   /* 圖磚來源的版權標示（OSM／CARTO 的使用條款都要求顯示在地圖上）。
@@ -109,7 +118,7 @@
   /* env(safe-area-inset-*)：從主畫面全螢幕開啟（或橫向）時，避開瀏海、狀態列與 Home 指示條。
      一般瀏覽器裡這些值是 0，不影響。 */
   .top{position:absolute;top:0;left:0;right:0;z-index:500;
-    padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
+    padding:var(--top-pad) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
     display:flex;gap:8px;align-items:center;pointer-events:none}
   .top>*{pointer-events:auto}
   .brand{font-size:15px;font-weight:700;letter-spacing:.5px;
@@ -428,7 +437,7 @@
   .toast.show{opacity:1}
   /* 進度提示是頂部列下方的小膠囊，不蓋住頂部按鈕（以前是整條橫幅壓在按鈕上）。
      步驟 1 的引導框會讓開它（positionGuide）。 */
-  .busy{position:absolute;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  .busy{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     z-index:800;display:none;max-width:calc(100vw - 24px);box-sizing:border-box;
     align-items:center;gap:9px;justify-content:center;padding:8px 14px;color:var(--text);
     background:var(--glass);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:999px;
@@ -448,7 +457,7 @@
     background:var(--panel2);color:var(--text);font-family:inherit;font-size:12.5px;cursor:pointer}
   .busy button[hidden]{display:none}
   /* 地點搜尋：頂部按鈕下方展開的小面板 */
-  .search{position:absolute;top:calc(58px + env(safe-area-inset-top));left:12px;right:12px;z-index:700;max-width:420px;margin-left:auto;
+  .search{position:absolute;top:calc(var(--top-pad) + 50px);left:calc(58px + env(safe-area-inset-left));right:12px;z-index:700;max-width:420px;margin-left:auto;
     background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px;
     box-shadow:0 6px 24px rgba(0,0,0,.25)}
   .search[hidden]{display:none}
@@ -464,7 +473,17 @@
   .search .note{font-size:11px;color:var(--dim);padding:6px 4px 0}
   #dlLabel{white-space:nowrap}
   /* 窄螢幕：品牌只留標誌、按鈕間距縮小，五顆按鈕才排得下一行 */
-  @media (max-width:480px){ .brand span{display:none} .top{gap:6px} #btnDl{padding:9px 10px} }
+  /* 窄螢幕：按鈕間距縮小一點，品牌（標誌＋文字）、語言、主題、載入地圖才排得下一行 */
+  .brand span{white-space:nowrap}
+  @media (max-width:480px){ .top{gap:6px} #btnDl{padding:9px 10px} }
+  @media (max-width:385px){ .brand{font-size:13.5px;padding:6px 9px 6px 7px;gap:6px} #btnDl{padding:9px 8px;gap:4px} .top{gap:5px} }
+  /* 極窄的舊手機（≤340px）才只留標誌 */
+  @media (max-width:340px){ .brand span{display:none} }
+  /* 地圖工具（搜尋、定位）：地圖左側、品牌標誌正下方的一直排。
+     不放頂部列：手機上放不下，會把品牌擠到只剩標誌。 */
+  .mapctl{position:absolute;left:calc(12px + env(safe-area-inset-left));top:calc(var(--top-pad) + 50px);
+    z-index:500;display:flex;flex-direction:column;gap:8px}
+  .mapctl .btn-dl{padding:0}
 
   /* ==== 桌面版與大螢幕 ==== */
   @media (min-width:900px){
@@ -483,19 +502,22 @@
   <img class="logo" id="brandLogo" src="logo_dark.svg" alt="" width="26" height="26">
   <span>Running Art</span>
 </div>
-  <button class="btn-dl icon-btn push" id="btnSearch" aria-label="搜尋地點" title="搜尋地點 / Search">
-    <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg>
-  </button>
-  <button class="btn-dl icon-btn" id="btnLocate" aria-label="移到我的位置" title="移到我的位置 / My location">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="7.5"/></svg>
-  </button>
-  <button class="btn-dl icon-btn" id="btnLang" aria-label="Language">EN</button>
+  <button class="btn-dl icon-btn push" id="btnLang" aria-label="Language">EN</button>
   <button class="btn-dl icon-btn" id="btnTheme" aria-label="切換深淺色主題">
     <svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/></svg>
   </button>
   <button class="btn-dl" id="btnDl">
     <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
     <span id="dlLabel">載入地圖範圍</span>
+  </button>
+</div>
+
+<div class="mapctl" id="mapCtl">
+  <button class="btn-dl icon-btn" id="btnSearch" aria-label="搜尋地點" title="搜尋地點 / Search">
+    <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg>
+  </button>
+  <button class="btn-dl icon-btn" id="btnLocate" aria-label="移到我的位置" title="移到我的位置 / My location">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="7.5"/></svg>
   </button>
 </div>
 
@@ -772,10 +794,10 @@ const LEGAL_KEY='runart_legal', LEGAL_VER='2026-07-29';   // 改內容就把 VER
 <!-- 帶版本參數，否則改了 engine.js 瀏覽器仍會沿用快取的舊引擎 -->
 <script src="engine.js?v=e859c69745"></script>
 <script src="js/theme.js?v=7a52250c4f"></script>
-<script src="js/ui.js?v=bf834cf420"></script>
+<script src="js/ui.js?v=229451f5cd"></script>
 <script src="js/route.js?v=48894a305e"></script>
 <script src="js/edit.js?v=0716eafb7c"></script>
 <script src="js/export.js?v=a9119d4f11"></script>
-<script src="js/init.js?v=e73fb57859"></script>
+<script src="js/init.js?v=7c1b381415"></script>
 </body>
 </html>

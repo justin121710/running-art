@@ -109,14 +109,15 @@ function positionGuide(){
     if(!r.width) return;
     g.style.position='fixed';g.style.right='auto';g.style.bottom='auto';
     g.style.width='auto';
-    const gw=Math.min(300, window.innerWidth-24);
+    // 左邊留給地圖工具那一排（搜尋、定位）：寬度最多到它右邊，不能蓋住
+    const ctl=$('mapCtl'), cr=ctl?ctl.getBoundingClientRect():null;
+    const leftLimit=cr&&cr.width?cr.right+8:12;
+    const gw=Math.min(300, window.innerWidth-12-leftLimit);
     g.style.maxWidth=gw+'px';
     const gh=g.offsetHeight, gwA=Math.min(g.offsetWidth,gw), M=10;
-    // 進度膠囊顯示中的話也要讓開它（引擎啟動時兩個會同時出現在頂部列下方）
-    const bz=$('busy'), br=bz&&bz.classList.contains('on')?bz.getBoundingClientRect():null;
-    const top=Math.max(r.bottom, br&&br.height?br.bottom:0)+M;
+    const top=r.bottom+M;
     const left=Math.min(r.right-gwA, window.innerWidth-gwA-12);
-    g.style.left=Math.max(12,left)+'px'; g.style.top=Math.max(12,top)+'px';
+    g.style.left=Math.max(leftLimit,left)+'px'; g.style.top=Math.max(12,top)+'px';
     return;
   }
 
@@ -195,7 +196,7 @@ function showArea(b){
    例如貼著底部的提示框 → 底部要留 (地圖下緣 − 提示框上緣)。 */
 /* 用選擇器而不是 id：頂部那條是 .top，沒有 id——寫成 $('top') 會拿到 null
    然後被靜靜跳過，頂部按鈕就完全沒被算進邊距裡。 */
-const FLOATERS=['.top','#guide','#mainDock','#pill'];
+const FLOATERS=['.top','#mapCtl','#guide','#mainDock','#pill'];
 function mapInsets(gap=12){
   const mr=mc.getBoundingClientRect();
   const ins={top:0,right:0,bottom:0,left:0};
